@@ -52,7 +52,7 @@ _Last updated: 2026-10-24_
 
 | ID | Status | Notes |
 |---|---|---|
-| M1.0 | ⚠ in progress | Foundation, passkeys, accounts DB, sessions, recovery, ACME (HTTP-01/TLS-ALPN-01), React UI shell + setup wizard done. Open: real-browser end-to-end setup on the final domain (needs trusted certificate, S2), Playwright E2E with virtual authenticator, accounts/roles UI, sessions UI, settings + allowlist Plan→Apply→Confirm handler, DNS-01. |
+| M1.0 | ⚠ in progress | Foundation, passkeys, accounts DB, sessions, recovery, ACME (HTTP-01/TLS-ALPN-01), React UI shell + setup wizard done. Open: Playwright E2E with virtual authenticator, audit view, settings + allowlist Plan→Apply→Confirm handler, DNS-01. |
 | M1.1 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status
@@ -74,13 +74,13 @@ _Last updated: 2026-10-24_
 | Allowlist at accept, before TLS; loopback default | ✓ | `internal/netallow`, `TestListenerDropsDisallowed` |
 | Security headers / strict CSP, CSRF header + exact Origin, no CORS, RFC 9457 errors | ✓ | `internal/web/middleware*.go`, smoke test |
 | Rate limits per IP + global, backoff, no account lockout | ✓ | `ratelimit.go` |
-| Bootstrap token (256 bit, 60 min, one-time, hashed) | ✓ (in memory) | `internal/auth`; persists in accounts.db once SQLite is available |
+| Bootstrap token (256 bit, 60 min, one-time, hashed) | ✓ | `internal/auth`, persisted in accounts.db |
 | Setup mode on 127.0.0.1 only | ✓ | smoke test: listener `127.0.0.1:8443` |
 | WebAuthn enrollment / login / step-up (UV + resident key required, attestation none, exact origin, 120 s one-time challenges, clone detection) | ✓ | `internal/auth/passkey.go`; software-authenticator tests (`internal/testutil/softauthn`) incl. wrong origin, no-UV, replay, counter regression |
 | Accounts DB (`accounts.db`, SQLite WAL, migrations with pre-backup), persistent one-time tokens | ✓ | `internal/store`, `helper/accounts.go` |
 | Passkey management (list/add/rename/remove, last one protected, synced vs device-bound) | ✓ | API + UI `/security/passkeys` |
 | Sessions persisted in helper DB (token hash only), survive restarts; rotation on step-up; session list + end session (own; admin: all) | ✓ | `TestSessionsPersistListAndRevoke`, UI `/security/sessions` |
-| Accounts/roles management UI (invitations, role change, disable, last-admin protection) | ✖ | next |
+| Accounts/roles management (invitations via one-time link, role change, disable, delete with type-name, last-admin and self-lockout protection, sessions ended on change) | ✓ | `helper/accountops.go`, `web/src/pages/Accounts.tsx`; tests `accountops_test.go` |
 | Recovery (`daemonica-admin recover <account> [--revoke-all]`, ends sessions, 30 min token) | ✓ | `TestPasskeyManagementAndRecovery` |
 | Setup wizard (token → domain → allowlist → certificate → switch to domain → first passkey), UI shell, dark/light theme, de/en i18n | ✓ (UI) / ⚠ (end-to-end on real domain pending) | Headless Chromium on the VM: no CSP/Trusted-Types violations; branding assets still missing (B5) |
 | Session cookie `__Host-`, Secure, HttpOnly, SameSite=Strict, rotation on login/step-up, grant never sent to browser | ✓ | `internal/web/auth_test.go` |

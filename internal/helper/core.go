@@ -201,6 +201,37 @@ func (c *Core) Register(ops map[string]*Op, al *audit.Logger) {
 		}})
 
 	// --- web channel, authenticated ---
+	Register(ops, &Op{Name: "audit.query", Action: policy.ActAuditRead, NoAudit: true, Timeout: time.Minute,
+		Handle: func(_ context.Context, call Call) (any, error) {
+			var f audit.Filter
+			if len(call.Params) > 0 {
+				if err := rpc.DecodeStrict(call.Params, &f); err != nil {
+					return nil, Errf(rpc.CodeBadRequest, "invalid parameters")
+				}
+			}
+			for _, v := range []string{f.ActionPrefix, f.Result, f.Actor, f.Text, f.Since, f.Until, f.Before} {
+				if len(v) > 128 {
+					return nil, Errf(rpc.CodeValidation, "filter too long")
+				}
+			}
+			fh, err := os.Open(c.AuditPath)
+			if err != nil {
+				return nil, Errf(rpc.CodeNotFound, "audit log not readable")
+			}
+			defer func() { _ = fh.Close() }()
+			return audit.Query(fh, f)
+		}})
+
+	Register(ops, &Op{Name: "audit.verify", Action: policy.ActAuditRead, Timeout: 5 * time.Minute,
+		Handle: func(context.Context, Call) (any, error) {
+			fh, err := os.Open(c.AuditPath)
+			if err != nil {
+				return nil, Errf(rpc.CodeNotFound, "audit log not readable")
+			}
+			defer func() { _ = fh.Close() }()
+			return audit.Verify(fh, ""), nil
+		}})
+
 	Register(ops, &Op{Name: "session.whoami", Action: policy.ActOwnSessions, NoAudit: true,
 		Handle: func(_ context.Context, call Call) (any, error) {
 			s := call.Subject

@@ -246,5 +246,30 @@
     "inviteExplain": "Daemonica creates the account without a passkey and a one-time link (valid for 60 minutes). Whoever opens the link registers the first passkey for exactly this account. The token sits in the link fragment (#), so it is not sent to the server or logged until it is redeemed. The account acts with the rights of the chosen Linux user; root can never be mapped.",
     "confirmRole": "Change the role of “{{name}}”? All sessions of this account will be ended.",
     "confirmDelete": "Type “{{name}}” to delete. Passkeys and sessions are removed; the Linux user is left unchanged."
+  },
+  "audit": {
+    "title": "Audit log",
+    "intro": "All security-relevant events, tamper-evident through a SHA-256 hash chain. Newest first.",
+    "action": "Action",
+    "actionHelp": "Prefix, e.g. “accounts.” or “auth.”",
+    "result": "Result",
+    "any": "any",
+    "text": "Search (target, reason, IP)",
+    "apply": "Filter",
+    "verify": "Verify integrity",
+    "export": "Export JSONL ({{count}})",
+    "empty": "No entries for this filter.",
+    "time": "Time",
+    "actor": "Who",
+    "target": "Target",
+    "source": "Source IP",
+    "more": "Load older",
+    "results": {
+      "ok": "ok",
+      "denied": "denied",
+      "error": "error"
+    },
+    "chainOk": "Hash chain intact: {{count}} records verified.",
+    "chainBad": "Hash chain broken at line {{line}}: {{problem}}"
   }
 }

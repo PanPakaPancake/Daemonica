@@ -231,4 +231,8 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("PATCH /api/v1/accounts/{id}/role", sess("accounts.set_role"))
 	mux.Handle("PATCH /api/v1/accounts/{id}/disabled", sess("accounts.set_disabled"))
 	mux.Handle("DELETE /api/v1/accounts/{id}", sess("accounts.delete"))
+
+	// Audit log (admin).
+	mux.Handle("POST /api/v1/audit/query", sess("audit.query"))
+	mux.Handle("POST /api/v1/audit/verify", sess("audit.verify"))
 }

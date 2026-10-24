@@ -246,5 +246,30 @@
     "inviteExplain": "Daemonica legt das Konto ohne Passkey an und erzeugt einen einmaligen Link (60 Minuten gültig). Wer den Link öffnet, registriert den ersten Passkey für genau dieses Konto. Das Token steht im Link-Fragment (#) und wird daher nicht an den Server übertragen oder protokolliert, bis es eingelöst wird. Das Konto erhält die Rechte des gewählten Linux-Benutzers; root ist nie zuordenbar.",
     "confirmRole": "Rolle von „{{name}}“ ändern? Alle Sitzungen dieses Kontos werden beendet.",
     "confirmDelete": "Zum Löschen „{{name}}“ eintippen. Passkeys und Sitzungen werden entfernt; der Linux-Benutzer bleibt unverändert."
+  },
+  "audit": {
+    "title": "Audit-Log",
+    "intro": "Alle sicherheitsrelevanten Ereignisse, fälschungssicher verkettet (SHA-256). Neueste zuerst.",
+    "action": "Aktion",
+    "actionHelp": "Präfix, z. B. „accounts.“ oder „auth.“",
+    "result": "Ergebnis",
+    "any": "alle",
+    "text": "Suche (Ziel, Grund, IP)",
+    "apply": "Filtern",
+    "verify": "Integrität prüfen",
+    "export": "Export JSONL ({{count}})",
+    "empty": "Keine Einträge für diesen Filter.",
+    "time": "Zeit",
+    "actor": "Wer",
+    "target": "Ziel",
+    "source": "Quell-IP",
+    "more": "Ältere laden",
+    "results": {
+      "ok": "ok",
+      "denied": "abgelehnt",
+      "error": "Fehler"
+    },
+    "chainOk": "Hash-Kette intakt: {{count}} Einträge geprüft.",
+    "chainBad": "Hash-Kette beschädigt in Zeile {{line}}: {{problem}}"
   }
 }

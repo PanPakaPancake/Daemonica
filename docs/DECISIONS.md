@@ -62,3 +62,9 @@ Format per SPEC §0.3: ID, date, context, decision, rejected alternatives, secur
 - **Date:** 2026-10-24
 - **Decision:** In setup mode the web process binds only `127.0.0.1:<port>` and uses an in-memory, self-signed ECDSA P-256 certificate (24 h, never persisted). Accepted origins: `https://localhost:<port>` and `https://127.0.0.1:<port>` (SSH tunnel). After setup only `https://<domain>:<port>` is accepted.
 - **Security:** Browser shows a certificate warning in setup mode only; access requires SSH + bootstrap token.
+
+## DEC-011 — Build on the test VM
+- **Date:** 2026-10-24
+- **Context:** The cloud build environment cannot reach Go/npm registries (DEC-002); the test VM can.
+- **Decision:** Builds, dependency resolution (with `sum.golang.org` verification and `npm ci --ignore-scripts`) and all tests run on the test VM. Go is installed from the official go.dev tarball, verified against the SHA-256 published in go.dev's release index; Node/npm from the Ubuntu archive (D-19).
+- **Security:** Full checksum-database verification restored; supersedes the stdlib-only restriction of DEC-002.

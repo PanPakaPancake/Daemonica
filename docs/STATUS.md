@@ -8,16 +8,35 @@ _Last updated: 2026-10-24_
 
 | # | Blocker | SPEC | Needed from owner |
 |---|---|---|---|
-| B1 | **Test VM access** missing. | S2, §6.1 | Fill in `test_vm.md` (local, git-ignored) and provide an SSH key for the VM separately. |
-| B2 | **Package registries blocked** in the build environment: `proxy.golang.org`, `sum.golang.org`, `registry.npmjs.org`, `gitlab.com`, `go.googlesource.com`. Without them neither WebAuthn/SQLite/PTY/WebSocket libraries nor the React frontend can be built in a verifiable way (DEC-002). | §4.1, §4.4, D-01 | Allow these domains for Claude (claude.ai → Settings → Capabilities, or org admin), **or** build on the test VM once B1 is solved. |
+| B1 | ~~Test VM access~~ — resolved 2026-10-24 (SSH via the owner's computer; connection through the local egress proxy is intermittently unstable). | S2, §6.1 | — |
+| B2 | ~~Package registries blocked~~ — worked around: the test VM has full egress, builds run there (DEC-011). Original issue: in the build environment: `proxy.golang.org`, `sum.golang.org`, `registry.npmjs.org`, `gitlab.com`, `go.googlesource.com`. Without them neither WebAuthn/SQLite/PTY/WebSocket libraries nor the React frontend can be built in a verifiable way (DEC-002). | §4.1, §4.4, D-01 | Allow these domains for Claude (claude.ai → Settings → Capabilities, or org admin), **or** build on the test VM once B1 is solved. |
 | B3 | **Push to GitHub refused**: the Claude GitHub App has no write access to `PanPakaPancake/daemonica`. Commits exist locally only. | — | Install the Claude GitHub App for the repo or reconnect GitHub in claude.ai settings. |
-| B4 | Go toolchain 1.24.7 (likely out of upstream support), newer toolchain not downloadable (DEC-003). | §4.1 | Resolved together with B2. |
+| B4 | ~~Go toolchain~~ — Go 1.27.3 installed on the VM from go.dev (SHA-256 verified against go.dev's release index); `go.mod` raised to 1.27.3. | §4.1 | — |
 | B5 | Branding assets (`daemonia-logo-transparent.png`, `daemonia-mascot.png`) not in the repository. | §5.4 | Add the two PNGs to `assets/branding/`. |
 | B6 | Package signing key. | S2, §4.3 | Later (release candidate); until then artifacts are `-UNSIGNED-TESTONLY`. |
 
-### Test VM
+### Test VM (first inspection 2026-10-24)
 
-Not yet accessed (B1). Planned first actions: `/etc/os-release`, resources, network, snapshot capability → recorded here.
+| Item | Finding |
+|---|---|
+| OS / kernel | Ubuntu 26.04.1 LTS (Resolute Raccoon), Linux 7.0.0-38-generic, x86_64 |
+| Resources | 2 vCPU, 7.7 GiB RAM, 96 GB disk (2 % used) |
+| Network | eth0 148.230.104.4/24 **and IPv6 2a02:4780:41:d243::1/48** (test_vm.md said "none"); netplan (`50-cloud-init.yaml`) with systemd-networkd |
+| Listening | sshd :22 (v4+v6), systemd-resolved, chronyd, `monarx-agent` (Hostinger security agent) on loopback |
+| Firewall | ufw installed, **inactive**; nftables empty |
+| sshd | PermitRootLogin yes, PasswordAuthentication yes (to be addressed by the Phase-2 checklist; no change now, A-11) |
+| Users | no regular users (UID ≥ 1000) — a non-root Linux user is required for the first admin account (SPEC §3.4) |
+| Pending updates | 22 |
+| Snapshots / console | available (owner) |
+| Egress | proxy.golang.org, sum.golang.org, registry.npmjs.org, go.dev, github.com, Let's Encrypt staging: all reachable |
+| Build tooling installed | Go 1.27.3 (go.dev, checksum-verified), nodejs 22 / npm 9 / make / shellcheck (Ubuntu archive), govulncheck |
+
+### First install on the VM
+
+- `.deb` installs, both services active, web listens on **127.0.0.1:8443 only** (not reachable on the public IP).
+- `systemd-analyze security`: **daemonia-web 1.1** (target ≤ 2.0 ✓), **daemonia-helper 6.8** (target ≤ 6.0 ✖ — to be tightened).
+- Bootstrap → token check → helper restart → audit chain verify: all ok. `govulncheck`: no vulnerabilities.
+- Bug found and fixed: `/run/daemonia` was root:root 0750, so the web user could not reach `helper.sock` (fixed in d357a34).
 
 ### Milestones
 

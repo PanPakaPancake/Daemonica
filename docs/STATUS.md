@@ -35,6 +35,12 @@ _Last updated: 2026-10-24_
 
 - 2026-10-24: `/etc/ssh/sshd_config.d/90-daemonia-dev.conf` sets `PerSourcePenaltyExemptList 37.201.167.99` (owner's current IP) because sshd's per-source penalties locked out both the owner and the build connection. **Remove before the acceptance test.**
 
+### Real-world setup on the VM (2026-10-24)
+
+- Domain `daemonica.404squad.cloud:8443`, Let's Encrypt **production** certificate (owner approved, S2), HTTP-01 validated; allowlist = owner IP `37.201.167.99/32` (+ loopback).
+- Owner completed the setup wizard in a real browser and registered the first admin passkey (account `pancake` → Linux user `pancake`, UID 1000). Login afterwards worked. Audit chain intact (27 records).
+- Known limitation: sessions/grants live in helper memory, so a helper restart (e.g. package upgrade) signs everybody out. Persisting session metadata is planned (web.db, SPEC §3.2 rule 3).
+
 ### First install on the VM
 
 - `.deb` installs, both services active, web listens on **127.0.0.1:8443 only** (not reachable on the public IP).

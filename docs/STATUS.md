@@ -53,8 +53,9 @@ _Last updated: 2026-10-24_
 
 | ID | Status | Notes |
 |---|---|---|
-| M1.0 | ⚠ in progress | Foundation, passkeys, accounts DB, sessions, recovery, ACME (HTTP-01/TLS-ALPN-01), React UI shell + setup wizard done. Open: Playwright E2E with virtual authenticator, audit view, settings + allowlist Plan→Apply→Confirm handler, DNS-01. |
-| M1.1 – M1.8 | ✖ open | |
+| M1.0 | ⚠ nearly done | All core items done incl. accounts, audit view, allowlist Plan→Apply→Confirm. Open: TLS change in settings, DNS-01 guided, certificate renewal timer, Playwright E2E with virtual authenticator, helper hardening score ≤ 6.0. |
+| M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Open: last logins, log follow via WebSocket (DEC-017), allowlisted log files (SOLL), owner acceptance check against `top`/`free`/`df`. |
+| M1.2 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status
 
@@ -88,6 +89,20 @@ _Last updated: 2026-10-24_
 | ACME (Let's Encrypt, HTTP-01/TLS-ALPN-01, ECDSA P-256, staging/production) | ✓ (HTTP-01) / ✖ (DNS-01 guided, renewal timer, TLS change via settings) | Production cert issued for the test VM with owner approval (S2) |
 | systemd units with hardening | ⚠ | Scores on the VM: daemonica-web **1.1** (target ≤ 2.0 ✓), daemonica-helper **6.8** (target ≤ 6.0 ✖, to tighten in M1.8) |
 | `.deb` packaging, postinst/prerm/postrm | ✓ (install/upgrade on VM) / ⚠ (remove/purge test, arm64 install untested) | VM: install, reinstall and the daemonia→daemonica migration (data moved, accounts/passkeys/audit chain intact) |
+
+### M1.1 requirement status
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| Overview: hostname, OS/kernel, uptime, load, CPU, RAM/swap, mounts with usage + inodes, network interfaces with live throughput, top processes, reboot required, pending updates (total/security), failed units, dashboard certificate expiry, setup checklist | ✓ | `internal/sysinfo`, `helper/sysops.go`; integration test on the VM (`make test-integration`) |
+| Last logins | ✖ | Ubuntu 26.04 uses wtmpdb; reader follows |
+| One shared collector (3 s), no polling storm | ✓ | `sysinfo.Collector` in the helper; UI polls the cached snapshot |
+| Services: list service/timer/socket with active/sub, autostart, since, memory; search + filter | ✓ | D-Bus (`internal/services`), integration test (295 units on the VM) |
+| Actions start/stop/restart/reload/enable/disable/mask/unmask; detail: status, journal, unit file (read-only), dependencies | ✓ | `services.action`, UI drawer |
+| Protected units (`daemonica-*`, ssh, `systemd-*`): admin + step-up + warning; helper not stoppable/disableable/maskable; web only with typed confirmation | ✓ | `TestServiceDecisionMatrix` |
+| Logs: journald with unit/priority/time/boot filters, server-side search, follow, export TXT/JSON with line limit, control sequences neutralised | ✓ (follow via polling, DEC-017) | `internal/journal`, `TestArgsValidation`, `TestParseSanitisesAndCaps` |
+| Processes: table (PID, user, CPU, RAM, start, command), sort/filter, signals TERM/KILL/HUP/STOP/CONT with confirmation; protected PID 1/daemonica/sshd; operator only own processes; PID-reuse guard | ✓ | `TestProcSignalRules` |
+| Read-only role: no logs, no signals | ✓ | policy + UI hides log navigation |
 
 ### Test results
 

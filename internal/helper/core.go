@@ -3,6 +3,7 @@ package helper
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ type Core struct {
 	Tokens    auth.TokenStore
 	Grants    *GrantStore
 	AuditPath string
+	TLSDir    string
 	Version   string
 	Now       func() time.Time
 }
@@ -62,6 +64,9 @@ type WebConfig struct {
 	Allowlist []string `json:"allowlist"`
 	Language  string   `json:"language"`
 	UploadMiB int      `json:"upload_limit_mib"`
+	TLSSource string   `json:"tls_source,omitempty"`
+	// CertVersion changes whenever the certificate files are replaced.
+	CertVersion int64 `json:"cert_version"`
 }
 
 // TokenParams carries a presented one-time token.
@@ -174,8 +179,14 @@ func (c *Core) Register(ops map[string]*Op, al *audit.Logger) {
 	Register(ops, &Op{Name: "config.web", PreAuth: true, NoAudit: true,
 		Handle: func(context.Context, Call) (any, error) {
 			cfg := c.Config.Get()
-			return WebConfig{SetupDone: cfg.SetupDone, Domain: cfg.Domain, Port: cfg.Port, Allowlist: cfg.Allowlist,
-				Language: cfg.Language, UploadMiB: cfg.UploadMiB}, nil
+			wc := WebConfig{SetupDone: cfg.SetupDone, Domain: cfg.Domain, Port: cfg.Port, Allowlist: cfg.Allowlist,
+				Language: cfg.Language, UploadMiB: cfg.UploadMiB, TLSSource: cfg.TLSSource}
+			if c.TLSDir != "" {
+				if fi, err := os.Stat(filepath.Join(c.TLSDir, "fullchain.pem")); err == nil {
+					wc.CertVersion = fi.ModTime().UnixNano()
+				}
+			}
+			return wc, nil
 		}})
 
 	// --- web channel, authenticated ---

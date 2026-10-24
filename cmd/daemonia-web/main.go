@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -37,7 +38,7 @@ func main() {
 		log.Error("daemonia-web must not run as root")
 		os.Exit(1)
 	}
-	client := &rpc.Client{Socket: *sock, Timeout: 60 * time.Second}
+	client := &rpc.Client{Socket: *sock, Timeout: 5 * time.Minute}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
@@ -53,24 +54,13 @@ func main() {
 	var origins []string
 	var allow *netallow.Allowlist
 	portStr := strconv.Itoa(cfg.Port)
-	if !cfg.SetupDone {
-		// Setup mode: loopback only, ephemeral self-signed certificate (§3.3 Bootstrap 1).
-		cert, err := tlsconf.SelfSignedSetup([]string{"localhost"}, []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}, 24*time.Hour)
-		if err != nil {
-			log.Error("cannot create setup certificate", "err", err)
-			os.Exit(1)
-		}
-		holder.Set(cert)
-		listenAddr = net.JoinHostPort("127.0.0.1", portStr)
-		allow = netallow.New(netallow.Loopback)
-		origins = []string{"https://localhost:" + portStr, "https://127.0.0.1:" + portStr}
-		log.Info("setup mode: listening on loopback only", "addr", listenAddr)
-	} else {
-		cert, err := tls.LoadX509KeyPair(filepath.Join(*tlsDir, "fullchain.pem"), filepath.Join(*tlsDir, "privkey.pem"))
-		if err != nil {
-			log.Error("no usable TLS certificate; run 'daemonia-admin tls-status'", "err", err)
-			os.Exit(1)
-		}
+	cert, certErr := tls.LoadX509KeyPair(filepath.Join(*tlsDir, "fullchain.pem"), filepath.Join(*tlsDir, "privkey.pem"))
+	domainMode := cfg.Domain != "" && certErr == nil
+	switch {
+	case domainMode:
+		// Final domain with a real certificate. During setup only the token-gated
+		// setup endpoints work here (needed to register the first passkey on the
+		// final RP ID, SPEC §3.3 Bootstrap 3).
 		holder.Set(&cert)
 		pfx, err := netallow.ParseList(cfg.Allowlist)
 		if err != nil {
@@ -79,19 +69,53 @@ func main() {
 		}
 		allow = netallow.New(pfx)
 		listenAddr = net.JoinHostPort("", portStr)
-		origins = []string{"https://" + cfg.Domain + ":" + portStr}
+		origins = []string{"https://" + net.JoinHostPort(cfg.Domain, portStr)}
 		if cfg.Port == 443 {
 			origins = append(origins, "https://"+cfg.Domain)
 		}
+		log.Info("listening for domain", "domain", cfg.Domain, "addr", listenAddr, "setup_done", cfg.SetupDone)
+	case cfg.SetupDone:
+		log.Error("setup is complete but no usable TLS certificate exists; see 'daemonia-admin tls-status'", "err", certErr)
+		os.Exit(1)
+	default:
+		// Setup mode: loopback only, ephemeral self-signed certificate (§3.3 Bootstrap 1).
+		sc, err := tlsconf.SelfSignedSetup([]string{"localhost"}, []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}, 24*time.Hour)
+		if err != nil {
+			log.Error("cannot create setup certificate", "err", err)
+			os.Exit(1)
+		}
+		holder.Set(sc)
+		listenAddr = net.JoinHostPort("127.0.0.1", portStr)
+		allow = netallow.New(netallow.Loopback)
+		origins = []string{"https://localhost:" + portStr, "https://127.0.0.1:" + portStr}
+		log.Info("setup mode: listening on loopback only", "addr", listenAddr)
 	}
+
+	// Watch the helper-owned configuration: allowlist changes apply live; a
+	// changed domain, port, certificate or setup phase restarts the process
+	// (exit 75 → systemd Restart=on-failure) so listener and origins are rebuilt.
+	go watchConfig(ctx, client, log, cfg, allow, domainMode)
 
 	srv := &web.Server{
 		Helper:  client,
 		Log:     log,
 		UI:      ui.FS(),
 		Origins: func() []string { return origins },
-		Limiter: web.NewRateLimiter(0.2, 5, 5, 50),
+		Limiter:  web.NewRateLimiter(0.5, 10, 10, 100),
+		Sessions: web.NewSessions(),
 	}
+	go func() {
+		t := time.NewTicker(5 * time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				srv.Sessions.Prune(24 * time.Hour)
+			}
+		}
+	}()
 	httpSrv := &http.Server{
 		Handler:           srv.Handler(),
 		TLSConfig:         tlsconf.Config(holder),
@@ -138,4 +162,35 @@ func fetchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger) (helper.W
 		}
 	}
 	return cfg, fmt.Errorf("config.web: %w", err)
+}
+
+// ExitRestart asks systemd to restart the service (Restart=on-failure).
+const ExitRestart = 75
+
+func watchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger, start helper.WebConfig, allow *netallow.Allowlist, domainMode bool) {
+	t := time.NewTicker(3 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		var cur helper.WebConfig
+		if err := c.Call(ctx, "config.web", "", "", nil, &cur); err != nil {
+			continue
+		}
+		wantDomainMode := cur.Domain != "" && cur.CertVersion != 0
+		if cur.Domain != start.Domain || cur.Port != start.Port || cur.CertVersion != start.CertVersion || wantDomainMode != domainMode {
+			log.Info("listener configuration changed; restarting")
+			os.Exit(ExitRestart)
+		}
+		if domainMode && strings.Join(cur.Allowlist, ",") != strings.Join(start.Allowlist, ",") {
+			if pfx, err := netallow.ParseList(cur.Allowlist); err == nil {
+				allow.Set(pfx)
+				start.Allowlist = cur.Allowlist
+				log.Info("allowlist updated", "entries", len(pfx))
+			}
+		}
+	}
 }

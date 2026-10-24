@@ -19,8 +19,9 @@ type Server struct {
 	Helper  *rpc.Client
 	Log     *slog.Logger
 	UI      fs.FS
-	Origins func() []string
-	Limiter *RateLimiter
+	Origins  func() []string
+	Limiter  *RateLimiter
+	Sessions *Sessions
 }
 
 // Handler builds the full middleware chain. Before login only the UI shell,
@@ -29,9 +30,9 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/v1/setup/state", LimitBody(0, http.HandlerFunc(s.setupState)))
 	mux.Handle("POST /api/v1/setup/token", LimitBody(4<<10, http.HandlerFunc(s.setupToken)))
+	s.registerAuthRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-		// Every other API route requires an authenticated session (not yet
-		// implemented: WebAuthn pending, see docs/STATUS.md).
+		// Unknown API routes: never reveal whether a route exists to anonymous clients.
 		Problem(w, r, http.StatusUnauthorized, "unauthorized")
 	})
 	mux.Handle("/", s.static())

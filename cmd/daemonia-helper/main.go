@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/PanPakaPancake/daemonica/internal/audit"
-	"github.com/PanPakaPancake/daemonica/internal/auth"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
 )
@@ -27,6 +27,7 @@ func main() {
 	runDir := flag.String("run-dir", "/run/daemonia", "runtime directory for sockets")
 	auditPath := flag.String("audit-log", "/var/log/daemonia/audit.log", "audit log path")
 	webUser := flag.String("web-user", "daemonia-web", "system user of the web process")
+	tlsDir := flag.String("tls-dir", "/var/lib/daemonia/tls", "certificate directory of the web process")
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
@@ -41,6 +42,7 @@ func main() {
 	}
 	webUID, _ := strconv.ParseUint(u.Uid, 10, 32)
 	webGID, _ := strconv.Atoi(u.Gid)
+	webUIDInt, _ := strconv.Atoi(u.Uid)
 
 	for _, d := range []string{*stateDir, filepath.Join(*stateDir, "backups"), filepath.Join(*stateDir, "journal")} {
 		if err := os.MkdirAll(d, 0o700); err != nil {
@@ -75,10 +77,23 @@ func main() {
 		log.Error("rollback recovery failed", "err", e)
 	}
 
-	grants := helper.NewGrantStore(0, 0)
-	core := &helper.Core{Config: cfg, Tokens: auth.NewMemTokenStore(), Grants: grants, AuditPath: *auditPath, Version: version}
+	db, err := helper.OpenDB(context.Background(), filepath.Join(*stateDir, "accounts.db"))
+	if err != nil {
+		log.Error("cannot open accounts.db", "err", err)
+		os.Exit(1)
+	}
+	defer func() { _ = db.Close() }()
+	tokens := db.TokenStore()
+
+	c := cfg.Get()
+	grants := helper.NewGrantStore(time.Duration(c.IdleMinutes)*time.Minute, time.Duration(c.AbsHours)*time.Hour)
+	core := &helper.Core{Config: cfg, Tokens: tokens, Grants: grants, AuditPath: *auditPath, TLSDir: *tlsDir, Version: version}
 	ops := map[string]*helper.Op{}
 	core.Register(ops, al)
+	authOps := &helper.AuthOps{DB: db, Config: cfg, Grants: grants, Tokens: tokens, Audit: al}
+	authOps.Register(ops)
+	certOps := &helper.CertOps{Config: cfg, Guard: authOps.SetupGuard, TLSDir: *tlsDir, StateDir: *stateDir, WebUID: webUIDInt, WebGID: webGID}
+	certOps.Register(ops)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()

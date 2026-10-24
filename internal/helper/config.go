@@ -26,6 +26,7 @@ type Config struct {
 	AbsHours    int      `json:"absolute_hours"`
 	Language    string   `json:"language"`
 	UploadMiB   int      `json:"upload_limit_mib"`
+	TLSSource   string   `json:"tls_source,omitempty"` // own | acme-staging | acme-production
 }
 
 // DefaultConfig is the configuration of a fresh install: setup mode, loopback only.

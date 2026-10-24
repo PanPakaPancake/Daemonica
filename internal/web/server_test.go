@@ -19,6 +19,7 @@ func testServer() http.Handler {
 		UI:      fstest.MapFS{"index.html": {Data: []byte("<html>shell</html>")}, "assets/app.js": {Data: []byte("x")}},
 		Origins: func() []string { return []string{"https://example.org:8443"} },
 		Limiter: NewRateLimiter(1, 5, 10, 10),
+		Sessions: NewSessions(),
 	}
 	return s.Handler()
 }

@@ -35,6 +35,7 @@ type Call struct {
 	Channel  Channel
 	Subject  *policy.Subject // nil for pre-auth and admin-channel operations
 	GrantID  string          // hashed grant identifier (for audit "session")
+	Grant    string          // opaque grant token (only for session operations such as step-up/logout)
 	SourceIP string
 	Params   []byte
 }
@@ -232,7 +233,7 @@ func (s *Server) Dispatch(ctx context.Context, req *rpc.Request) *rpc.Response {
 			s.audit(op, call, nil, audit.ResultDenied, "invalid or expired grant")
 			return rpc.Fail(req.ID, rpc.CodeUnauthorized, "")
 		}
-		call.Subject, call.GrantID = &subj, gid
+		call.Subject, call.GrantID, call.Grant = &subj, gid, req.Grant
 		switch policy.Decide(subj, op.Action, 0, false) {
 		case policy.Deny:
 			s.audit(op, call, nil, audit.ResultDenied, "policy")

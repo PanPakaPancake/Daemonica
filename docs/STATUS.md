@@ -39,7 +39,7 @@ _Last updated: 2026-10-24_
 
 - Domain `daemonica.404squad.cloud:8443`, Let's Encrypt **production** certificate (owner approved, S2), HTTP-01 validated; allowlist = owner IP `37.201.167.99/32` (+ loopback).
 - Owner completed the setup wizard in a real browser and registered the first admin passkey (account `pancake` → Linux user `pancake`, UID 1000). Login afterwards worked. Audit chain intact (27 records).
-- Known limitation: sessions/grants live in helper memory, so a helper restart (e.g. package upgrade) signs everybody out. Persisting session metadata is planned (web.db, SPEC §3.2 rule 3).
+- Sessions are now persisted in the helper's accounts.db (since 19b8a5e); restarts no longer sign users out. Pre-migration DB backup verified (`backups/accounts.db.*.bak`).
 
 ### First install on the VM
 
@@ -79,7 +79,8 @@ _Last updated: 2026-10-24_
 | WebAuthn enrollment / login / step-up (UV + resident key required, attestation none, exact origin, 120 s one-time challenges, clone detection) | ✓ | `internal/auth/passkey.go`; software-authenticator tests (`internal/testutil/softauthn`) incl. wrong origin, no-UV, replay, counter regression |
 | Accounts DB (`accounts.db`, SQLite WAL, migrations with pre-backup), persistent one-time tokens | ✓ | `internal/store`, `helper/accounts.go` |
 | Passkey management (list/add/rename/remove, last one protected, synced vs device-bound) | ✓ | API + UI `/security/passkeys` |
-| Accounts/roles management UI, session list | ✖ | next |
+| Sessions persisted in helper DB (token hash only), survive restarts; rotation on step-up; session list + end session (own; admin: all) | ✓ | `TestSessionsPersistListAndRevoke`, UI `/security/sessions` |
+| Accounts/roles management UI (invitations, role change, disable, last-admin protection) | ✖ | next |
 | Recovery (`daemonia-admin recover <account> [--revoke-all]`, ends sessions, 30 min token) | ✓ | `TestPasskeyManagementAndRecovery` |
 | Setup wizard (token → domain → allowlist → certificate → switch to domain → first passkey), UI shell, dark/light theme, de/en i18n | ✓ (UI) / ⚠ (end-to-end on real domain pending) | Headless Chromium on the VM: no CSP/Trusted-Types violations; branding assets still missing (B5) |
 | Session cookie `__Host-`, Secure, HttpOnly, SameSite=Strict, rotation on login/step-up, grant never sent to browser | ✓ | `internal/web/auth_test.go` |

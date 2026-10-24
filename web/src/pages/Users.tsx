@@ -198,8 +198,8 @@ export function Users() {
                           )}
                           {u.uid !== 0 && (
                             <SmallBtn
-                              label={u.locked || u.expired ? t("users.unlock") : t("users.lock")}
-                              onClick={() => guarded(u, "set_locked", { locked: !(u.locked || u.expired) }, t("users.done"))}
+                              label={isLocked(u) ? t("users.unlock") : t("users.lock")}
+                              onClick={() => guarded(u, "set_locked", { locked: !isLocked(u) }, t("users.done"))}
                             />
                           )}
                           <SmallBtn label={t("users.password")} onClick={() => setDlg({ kind: "password", user: u })} />
@@ -315,6 +315,9 @@ export function Users() {
     </div>
   );
 }
+
+/** An account counts as locked when it is expired or has a locked (but existing) password. */
+const isLocked = (u: LinuxUser) => u.expired || (u.locked && !u.no_password);
 
 function StatusBadges({ u }: { u: LinuxUser }) {
   const { t } = useTranslation();

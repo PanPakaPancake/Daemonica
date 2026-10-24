@@ -110,6 +110,9 @@ body {
   }
 }
 
+/* Component classes live in the components layer so Tailwind utilities
+   (e.g. md:hidden, fixed) can override them. */
+@layer components {
 /* Panel with the thin gradient edge of the app icon (decorative only). */
 .panel {
   position: relative;
@@ -206,4 +209,5 @@ textarea.input {
 
 .input.header-select {
   width: auto;
+}
 }

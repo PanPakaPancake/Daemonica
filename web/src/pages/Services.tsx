@@ -180,7 +180,7 @@ export function Services() {
                 const running = u.active === "active" || u.active === "activating";
                 return (
                   <tr key={u.name} className="border-t border-line hover:bg-bg-2">
-                    <td className="max-w-0 px-4 py-2">
+                    <td className="min-w-[14rem] max-w-[26rem] px-4 py-2">
                       <button type="button" className="block max-w-full truncate text-left font-mono text-fg hover:underline" onClick={() => setSelected(u.name)}>
                         {u.name}
                       </button>

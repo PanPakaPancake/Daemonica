@@ -261,7 +261,8 @@ export function Users() {
           onClose={() => setDlg(undefined)}
           onSubmit={async (body) => {
             const keepSudo = dlg.user.groups.filter((g) => g === "sudo" || g === "admin");
-            const ok2 = await change("update", { name: dlg.user.name, ...body, ...(body.groups && { groups: [...(body.groups as string[]), ...keepSudo] }) }, t("users.done"));
+            const groups = Array.isArray(body.groups) ? { groups: [...(body.groups as string[]), ...keepSudo] } : {};
+            const ok2 = await change("update", { name: dlg.user.name, ...body, ...groups }, t("users.done"));
             if (ok2) setDlg(undefined);
           }}
         />

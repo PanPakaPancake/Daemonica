@@ -31,6 +31,10 @@ _Last updated: 2026-10-24_
 | Egress | proxy.golang.org, sum.golang.org, registry.npmjs.org, go.dev, github.com, Let's Encrypt staging: all reachable |
 | Build tooling installed | Go 1.27.3 (go.dev, checksum-verified), nodejs 22 / npm 9 / make / shellcheck (Ubuntu archive), govulncheck |
 
+### Test-VM operational notes
+
+- 2026-10-24: `/etc/ssh/sshd_config.d/90-daemonia-dev.conf` sets `PerSourcePenaltyExemptList 37.201.167.99` (owner's current IP) because sshd's per-source penalties locked out both the owner and the build connection. **Remove before the acceptance test.**
+
 ### First install on the VM
 
 - `.deb` installs, both services active, web listens on **127.0.0.1:8443 only** (not reachable on the public IP).
@@ -42,7 +46,7 @@ _Last updated: 2026-10-24_
 
 | ID | Status | Notes |
 |---|---|---|
-| M1.0 | ⚠ in progress | Stdlib foundation done (see table). WebAuthn, account DB, React UI blocked by B2. |
+| M1.0 | ⚠ in progress | Foundation, passkeys, accounts DB, sessions, recovery, ACME (HTTP-01/TLS-ALPN-01), React UI shell + setup wizard done. Open: real-browser end-to-end setup on the final domain (needs trusted certificate, S2), Playwright E2E with virtual authenticator, accounts/roles UI, sessions UI, settings + allowlist Plan→Apply→Confirm handler, DNS-01. |
 | M1.1 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status
@@ -66,10 +70,14 @@ _Last updated: 2026-10-24_
 | Rate limits per IP + global, backoff, no account lockout | ✓ | `ratelimit.go` |
 | Bootstrap token (256 bit, 60 min, one-time, hashed) | ✓ (in memory) | `internal/auth`; persists in accounts.db once SQLite is available |
 | Setup mode on 127.0.0.1 only | ✓ | smoke test: listener `127.0.0.1:8443` |
-| WebAuthn enrollment / login / step-up | ✖ | B2 |
-| Accounts DB (`accounts.db`, SQLite), accounts/roles/passkeys/sessions UI | ✖ | B2 |
-| Recovery (`daemonia-admin recover`) | ✖ | depends on accounts DB |
-| Setup wizard, UI shell, theme, i18n, branding | ✖ | B2, B5 (placeholder page embedded) |
+| WebAuthn enrollment / login / step-up (UV + resident key required, attestation none, exact origin, 120 s one-time challenges, clone detection) | ✓ | `internal/auth/passkey.go`; software-authenticator tests (`internal/testutil/softauthn`) incl. wrong origin, no-UV, replay, counter regression |
+| Accounts DB (`accounts.db`, SQLite WAL, migrations with pre-backup), persistent one-time tokens | ✓ | `internal/store`, `helper/accounts.go` |
+| Passkey management (list/add/rename/remove, last one protected, synced vs device-bound) | ✓ | API + UI `/security/passkeys` |
+| Accounts/roles management UI, session list | ✖ | next |
+| Recovery (`daemonia-admin recover <account> [--revoke-all]`, ends sessions, 30 min token) | ✓ | `TestPasskeyManagementAndRecovery` |
+| Setup wizard (token → domain → allowlist → certificate → switch to domain → first passkey), UI shell, dark/light theme, de/en i18n | ✓ (UI) / ⚠ (end-to-end on real domain pending) | Headless Chromium on the VM: no CSP/Trusted-Types violations; branding assets still missing (B5) |
+| Session cookie `__Host-`, Secure, HttpOnly, SameSite=Strict, rotation on login/step-up, grant never sent to browser | ✓ | `internal/web/auth_test.go` |
+| ACME (Let's Encrypt, HTTP-01/TLS-ALPN-01, ECDSA P-256, staging/production) | ⚠ | implemented; not yet exercised against LE (needs owner OK for production, S2) |
 | systemd units with hardening | ⚠ | Written; `systemd-analyze security` scores pending (B1) |
 | `.deb` packaging, postinst/prerm/postrm | ⚠ | `scripts/build-deb.sh`; install test pending (B1) |
 

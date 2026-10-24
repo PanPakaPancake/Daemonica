@@ -390,3 +390,106 @@ func (d *DB) LoadGrants() ([]GrantRecord, error) {
 	}
 	return out, rows.Err()
 }
+
+// --- account administration (M1.0) ---
+
+// usableAdminsExcept counts enabled admins with at least one passkey, excluding id.
+func usableAdminsExcept(ctx context.Context, tx *sql.Tx, id string) (int, error) {
+	var n int
+	err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM accounts a WHERE a.role='admin' AND a.disabled=0 AND a.id<>?
+	 AND EXISTS (SELECT 1 FROM passkeys p WHERE p.account_id=a.id)`, id).Scan(&n)
+	return n, err
+}
+
+// guardLastAdmin returns ErrLastAdmin if changing id would leave no usable admin.
+func guardLastAdmin(ctx context.Context, tx *sql.Tx, id string) error {
+	var role string
+	var disabled int
+	if err := tx.QueryRowContext(ctx, `SELECT role,disabled FROM accounts WHERE id=?`, id).Scan(&role, &disabled); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	if role != string(policy.RoleAdmin) || disabled != 0 {
+		return nil
+	}
+	n, err := usableAdminsExcept(ctx, tx, id)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrLastAdmin
+	}
+	return nil
+}
+
+func (d *DB) inTx(ctx context.Context, fn func(*sql.Tx) error) error {
+	tx, err := d.sql.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// SetRole changes an account's role; demoting the last usable admin is refused.
+func (d *DB) SetRole(ctx context.Context, id string, role policy.Role) error {
+	if !policy.ValidRole(role) {
+		return errors.New("invalid role")
+	}
+	return d.inTx(ctx, func(tx *sql.Tx) error {
+		if role != policy.RoleAdmin {
+			if err := guardLastAdmin(ctx, tx, id); err != nil {
+				return err
+			}
+		}
+		_, err := tx.ExecContext(ctx, `UPDATE accounts SET role=? WHERE id=?`, string(role), id)
+		return err
+	})
+}
+
+// SetDisabled enables or disables an account; disabling the last usable admin is refused.
+func (d *DB) SetDisabled(ctx context.Context, id string, disabled bool) error {
+	return d.inTx(ctx, func(tx *sql.Tx) error {
+		if disabled {
+			if err := guardLastAdmin(ctx, tx, id); err != nil {
+				return err
+			}
+		}
+		res, err := tx.ExecContext(ctx, `UPDATE accounts SET disabled=? WHERE id=?`, b2i(disabled), id)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+}
+
+// DeleteAccount removes an account with its passkeys and grants; the last usable admin is refused.
+func (d *DB) DeleteAccount(ctx context.Context, id string) error {
+	return d.inTx(ctx, func(tx *sql.Tx) error {
+		if err := guardLastAdmin(ctx, tx, id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM grants WHERE account_id=?`, id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM tokens WHERE subject=?`, id); err != nil {
+			return err
+		}
+		res, err := tx.ExecContext(ctx, `DELETE FROM accounts WHERE id=?`, id)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+}

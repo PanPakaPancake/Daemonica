@@ -660,25 +660,38 @@ func (a *AuthOps) Register(ops map[string]*Op) {
 	Register(ops, &Op{Name: "admin.list_accounts", AdminChannel: true, NoAudit: true,
 		Handle: func(ctx context.Context, _ Call) (any, error) { return a.DB.ListAccounts(ctx) }})
 
-	Register(ops, &Op{Name: "recovery.begin_register", PreAuth: true,
+	a.registerTokenEnrollment(ops, "recovery", auth.PurposeRecovery)
+	a.registerTokenEnrollment(ops, "invite", auth.PurposeInvite)
+	a.registerAccountOps(ops)
+}
+
+// registerTokenEnrollment installs <prefix>.begin_register / <prefix>.finish_register:
+// a one-time token (recovery from the console, or an admin's invitation) lets the
+// holder register a passkey for exactly the account the token was issued for.
+func (a *AuthOps) registerTokenEnrollment(ops map[string]*Op, prefix, purpose string) {
+	load := func(ctx context.Context, tok string) (Account, *auth.User, *auth.Passkeys, error) {
+		t, err := a.Tokens.Peek(purpose, tok, a.now())
+		if err != nil {
+			return Account{}, nil, nil, Errf(rpc.CodeTokenInvalid, "")
+		}
+		acc, err := a.DB.AccountByID(ctx, t.Subject)
+		if err != nil || acc.Disabled {
+			return Account{}, nil, nil, Errf(rpc.CodeTokenInvalid, "")
+		}
+		u, err := a.webUser(ctx, acc)
+		if err != nil {
+			return Account{}, nil, nil, err
+		}
+		pk, err := a.passkeys()
+		return acc, u, pk, err
+	}
+	Register(ops, &Op{Name: prefix + ".begin_register", PreAuth: true,
 		Handle: func(ctx context.Context, c Call) (any, error) {
 			var p setupTokenParams
 			if err := decode(c, &p); err != nil {
 				return nil, err
 			}
-			t, err := a.Tokens.Peek(auth.PurposeRecovery, p.Token, a.now())
-			if err != nil {
-				return nil, Errf(rpc.CodeTokenInvalid, "")
-			}
-			acc, err := a.DB.AccountByID(ctx, t.Subject)
-			if err != nil || acc.Disabled {
-				return nil, Errf(rpc.CodeTokenInvalid, "")
-			}
-			u, err := a.webUser(ctx, acc)
-			if err != nil {
-				return nil, err
-			}
-			pk, err := a.passkeys()
+			acc, u, pk, err := load(ctx, p.Token)
 			if err != nil {
 				return nil, err
 			}
@@ -688,26 +701,13 @@ func (a *AuthOps) Register(ops map[string]*Op) {
 			}
 			return CeremonyStart{CeremonyID: id, Options: opts}, nil
 		}})
-
-	Register(ops, &Op{Name: "recovery.finish_register", PreAuth: true,
+	Register(ops, &Op{Name: prefix + ".finish_register", PreAuth: true,
 		Handle: func(ctx context.Context, c Call) (any, error) {
 			var p finishParams
 			if err := decode(c, &p); err != nil {
 				return nil, err
 			}
-			t, err := a.Tokens.Peek(auth.PurposeRecovery, p.Token, a.now())
-			if err != nil {
-				return nil, Errf(rpc.CodeTokenInvalid, "")
-			}
-			acc, err := a.DB.AccountByID(ctx, t.Subject)
-			if err != nil || acc.Disabled {
-				return nil, Errf(rpc.CodeTokenInvalid, "")
-			}
-			u, err := a.webUser(ctx, acc)
-			if err != nil {
-				return nil, err
-			}
-			pk, err := a.passkeys()
+			acc, u, pk, err := load(ctx, p.Token)
 			if err != nil {
 				return nil, err
 			}
@@ -715,7 +715,7 @@ func (a *AuthOps) Register(ops map[string]*Op) {
 			if err != nil {
 				return nil, Errf(rpc.CodeUnauthorized, "")
 			}
-			if _, err := a.Tokens.Consume(auth.PurposeRecovery, p.Token, a.now()); err != nil {
+			if _, err := a.Tokens.Consume(purpose, p.Token, a.now()); err != nil {
 				return nil, Errf(rpc.CodeTokenInvalid, "")
 			}
 			if err := a.storeNewCredential(ctx, acc, cred, p.PasskeyName); err != nil {

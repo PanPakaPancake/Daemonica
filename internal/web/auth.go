@@ -218,4 +218,17 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/passkeys/finish", s.forward(endpoint{op: "passkeys.finish_add", session: true, maxBody: 64 << 10}))
 	mux.Handle("PATCH /api/v1/passkeys/{id}", sess("passkeys.rename"))
 	mux.Handle("DELETE /api/v1/passkeys/{id}", sess("passkeys.remove"))
+
+	// Invitations (token from an admin, SPEC §7.1).
+	mux.Handle("POST /api/v1/invite/begin", pre("invite.begin_register"))
+	mux.Handle("POST /api/v1/invite/finish", s.forward(endpoint{op: "invite.finish_register", preauth: true, setGrant: true, maxBody: 64 << 10}))
+
+	// Account administration (admin; changes need step-up, enforced by the helper).
+	mux.Handle("GET /api/v1/accounts", sess("accounts.list"))
+	mux.Handle("GET /api/v1/accounts/linux-users", sess("accounts.linux_users"))
+	mux.Handle("POST /api/v1/accounts", sess("accounts.invite"))
+	mux.Handle("POST /api/v1/accounts/{id}/reinvite", sess("accounts.reinvite"))
+	mux.Handle("PATCH /api/v1/accounts/{id}/role", sess("accounts.set_role"))
+	mux.Handle("PATCH /api/v1/accounts/{id}/disabled", sess("accounts.set_disabled"))
+	mux.Handle("DELETE /api/v1/accounts/{id}", sess("accounts.delete"))
 }

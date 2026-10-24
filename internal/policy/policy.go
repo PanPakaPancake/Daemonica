@@ -82,6 +82,7 @@ const (
 	ActFilesRoot          Action = "files.root"
 	ActTerminal           Action = "terminal"
 	ActTerminalElevated   Action = "terminal.elevated"
+	ActAccountsRead       Action = "accounts.read"
 	ActAccountsManage     Action = "accounts.manage"
 	ActOwnSessions        Action = "self.sessions"
 	ActOwnPasskeys        Action = "self.passkeys"
@@ -128,6 +129,7 @@ var table = map[Action][3]Rule{
 	ActFilesRoot:          {allStepUp, deny, deny},
 	ActTerminal:           {own, own, deny},
 	ActTerminalElevated:   {allStepUp, deny, deny},
+	ActAccountsRead:       {all, deny, deny},
 	ActAccountsManage:     {allStepUp, deny, deny},
 	ActOwnSessions:        {own, own, own},
 	ActOwnPasskeys:        {ownStepUp, ownStepUp, ownStepUp},

@@ -11,6 +11,7 @@ interface NavItem {
   to?: string;
   key: string;
   icon: IconName;
+  adminOnly?: boolean;
 }
 interface NavGroup {
   key: string;
@@ -54,6 +55,7 @@ const groups: NavGroup[] = [
     items: [
       { to: "/security/passkeys", key: "nav.passkeys", icon: "passkey" },
       { to: "/security/sessions", key: "nav.sessions", icon: "sessions" },
+      { to: "/security/accounts", key: "nav.accounts", icon: "shield", adminOnly: true },
       { key: "nav.audit", icon: "audit" },
       { key: "nav.settings", icon: "settings" },
     ],
@@ -102,7 +104,7 @@ export function Layout() {
                 <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-faint">{t(g.key)}</p>
               )}
               <ul className="flex flex-col gap-0.5">
-                {g.items.map((it) =>
+                {g.items.filter((it) => !it.adminOnly || me?.role === "admin").map((it) =>
                   it.to ? (
                     <li key={it.key}>
                       <NavLink

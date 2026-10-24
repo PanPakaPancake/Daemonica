@@ -12,7 +12,8 @@ import { SessionProvider, useSession } from "./lib/session";
 import { applyTheme, initialTheme } from "./lib/theme";
 import { Login } from "./pages/Login";
 import { Passkeys } from "./pages/Passkeys";
-import { Recovery } from "./pages/Recovery";
+import { Accounts } from "./pages/Accounts";
+import { Invite, Recovery } from "./pages/Recovery";
 import { Sessions } from "./pages/Sessions";
 import { Setup } from "./pages/Setup";
 
@@ -94,6 +95,7 @@ if (root) {
               <Route path="/login" element={<Login />} />
               <Route path="/setup" element={<Setup />} />
               <Route path="/recovery" element={<Recovery />} />
+              <Route path="/invite" element={<Invite />} />
               <Route
                 element={
                   <Protected>
@@ -104,6 +106,7 @@ if (root) {
                 <Route index element={<Overview />} />
                 <Route path="security/passkeys" element={<Passkeys />} />
                 <Route path="security/sessions" element={<Sessions />} />
+                <Route path="security/accounts" element={<Accounts />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>

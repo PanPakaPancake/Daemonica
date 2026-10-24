@@ -38,9 +38,12 @@ type fsEnv struct {
 // grant issues a session for a subject (operator by default) mapped to fsUser.
 func (e *fsEnv) grant(role policy.Role, stepUp bool) string {
 	g, err := e.grants.Issue(policy.Subject{AccountID: string(role) + strconv.FormatBool(stepUp), Role: role,
-		LinuxUser: fsUser, LinuxUID: e.uid, StepUp: stepUp}, time.Now())
+		LinuxUser: fsUser, LinuxUID: e.uid}, time.Now())
 	if err != nil {
 		e.t.Fatal(err)
+	}
+	if stepUp {
+		_ = e.grants.MarkStepUp(g, time.Now())
 	}
 	return g
 }
@@ -190,12 +193,6 @@ func TestFileManagerEndToEnd(t *testing.T) {
 	if code := e.call(op, "fs.create", map[string]any{"dir": "/etc", "name": "dmn-it13", "kind": "file"}, nil); code != "permission_denied" {
 		t.Fatalf("create in /etc: %s", code)
 	}
-	if code := e.call(op, "fs.download_token", map[string]any{"dir": "/etc", "name": "shadow"}, nil); code != "sensitive_path" {
-		t.Fatalf("shadow unconfirmed: %s", code)
-	}
-	if code := e.call(op, "fs.download_token", map[string]any{"dir": "/etc", "name": "shadow", "confirm_sensitive": true}, nil); code != "step_up_required" {
-		t.Fatalf("shadow without step-up: %s", code)
-	}
 	opSU := e.grant(policy.RoleOperator, true)
 	if code := e.call(opSU, "fs.download_token", map[string]any{"dir": "/etc", "name": "shadow", "confirm_sensitive": true}, nil); code != "permission_denied" {
 		t.Fatalf("shadow as user: %s", code)
@@ -225,6 +222,13 @@ func TestFileManagerEndToEnd(t *testing.T) {
 	}
 	if code := e.call(admSU, "fs.list", map[string]any{"path": "/root", "as_root": true}, nil); code != "" {
 		t.Fatalf("list /root as root: %s", code)
+	}
+	// Sensitive paths need the confirmation (and the step-up of this session).
+	if code := e.call(admSU, "fs.download_token", map[string]any{"dir": "/etc", "name": "shadow", "as_root": true}, nil); code != "sensitive_path" {
+		t.Fatalf("shadow unconfirmed: %s", code)
+	}
+	if code := e.call(admSU, "fs.download_token", map[string]any{"dir": "/etc", "name": "shadow", "as_root": true, "confirm_sensitive": true}, nil); code != "" {
+		t.Fatalf("shadow confirmed as root: %s", code)
 	}
 	if code := e.call(admSU, "fs.list", map[string]any{"path": "/var/lib/daemonica-helper", "as_root": true}, nil); code != "path_blocked" && code != "not_found" {
 		t.Fatalf("blocked path as root: %s", code)

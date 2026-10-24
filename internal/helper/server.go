@@ -32,12 +32,14 @@ const (
 
 // Call is the input to an operation handler.
 type Call struct {
-	Channel  Channel
-	Subject  *policy.Subject // nil for pre-auth and admin-channel operations
-	GrantID  string          // hashed grant identifier (for audit "session")
-	Grant    string          // opaque grant token (only for session operations such as step-up/logout)
-	SourceIP string
-	Params   []byte
+	Channel Channel
+	Subject *policy.Subject // nil for pre-auth and admin-channel operations
+	GrantID string          // hashed grant identifier (for audit "session")
+	// SessionKey identifies the login session across step-up token rotation.
+	SessionKey string
+	Grant      string // opaque grant token (only for session operations such as step-up/logout)
+	SourceIP   string
+	Params     []byte
 	// AuditKV collects audit parameters set by the handler (never secrets or contents).
 	AuditKV map[string]string
 }
@@ -239,6 +241,7 @@ func (s *Server) authorize(op *Op, req *rpc.Request) (Call, *rpc.Response) {
 			return call, rpc.Fail(req.ID, rpc.CodeUnauthorized, "")
 		}
 		call.Subject, call.GrantID, call.Grant = &subj, gid, req.Grant
+		call.SessionKey = s.Grants.SessionKey(req.Grant)
 		switch policy.Decide(subj, op.Action, 0, false) {
 		case policy.Deny:
 			s.audit(op, call, audit.ResultDenied, "policy")

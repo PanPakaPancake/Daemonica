@@ -45,7 +45,7 @@ type FileOps struct {
 	Now       func() time.Time
 
 	mu     sync.Mutex
-	root   map[string]time.Time // grant id → end of root mode
+	root   map[string]time.Time // session key → end of root mode
 	tokens map[string]dlToken   // sha256(token) → pending download
 }
 
@@ -89,7 +89,7 @@ func (f *FileOps) identity(c Call, flags fsFlags) (worker.Identity, bool, error)
 		if c.Subject.Role != policy.RoleAdmin {
 			return worker.Identity{}, false, Errf(rpc.CodeForbidden, "")
 		}
-		if f.rootUntil(c.GrantID).IsZero() {
+		if f.rootUntil(c.SessionKey).IsZero() {
 			return worker.Identity{}, false, Errf(CodeRootRequired, "")
 		}
 		id, err := f.Lookup("root")
@@ -435,19 +435,19 @@ func (f *FileOps) Register(ops map[string]*Op) {
 	Register(ops, &Op{Name: "fs.root_enable", Action: policy.ActFilesRoot,
 		Handle: func(_ context.Context, c Call) (any, error) {
 			f.mu.Lock()
-			f.root[c.GrantID] = f.now().Add(RootModeTTL)
+			f.root[c.SessionKey] = f.now().Add(RootModeTTL)
 			f.mu.Unlock()
-			return status(c.GrantID), nil
+			return status(c.SessionKey), nil
 		}})
 	Register(ops, &Op{Name: "fs.root_disable", Action: policy.ActFiles,
 		Handle: func(_ context.Context, c Call) (any, error) {
 			f.mu.Lock()
-			delete(f.root, c.GrantID)
+			delete(f.root, c.SessionKey)
 			f.mu.Unlock()
-			return status(c.GrantID), nil
+			return status(c.SessionKey), nil
 		}})
 	Register(ops, &Op{Name: "fs.root_status", Action: policy.ActFiles, NoAudit: true,
-		Handle: func(_ context.Context, c Call) (any, error) { return status(c.GrantID), nil }})
+		Handle: func(_ context.Context, c Call) (any, error) { return status(c.SessionKey), nil }})
 
 	// --- editor ---
 	type readParams struct {
@@ -574,7 +574,7 @@ func (f *FileOps) Register(ops map[string]*Op) {
 				f.mu.Unlock()
 				return nil, Errf(rpc.CodeRateLimited, "")
 			}
-			f.tokens[hex.EncodeToString(sum[:])] = dlToken{grant: c.GrantID, asRoot: p.AsRoot, target: p.Target,
+			f.tokens[hex.EncodeToString(sum[:])] = dlToken{grant: c.SessionKey, asRoot: p.AsRoot, target: p.Target,
 				sensitive: g.SensitiveOK, expires: exp}
 			f.mu.Unlock()
 			return map[string]any{"token": tok, "expires_at": exp.UTC(), "size": res.Size}, nil
@@ -597,7 +597,7 @@ func (f *FileOps) Register(ops map[string]*Op) {
 			t, ok := f.tokens[key]
 			delete(f.tokens, key) // one-time
 			f.mu.Unlock()
-			if !ok || t.grant != c.GrantID || !f.now().Before(t.expires) {
+			if !ok || t.grant != c.SessionKey || !f.now().Before(t.expires) {
 				return nil, Errf(rpc.CodeTokenInvalid, "")
 			}
 			flags := fsFlags{AsRoot: t.asRoot}

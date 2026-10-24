@@ -253,6 +253,15 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/audit/verify", sess("audit.verify"))
 
 	// Settings with Plan → Apply → Confirm (SPEC §3.2 rule 10).
+	// M1.1: overview, processes, services, journal.
+	mux.Handle("GET /api/v1/system/overview", sess("sysinfo.overview"))
+	mux.Handle("GET /api/v1/processes", s.forward(endpoint{op: "proc.list", session: true}))
+	mux.Handle("POST /api/v1/processes/signal", sess("proc.signal"))
+	mux.Handle("GET /api/v1/services", sess("services.list"))
+	mux.Handle("POST /api/v1/services/get", sess("services.get"))
+	mux.Handle("POST /api/v1/services/action", sess("services.action"))
+	mux.Handle("POST /api/v1/journal/query", sess("journal.query"))
+
 	mux.Handle("GET /api/v1/settings", sess("settings.get"))
 	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))
 	mux.Handle("GET /api/v1/changes/{id}", sess("settings.change_get"))

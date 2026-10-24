@@ -18,6 +18,8 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/audit"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
+	"github.com/PanPakaPancake/daemonica/internal/services"
+	"github.com/PanPakaPancake/daemonica/internal/sysinfo"
 )
 
 var version = "0.1.0-dev"
@@ -111,6 +113,23 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
+
+	// M1.1: system overview, processes, services (D-Bus), journal.
+	sd, err := services.Connect()
+	if err != nil {
+		log.Error("cannot connect to systemd over D-Bus", "err", err)
+		os.Exit(1)
+	}
+	defer func() { _ = sd.Close() }()
+	collector := &sysinfo.Collector{FS: sysinfo.FS{Root: "/"}, Interval: 3 * time.Second, Extras: sysinfo.Extras{
+		FailedUnits: sd.FailedCount,
+		CertDays:    helper.CertDaysFrom(*tlsDir),
+		Updates:     helper.UpdatesFromNotifier("/var/lib/update-notifier/updates-available"),
+	}}
+	go collector.Run(ctx)
+	(&helper.SysOps{Collector: collector, SelfPID: os.Getpid()}).Register(ops)
+	(&helper.ServiceOps{Systemd: sd}).Register(ops)
+	(&helper.LogOps{}).Register(ops)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to
 	// traverse it to reach helper.sock (admin.sock stays 0600 root).

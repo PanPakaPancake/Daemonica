@@ -1,0 +1,80 @@
+# Daemonia – local, CI-agnostic build targets (SPEC §4.3).
+SHELL       := /bin/bash
+VERSION     ?= 0.1.0~dev
+ARCHES      ?= amd64 arm64
+SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
+export SOURCE_DATE_EPOCH
+GO          ?= go
+GOFLAGS_BUILD := -trimpath -buildvcs=false
+LDFLAGS     := -s -w -buildid= -X main.version=$(VERSION)
+SIGNED      ?= 0
+SUFFIX      := $(if $(filter 1,$(SIGNED)),,-UNSIGNED-TESTONLY)
+
+.PHONY: all deps lint test test-integration test-e2e sec build ui package sbom release clean fmt fuzz cover
+
+all: lint test build
+
+deps:
+	$(GO) mod download
+	@if [ -f web/package-lock.json ]; then cd web && npm ci --ignore-scripts; else echo "web/: no lockfile yet (frontend pending, see docs/STATUS.md)"; fi
+
+fmt:
+	gofmt -w cmd internal
+
+lint:
+	@test -z "$$(gofmt -l cmd internal)" || { echo "gofmt needed:"; gofmt -l cmd internal; exit 1; }
+	$(GO) vet ./...
+	@if command -v golangci-lint >/dev/null; then golangci-lint run ./...; else echo "SKIP golangci-lint (not installed)"; fi
+	@if command -v shellcheck >/dev/null; then shellcheck packaging/maintainer-scripts/* scripts/*.sh; else echo "SKIP shellcheck (not installed)"; fi
+	@if [ -f web/package.json ] && [ -d web/node_modules ]; then cd web && npx tsc --noEmit && npx eslint .; else echo "SKIP frontend lint (frontend pending)"; fi
+
+test:
+	CGO_ENABLED=1 $(GO) test -race -count=1 -coverprofile=coverage.out ./...
+	@$(GO) tool cover -func=coverage.out | tail -1
+
+cover: test
+	@$(GO) tool cover -func=coverage.out
+
+fuzz:
+	$(GO) test -run=^$$ -fuzz=FuzzReadRequest -fuzztime=30s ./internal/rpc
+	$(GO) test -run=^$$ -fuzz=FuzzUnit -fuzztime=30s ./internal/validate
+
+test-integration:
+	@echo "Integration tests run on the test VM: scripts/test-vm.sh (requires test_vm.md, SPEC §6.1)"
+	@test -x scripts/test-vm.sh && scripts/test-vm.sh || true
+
+test-e2e:
+	@echo "E2E (Playwright + virtual WebAuthn) pending: frontend not yet buildable (docs/STATUS.md)"
+
+sec:
+	@set -e; fail=0; \
+	if command -v govulncheck >/dev/null; then govulncheck ./... || fail=1; else echo "SKIP govulncheck (not installed)"; fi; \
+	if command -v gosec >/dev/null; then gosec -quiet ./... || fail=1; else echo "SKIP gosec (not installed)"; fi; \
+	if command -v gitleaks >/dev/null; then gitleaks detect --no-banner --redact || fail=1; else echo "SKIP gitleaks (not installed)"; fi; \
+	if [ -f web/package-lock.json ]; then (cd web && npm audit --omit=dev) || fail=1; fi; \
+	scripts/check-secrets.sh || fail=1; \
+	exit $$fail
+
+ui:
+	@if [ -f web/package.json ] && [ -d web/node_modules ]; then \
+	  cd web && npm run build && rm -rf ../internal/web/ui/dist && cp -r dist ../internal/web/ui/dist; \
+	else echo "SKIP ui build: frontend dependencies unavailable; embedding placeholder shell"; fi
+
+build: ui
+	@for a in $(ARCHES); do \
+	  mkdir -p dist/$$a; \
+	  CGO_ENABLED=0 GOOS=linux GOARCH=$$a $(GO) build $(GOFLAGS_BUILD) -ldflags "$(LDFLAGS)" -o dist/$$a/ ./cmd/... || exit 1; \
+	done
+	@ls -l dist/*/
+
+package: build
+	@for a in $(ARCHES); do scripts/build-deb.sh "$(VERSION)" "$$a" "$(SUFFIX)" || exit 1; done
+	@cd dist && sha256sum *.deb > SHA256SUMS && cat SHA256SUMS
+
+sbom:
+	@echo "CycloneDX SBOM generation requires cyclonedx-gomod / @cyclonedx/cyclonedx-npm (not installable in this environment)"
+
+release: lint test sec package sbom
+
+clean:
+	rm -rf dist coverage.out

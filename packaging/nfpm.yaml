@@ -1,0 +1,42 @@
+# nfpm configuration for the daemonia .deb (SPEC §4.3).
+# Built by `make package`; ARCH and VERSION are injected by the Makefile.
+name: daemonia
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+section: admin
+priority: optional
+maintainer: "Daemonia maintainers <tnebert@gmail.com>"
+description: |
+  Web-based administration dashboard for a single Debian/Ubuntu server.
+  Passkey-only login, privilege-separated helper, tamper-evident audit log.
+license: "Proprietary (license to be decided)"
+homepage: https://github.com/PanPakaPancake/daemonica
+depends:
+  - systemd
+  - adduser
+recommends:
+  - ufw
+  - tcpdump
+contents:
+  - src: ./dist/${ARCH}/daemonia-web
+    dst: /usr/bin/daemonia-web
+    file_info: {mode: 0755}
+  - src: ./dist/${ARCH}/daemonia-helper
+    dst: /usr/bin/daemonia-helper
+    file_info: {mode: 0755}
+  - src: ./dist/${ARCH}/daemonia-admin
+    dst: /usr/sbin/daemonia-admin
+    file_info: {mode: 0750}
+  - src: ./packaging/systemd/daemonia-web.service
+    dst: /usr/lib/systemd/system/daemonia-web.service
+  - src: ./packaging/systemd/daemonia-helper.service
+    dst: /usr/lib/systemd/system/daemonia-helper.service
+  - src: ./README.md
+    dst: /usr/share/doc/daemonia/README.md
+  - src: ./docs/INSTALL.md
+    dst: /usr/share/doc/daemonia/INSTALL.md
+scripts:
+  postinstall: ./packaging/maintainer-scripts/postinst
+  preremove: ./packaging/maintainer-scripts/prerm
+  postremove: ./packaging/maintainer-scripts/postrm

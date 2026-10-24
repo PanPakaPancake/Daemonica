@@ -1,0 +1,60 @@
+[Unit]
+Description=Daemonia web dashboard (unprivileged HTTPS front end)
+Documentation=file:///usr/share/doc/daemonia/README.md
+After=network-online.target daemonia-helper.service
+Wants=network-online.target
+Requires=daemonia-helper.service
+
+[Service]
+Type=simple
+User=daemonia-web
+Group=daemonia-web
+ExecStart=/usr/bin/daemonia-web --helper-socket /run/daemonia/helper.sock --tls-dir /var/lib/daemonia/tls
+Restart=on-failure
+RestartSec=2s
+SyslogIdentifier=daemonia-web
+
+StateDirectory=daemonia
+StateDirectoryMode=0700
+LogsDirectory=daemonia-web
+LogsDirectoryMode=0700
+UMask=0077
+
+# Hardening (SPEC §3.9, target systemd-analyze security <= 2.0)
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateUsers=yes
+PrivateIPC=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+DevicePolicy=closed
+KeyringMode=private
+# The helper socket directory is the only path outside its state the web process needs.
+ReadWritePaths=/run/daemonia
+TasksMax=512
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,42 @@
+[Unit]
+Description=Daemonia privileged helper (Unix sockets only)
+Documentation=file:///usr/share/doc/daemonia/README.md
+After=local-fs.target dbus.service
+Before=daemonia-web.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/daemonia-helper --state-dir /var/lib/daemonia-helper --run-dir /run/daemonia --audit-log /var/log/daemonia/audit.log --web-user daemonia-web
+Restart=on-failure
+RestartSec=2s
+SyslogIdentifier=daemonia-helper
+
+RuntimeDirectory=daemonia
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=no
+StateDirectory=daemonia-helper
+StateDirectoryMode=0700
+LogsDirectory=daemonia
+LogsDirectoryMode=0750
+UMask=0077
+
+# Hardening (SPEC §3.9, target <= 6.0). Every directive NOT set here is listed
+# with its reason in docs/ARCHITECTURE.md ("Hardening exceptions").
+# NoNewPrivileges is intentionally NOT set: the elevated terminal must be able
+# to run sudo. Standard-mode workers set no_new_privs themselves.
+PrivateTmp=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6 AF_PACKET
+RestrictNamespaces=~user
+SystemCallArchitectures=native
+SystemCallFilter=~@obsolete @debug @cpu-emulation @mount:EPERM
+KeyringMode=private
+
+[Install]
+WantedBy=multi-user.target

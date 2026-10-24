@@ -46,7 +46,7 @@ func newCookieValue() string {
 // Create stores a new session for grant and sets the cookie. Any session
 // presented with the request is destroyed (rotation, no fixation).
 func (s *Sessions) Create(w http.ResponseWriter, r *http.Request, grant string) {
-	s.Destroy(w, r)
+	s.drop(r)
 	v := newCookieValue()
 	now := time.Now()
 	s.mu.Lock()
@@ -78,13 +78,18 @@ func (s *Sessions) Grant(r *http.Request) string {
 	return ws.grant
 }
 
-// Destroy removes the request's session and clears the cookie.
-func (s *Sessions) Destroy(w http.ResponseWriter, r *http.Request) {
+// drop removes the request's session server-side only.
+func (s *Sessions) drop(r *http.Request) {
 	if c, err := r.Cookie(SessionCookie); err == nil {
 		s.mu.Lock()
 		delete(s.m, auth.Hash(c.Value))
 		s.mu.Unlock()
 	}
+}
+
+// Destroy removes the request's session and clears the cookie.
+func (s *Sessions) Destroy(w http.ResponseWriter, r *http.Request) {
+	s.drop(r)
 	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: "", Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1})
 }
 

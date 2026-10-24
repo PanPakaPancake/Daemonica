@@ -68,8 +68,24 @@ func main() {
 				os.Exit(3)
 			}
 		}
-	case "recover", "list-accounts", "tls-status":
-		fmt.Fprintf(os.Stderr, "'%s' ist noch nicht verfügbar (Konten/Passkeys folgen in M1.0, siehe docs/STATUS.md).\n", cmd)
+	case "recover":
+		err = recoverAccount(ctx, c, args)
+	case "list-accounts":
+		var accs []helper.Account
+		if err = c.Call(ctx, "admin.list_accounts", "", "", nil, &accs); err == nil {
+			if len(accs) == 0 {
+				fmt.Println("Keine Konten vorhanden (Einrichtung noch nicht abgeschlossen).")
+			}
+			for _, a := range accs {
+				state := "aktiv"
+				if a.Disabled {
+					state = "deaktiviert"
+				}
+				fmt.Printf("%-24s %-9s linux=%-16s passkeys=%d  %s\n", a.Name, a.Role, a.LinuxUser, a.Passkeys, state)
+			}
+		}
+	case "tls-status":
+		fmt.Fprintln(os.Stderr, "'tls-status' folgt mit der Zertifikatsverwaltung in den Einstellungen.")
 		os.Exit(2)
 	case "-h", "--help", "help":
 		fmt.Print(usage)
@@ -117,6 +133,44 @@ So geht es weiter:
 Erlaubte Netze: %s
 Das Token wird nur gehasht gespeichert und kann nicht erneut angezeigt werden.
 `, res.ExpiresAt.Format("2006-01-02 15:04"), res.Token, strings.Join(res.Allowlist, ", "))
+	return nil
+}
+
+func recoverAccount(ctx context.Context, c *rpc.Client, args []string) error {
+	fs := flag.NewFlagSet("recover", flag.ExitOnError)
+	revokeAll := fs.Bool("revoke-all", false, "alle bisherigen Passkeys des Kontos entfernen")
+	// Allow the account name before or after the flag.
+	var name string
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		name, args = args[0], args[1:]
+	}
+	_ = fs.Parse(args)
+	if name == "" && fs.NArg() > 0 {
+		name = fs.Arg(0)
+	}
+	if name == "" {
+		return fmt.Errorf("Kontoname fehlt: daemonia-admin recover <konto> [--revoke-all]")
+	}
+	var res struct {
+		Token           string    `json:"token"`
+		ExpiresAt       time.Time `json:"expires_at"`
+		SessionsEnded   int       `json:"sessions_ended"`
+		PasskeysRemoved int       `json:"passkeys_removed"`
+	}
+	if err := c.Call(ctx, "admin.recover", "", "", map[string]any{"account": name, "revoke_all": *revokeAll}, &res); err != nil {
+		return err
+	}
+	fmt.Printf(`Wiederherstellung für Konto %q:
+  Beendete Sitzungen:  %d
+  Entfernte Passkeys:  %d
+
+Wiederherstellungs-Token (einmalig, gültig bis %s UTC):
+
+    %s
+
+Öffne das Dashboard, wähle „Ich habe ein Wiederherstellungs-Token“ und registriere
+einen neuen Passkey. Das Token kann nicht erneut angezeigt werden.
+`, name, res.SessionsEnded, res.PasskeysRemoved, res.ExpiresAt.Format("2006-01-02 15:04"), res.Token)
 	return nil
 }
 

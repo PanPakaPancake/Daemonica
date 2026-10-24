@@ -55,7 +55,8 @@ _Last updated: 2026-10-24_
 |---|---|---|
 | M1.0 | ⚠ nearly done | All core items done incl. accounts, audit view, allowlist Plan→Apply→Confirm. Open: TLS change in settings, DNS-01 guided, certificate renewal timer, Playwright E2E with virtual authenticator, helper hardening score ≤ 6.0. |
 | M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Open: last logins, log follow via WebSocket (DEC-017), allowlisted log files (SOLL), owner acceptance check against `top`/`free`/`df`. |
-| M1.2 – M1.8 | ✖ open | |
+| M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Open: last login per user (wtmpdb), owner acceptance. |
+| M1.3 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status
 
@@ -103,6 +104,23 @@ _Last updated: 2026-10-24_
 | Logs: journald with unit/priority/time/boot filters, server-side search, follow, export TXT/JSON with line limit, control sequences neutralised | ✓ (follow via polling, DEC-017) | `internal/journal`, `TestArgsValidation`, `TestParseSanitisesAndCaps` |
 | Processes: table (PID, user, CPU, RAM, start, command), sort/filter, signals TERM/KILL/HUP/STOP/CONT with confirmation; protected PID 1/daemonica/sshd; operator only own processes; PID-reuse guard | ✓ | `TestProcSignalRules` |
 | Read-only role: no logs, no signals | ✓ | policy + UI hides log navigation |
+
+### M1.2 requirement status
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| Linux users: UID, name, description, home, shell, groups, locked, password age/expiry, SSH key count; system vs. regular via `UID_MIN/UID_MAX`; groups with members | ✓ | `internal/users`, UI `/users` |
+| Create (validated name, home, shell from `/etc/shells`, groups; password locked by default), edit (shell, description, groups, expiry), lock/unlock (also expires the account so keys stop working), delete with/without home ("type name"), groups create/members/delete | ✓ | `helper/userops.go`; `TestUserOpsCommands`; host test creates/locks/deletes a real user |
+| sudo membership visible and changeable with warning; step-up for all changes | ✓ | `users.set_sudo`, Annex A `users.write` (S) |
+| Password via `chpasswd` stdin only, min. 12 chars, strength hint, force change at next login | ✓ | `TestUserOpsCommands` (stdin checked, never argv) |
+| Protections: root not deletable/lockable; users mapped to an active dashboard admin need extra confirmation; system users only in advanced mode | ✓ | `TestUserOpsProtections` |
+| Shadow-utils via argv with `--` before names, no direct /etc/passwd edits | ✓ | `helper/userops.go` |
+| SSH keys per user from `AuthorizedKeysFile` (`sshd -T`), type, bits, SHA256 fingerprint, comment, options | ✓ | `internal/sshkeys` |
+| Add with parser validation (ed25519, sk-*, ecdsa, RSA ≥ 3072; dss/short RSA rejected), remove, guided options (`from=`, `restrict`, `no-*`, `command=` with warning) | ✓ | `TestParseRejects`, `TestOptions`, fuzz target |
+| Permission check/repair (`~/.ssh 0700`, file `0600`, owner) | ✓ | host test breaks and repairs permissions |
+| Key files read/written by a worker under the user's credentials (`no_new_privs`), atomic write, optimistic concurrency, symlinks not followed | ✓ | `internal/worker`, host test: symlink to `/etc/shadow` refused, shadow untouched |
+| Host keys with fingerprints; effective `sshd -T` read-only | ✓ | `sshkeys.server` |
+| Operator manages own keys only; admin all (step-up for others) | ✓ | `SSHKeyOps.target` |
 
 ### Test results
 

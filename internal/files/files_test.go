@@ -19,7 +19,7 @@ func TestValidPath(t *testing.T) {
 
 func TestValidName(t *testing.T) {
 	good := []string{"a", "a b", ".hidden", "-rf", "ünï.txt", "x;id", "$(id)"}
-	bad := []string{"", ".", "..", "a/b", "a\x00", "a\nb", "evil‮txt.exe", "\xff", string(make([]byte, 256))}
+	bad := []string{"", ".", "..", "a/b", "a\x00", "a\nb", "evil\u202etxt.exe", "\xff", string(make([]byte, 256))}
 	for _, n := range good {
 		if !ValidName(n) {
 			t.Errorf("ValidName(%q) = false", n)
@@ -93,7 +93,7 @@ func TestDisplay(t *testing.T) {
 	cases := map[string]string{
 		"plain.txt":          "plain.txt",
 		"a\nb":               `a\u{000A}b`,
-		"evil‮txt.exe":       `evil\u{202E}txt.exe`,
+		"evil\u202etxt.exe":  `evil\u{202E}txt.exe`,
 		"bad\xffbyte":        `bad\xffbyte`,
 		"\x1b[31mred\x1b[0m": `\u{001B}[31mred\u{001B}[0m`,
 	}

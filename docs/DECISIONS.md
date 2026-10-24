@@ -68,3 +68,10 @@ Format per SPEC §0.3: ID, date, context, decision, rejected alternatives, secur
 - **Context:** The cloud build environment cannot reach Go/npm registries (DEC-002); the test VM can.
 - **Decision:** Builds, dependency resolution (with `sum.golang.org` verification and `npm ci --ignore-scripts`) and all tests run on the test VM. Go is installed from the official go.dev tarball, verified against the SHA-256 published in go.dev's release index; Node/npm from the Ubuntu archive (D-19).
 - **Security:** Full checksum-database verification restored; supersedes the stdlib-only restriction of DEC-002.
+
+## DEC-012 — Branding asset and product name shown in the UI
+- **Date:** 2026-10-24
+- **Context:** The owner supplied the logo (`assets/branding/daemonica-logo-source.png`, 1672×940, opaque black background). The wordmark reads **"Daemonica"**, while SPEC A-01 assumed "Daemonia (from the logo)". The repository is also named Daemonica.
+- **Decision:** (1) Background made transparent by an edge-connected flood fill of near-black pixels (max channel ≤ 10) with 0.8 px feathering, then tightly cropped → `assets/branding/daemonica-logo.png`; derived PNGs in `web/public/brand/` (240/480/960 px wide) and square mascot crops for favicon and collapsed sidebar (32/48/180/512). No redrawing, recolouring or new poses (SPEC §5.4). (2) The user-visible product name follows the logo: **Daemonica** (page title, alt texts, i18n `app.name`). (3) Technical identifiers (`daemonia-*` binaries, units, paths, package name) are unchanged until the owner confirms the rename (A-01 to be confirmed).
+- **Rejected:** Showing the opaque image on the dark UI (visible black box); renaming every technical identifier without confirmation.
+- **Security:** none (static same-origin images, CSP `img-src 'self'`).

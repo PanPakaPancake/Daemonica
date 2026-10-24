@@ -4,7 +4,7 @@ import { NavLink, Outlet } from "react-router";
 import { setLanguage } from "../i18n";
 import { useSession } from "../lib/session";
 import { applyTheme, initialTheme, type Theme } from "../lib/theme";
-import { Wordmark } from "./ui";
+import { BrandIcon, Wordmark } from "./ui";
 
 interface NavItem {
   to?: string;
@@ -45,11 +45,11 @@ export function Layout() {
         {t("nav.skip")}
       </a>
       <aside className={`border-b border-line bg-bg-1 md:border-b-0 md:border-r ${collapsed ? "md:w-16" : "md:w-64"} shrink-0`}>
-        <div className="flex items-center justify-between gap-2 px-4 py-4">
-          {!collapsed && <Wordmark />}
+        <div className={`flex gap-2 px-3 py-4 ${collapsed ? "flex-col items-center" : "flex-col items-stretch"}`}>
+          {collapsed ? <BrandIcon /> : <Wordmark />}
           <button
             type="button"
-            className="btn btn-secondary min-h-9 px-2"
+            className={`btn btn-secondary min-h-9 px-2 ${collapsed ? "" : "self-end"}`}
             aria-label={collapsed ? t("nav.expand") : t("nav.collapse")}
             aria-expanded={!collapsed}
             onClick={() => setCollapsed((c) => !c)}

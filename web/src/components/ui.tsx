@@ -1,17 +1,27 @@
 import { useId, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+/** Brand logo (owner-supplied asset, only scaled/cropped – SPEC §5.4). */
 export function Wordmark({ size = "md" }: { size?: "md" | "lg" }) {
-  // Placeholder until the owner's logo/mascot assets are added (SPEC §5.4, STATUS B5).
+  const { t } = useTranslation();
   const big = size === "lg";
   return (
-    <div className="flex items-center gap-2 select-none" aria-label="Daemonia">
-      <span aria-hidden="true" className={`font-mono font-semibold text-cyan ${big ? "text-3xl" : "text-lg"}`}>
-        &gt;_
-      </span>
-      <span className={`font-bold grad-text ${big ? "text-4xl" : "text-xl"}`}>Daemonia</span>
-    </div>
+    <img
+      src={big ? "/brand/logo-480.png" : "/brand/logo-240.png"}
+      srcSet={big ? "/brand/logo-480.png 1x, /brand/logo-960.png 2x" : "/brand/logo-240.png 1x, /brand/logo-480.png 2x"}
+      width={big ? 360 : 216}
+      height={big ? 172 : 103}
+      alt={t("app.name")}
+      className="block h-auto max-w-full select-none"
+      draggable={false}
+    />
   );
+}
+
+/** Compact mascot icon (crop of the logo) for the collapsed sidebar. */
+export function BrandIcon() {
+  const { t } = useTranslation();
+  return <img src="/brand/icon-48.png" srcSet="/brand/icon-48.png 1x, /brand/icon-180.png 3x" width={32} height={32} alt={t("app.name")} className="rounded-[8px]" />;
 }
 
 export function Panel({ children, edge = false, className = "" }: { children: ReactNode; edge?: boolean; className?: string }) {

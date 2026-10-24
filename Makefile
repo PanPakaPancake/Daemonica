@@ -40,6 +40,9 @@ fuzz:
 	$(GO) test -run=^$$ -fuzz=FuzzUnit -fuzztime=30s ./internal/validate
 
 test-integration:
+	CGO_ENABLED=0 $(GO) test -count=1 -tags integration -v ./test/integration/
+
+old-test-integration:
 	@echo "Integration tests run on the test VM: scripts/test-vm.sh (requires test_vm.md, SPEC §6.1)"
 	@test -x scripts/test-vm.sh && scripts/test-vm.sh || true
 

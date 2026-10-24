@@ -16,6 +16,7 @@ const results = [];
 async function shot(name, path, { width = 1440, height = 900, after, theme = "dark" } = {}) {
   const ctx = await b.newContext({ ignoreHTTPSErrors: true, viewport: { width, height }, colorScheme: theme });
   const p = await ctx.newPage();
+  if (theme === "light") await p.addInitScript(() => localStorage.setItem("daemonica.theme", "light"));
   const errs = [];
   p.on("console", (m) => m.type() === "error" && errs.push(m.text()));
   p.on("pageerror", (e) => errs.push(e.message));

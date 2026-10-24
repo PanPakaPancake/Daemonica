@@ -1,0 +1,24 @@
+# Local connection details for the test VM – never commit (SPEC §3.7)
+test_vm.md
+*.key
+*.pem
+!testdata/**/*.pem
+.env*
+
+# Build output
+/dist/
+/bin/
+/build/
+coverage.out
+*.test
+
+# Frontend
+/web/node_modules/
+/web/dist/
+/web/playwright-report/
+/web/test-results/
+
+# Editors
+.idea/
+.vscode/
+*.swp

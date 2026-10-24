@@ -22,6 +22,8 @@ import { OverviewPage } from "./pages/Overview";
 import { Services } from "./pages/Services";
 import { Logs } from "./pages/Logs";
 import { Processes } from "./pages/Processes";
+import { Users } from "./pages/Users";
+import { SSHKeys } from "./pages/SSHKeys";
 
 applyTheme(initialTheme());
 
@@ -75,6 +77,8 @@ if (root) {
                 <Route path="services" element={<Services />} />
                 <Route path="logs" element={<Logs />} />
                 <Route path="processes" element={<Processes />} />
+                <Route path="users" element={<Users />} />
+                <Route path="ssh-keys" element={<SSHKeys />} />
                 <Route path="security/passkeys" element={<Passkeys />} />
                 <Route path="security/sessions" element={<Sessions />} />
                 <Route path="security/accounts" element={<Accounts />} />

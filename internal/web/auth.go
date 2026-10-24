@@ -262,6 +262,20 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/services/action", sess("services.action"))
 	mux.Handle("POST /api/v1/journal/query", sess("journal.query"))
 
+	// M1.2: Linux users/groups and SSH keys.
+	mux.Handle("POST /api/v1/users/list", sess("users.list"))
+	for _, op := range []string{"create", "update", "set_locked", "set_sudo", "delete"} {
+		mux.Handle("POST /api/v1/users/"+op, sess("users."+op))
+	}
+	mux.Handle("POST /api/v1/users/set_password", s.forward(endpoint{op: "users.set_password", session: true, maxBody: 4 << 10}))
+	for _, op := range []string{"create", "set_members", "delete"} {
+		mux.Handle("POST /api/v1/users/groups/"+op, sess("groups."+op))
+	}
+	mux.Handle("GET /api/v1/ssh-keys/server", sess("sshkeys.server"))
+	for _, op := range []string{"list", "add", "remove", "set_options", "fix_permissions"} {
+		mux.Handle("POST /api/v1/ssh-keys/"+op, sess("sshkeys."+op))
+	}
+
 	mux.Handle("GET /api/v1/settings", sess("settings.get"))
 	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))
 	mux.Handle("GET /api/v1/changes/{id}", sess("settings.change_get"))

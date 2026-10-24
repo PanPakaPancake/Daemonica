@@ -104,7 +104,14 @@ func validOption(o string) bool {
 	if !ok || !valueOptions[name] || len(val) < 2 || val[0] != '"' || val[len(val)-1] != '"' {
 		return false
 	}
-	return true
+	// Inner quotes must be escaped, otherwise the value would end early.
+	inner := val[1 : len(val)-1]
+	for i := 0; i < len(inner); i++ {
+		if inner[i] == '"' && (i == 0 || inner[i-1] != '\\') {
+			return false
+		}
+	}
+	return !strings.HasSuffix(inner, `\`)
 }
 
 var fromRE = regexp.MustCompile(`^[0-9A-Za-z.:/*?!,\-]+$`)

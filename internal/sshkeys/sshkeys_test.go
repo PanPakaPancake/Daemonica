@@ -101,6 +101,12 @@ func TestOptions(t *testing.T) {
 	if err != nil || !strings.HasPrefix(k2.Raw, `no-port-forwarding,from="203.0.113.7" ssh-ed25519 `) {
 		t.Fatalf("%v %q", err, k2.Raw)
 	}
+	if _, err := k.WithOptions([]string{`command="a" ssh-rsa x"`}); err == nil {
+		t.Fatal("unescaped inner quote accepted")
+	}
+	if _, err := k.WithOptions([]string{`command="x\"`}); err == nil {
+		t.Fatal("trailing backslash accepted")
+	}
 	if _, err := k.WithOptions([]string{"from=\"1.2.3.4\nevil\""}); err == nil {
 		t.Fatal("newline in option accepted")
 	}

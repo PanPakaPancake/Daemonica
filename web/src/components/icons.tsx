@@ -29,6 +29,12 @@ export type IconName =
   | "logout"
   | "language"
   | "menu"
+  | "play"
+  | "stop"
+  | "restart"
+  | "search"
+  | "download"
+  | "signal"
   | "close"
   | "chevronLeft"
   | "chevronRight"
@@ -182,6 +188,22 @@ const paths: Record<IconName, ReactNode> = {
   chevronRight: <path d="m9.5 6 6 6-6 6" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  play: <path d="M8 5.5v13l10-6.5z" />,
+  stop: <rect x="6.5" y="6.5" width="11" height="11" rx="1.5" />,
+  restart: (
+    <>
+      <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" />
+      <path d="M19.5 4.5v4h-4" />
+    </>
+  ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 4 4" />
+    </>
+  ),
+  download: <path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 19.5h14" />,
+  signal: <path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
 };
 

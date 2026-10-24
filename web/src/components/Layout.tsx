@@ -12,6 +12,7 @@ interface NavItem {
   key: string;
   icon: IconName;
   adminOnly?: boolean;
+  hideReadOnly?: boolean;
 }
 interface NavGroup {
   key: string;
@@ -24,7 +25,7 @@ const groups: NavGroup[] = [
   {
     key: "nav.servicesJobs",
     items: [
-      { key: "nav.services", icon: "services" },
+      { to: "/services", key: "nav.services", icon: "services" },
       { key: "nav.jobs", icon: "jobs" },
     ],
   },
@@ -45,8 +46,8 @@ const groups: NavGroup[] = [
     items: [
       { key: "nav.terminal", icon: "terminal" },
       { key: "nav.files", icon: "files" },
-      { key: "nav.logs", icon: "logs" },
-      { key: "nav.processes", icon: "process" },
+      { to: "/logs", key: "nav.logs", icon: "logs", hideReadOnly: true },
+      { to: "/processes", key: "nav.processes", icon: "process" },
       { key: "nav.capture", icon: "capture" },
     ],
   },
@@ -132,7 +133,7 @@ export function Layout() {
                 <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-faint">{t(g.key)}</p>
               )}
               <ul className="flex flex-col gap-0.5">
-                {g.items.filter((it) => !it.adminOnly || me?.role === "admin").map((it) =>
+                {g.items.filter((it) => (!it.adminOnly || me?.role === "admin") && (!it.hideReadOnly || me?.role !== "readonly")).map((it) =>
                   it.to ? (
                     <li key={it.key}>
                       <NavLink

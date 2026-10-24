@@ -6,8 +6,8 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router";
 import "./styles.css";
 import "./i18n";
 import { Layout } from "./components/Layout";
-import { Notice, Panel, Wordmark } from "./components/ui";
-import { api, type Passkey, type SetupState } from "./lib/api";
+import { Panel, Wordmark } from "./components/ui";
+import { api, type SetupState } from "./lib/api";
 import { SessionProvider, useSession } from "./lib/session";
 import { applyTheme, initialTheme } from "./lib/theme";
 import { Login } from "./pages/Login";
@@ -18,46 +18,12 @@ import { Settings } from "./pages/Settings";
 import { Invite, Recovery } from "./pages/Recovery";
 import { Sessions } from "./pages/Sessions";
 import { Setup } from "./pages/Setup";
+import { OverviewPage } from "./pages/Overview";
+import { Services } from "./pages/Services";
+import { Logs } from "./pages/Logs";
+import { Processes } from "./pages/Processes";
 
 applyTheme(initialTheme());
-
-function Overview() {
-  const { t } = useTranslation();
-  const pk = useQuery({ queryKey: ["passkeys"], queryFn: () => api<Passkey[]>("GET", "/passkeys") });
-  const items = [
-    { key: "cert", done: true },
-    { key: "allowlist", done: true },
-    { key: "secondPasskey", done: (pk.data?.length ?? 0) >= 2 },
-    { key: "firewall", done: false },
-    { key: "updates", done: false },
-  ];
-  const done = items.filter((i) => i.done).length;
-  return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{t("overview.title")}</h1>
-      <Panel edge>
-        <h2 className="font-semibold">{t("overview.checklist", { done, total: items.length })}</h2>
-        <ul className="mt-3 flex flex-col gap-2">
-          {items.map((i) => (
-            <li key={i.key} className="flex items-center gap-2">
-              <span aria-hidden="true" className={i.done ? "text-ok" : "text-faint"}>
-                {i.done ? "✓" : "○"}
-              </span>
-              <span className={i.done ? "" : "text-muted"}>{t(`overview.items.${i.key}`)}</span>
-              <span className="sr-only">{i.done ? t("common.yes") : t("common.no")}</span>
-            </li>
-          ))}
-        </ul>
-        {(pk.data?.length ?? 0) < 2 && (
-          <Link to="/security/passkeys" className="mt-4 inline-block text-violet underline">
-            {t("passkeys.add")}
-          </Link>
-        )}
-      </Panel>
-      <Notice tone="info">{t("overview.empty")}</Notice>
-    </div>
-  );
-}
 
 function NotFound() {
   const { t } = useTranslation();
@@ -105,7 +71,10 @@ if (root) {
                   </Protected>
                 }
               >
-                <Route index element={<Overview />} />
+                <Route index element={<OverviewPage />} />
+                <Route path="services" element={<Services />} />
+                <Route path="logs" element={<Logs />} />
+                <Route path="processes" element={<Processes />} />
                 <Route path="security/passkeys" element={<Passkeys />} />
                 <Route path="security/sessions" element={<Sessions />} />
                 <Route path="security/accounts" element={<Accounts />} />

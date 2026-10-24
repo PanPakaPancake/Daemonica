@@ -111,3 +111,34 @@ export function Steps({ steps, current }: { steps: string[]; current: number }) 
     </ol>
   );
 }
+
+/** Horizontal usage bar; colour changes with thresholds, the value is always shown as text. */
+export function Meter({ value, label, warn = 80, bad = 90 }: { value: number; label: string; warn?: number; bad?: number }) {
+  const v = Math.max(0, Math.min(100, value));
+  const tone = v >= bad ? "bg-bad" : v >= warn ? "bg-warn" : "bg-cyan";
+  return (
+    <div
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(v)}
+      aria-label={label}
+      className="h-2 w-full overflow-hidden rounded-full bg-bg-2"
+    >
+      {/* React applies style via CSSOM, which the strict CSP (no inline style attributes) permits. */}
+      <div className={`h-full rounded-full ${tone}`} style={{ width: `${v}%` }} />
+    </div>
+  );
+}
+
+/** Small stat card used on the overview. */
+export function Stat({ title, value, sub, children }: { title: string; value: string; sub?: string; children?: ReactNode }) {
+  return (
+    <div className="panel flex min-w-0 flex-col gap-2 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-faint">{title}</p>
+      <p className="truncate text-2xl font-semibold tabular-nums">{value}</p>
+      {sub && <p className="truncate text-sm text-muted">{sub}</p>}
+      {children}
+    </div>
+  );
+}

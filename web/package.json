@@ -1,0 +1,41 @@
+{
+  "name": "daemonia-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "i18n:check": "node scripts/check-i18n.mjs"
+  },
+  "dependencies": {
+    "@fontsource/inter": "*",
+    "@fontsource/jetbrains-mono": "*",
+    "@radix-ui/react-dialog": "*",
+    "@tanstack/react-query": "*",
+    "i18next": "*",
+    "react": "*",
+    "react-dom": "*",
+    "react-i18next": "*",
+    "react-router": "*"
+  },
+  "devDependencies": {
+    "@eslint/js": "*",
+    "@tailwindcss/vite": "*",
+    "@testing-library/react": "*",
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "@vitejs/plugin-react": "*",
+    "eslint": "*",
+    "eslint-plugin-react-hooks": "*",
+    "jsdom": "*",
+    "tailwindcss": "*",
+    "typescript": "*",
+    "typescript-eslint": "*",
+    "vite": "*",
+    "vitest": "*"
+  }
+}

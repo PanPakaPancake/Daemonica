@@ -171,7 +171,18 @@ func (c *Core) Register(ops map[string]*Op, al *audit.Logger) {
 	Register(ops, &Op{Name: "setup.state", PreAuth: true, NoAudit: true,
 		Handle: func(context.Context, Call) (any, error) {
 			cfg := c.Config.Get()
-			return map[string]any{"setup_done": cfg.SetupDone, "language": cfg.Language}, nil
+			if cfg.SetupDone {
+				// Minimal pre-login surface once set up (SPEC §3.1).
+				return map[string]any{"setup_done": true, "language": cfg.Language}, nil
+			}
+			hasCert := false
+			if c.TLSDir != "" {
+				if _, err := os.Stat(filepath.Join(c.TLSDir, "fullchain.pem")); err == nil {
+					hasCert = true
+				}
+			}
+			return map[string]any{"setup_done": cfg.SetupDone, "language": cfg.Language, "domain": cfg.Domain,
+				"port": cfg.Port, "has_certificate": hasCert, "tls_source": cfg.TLSSource}, nil
 		}})
 
 	// config.web hands the web process the non-secret listener settings. It is

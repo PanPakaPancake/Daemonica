@@ -1,0 +1,205 @@
+@import "tailwindcss";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/600.css";
+
+/* Design tokens — SPEC §5.2 (dark default), light variant per §5.2 "Heller Modus". */
+:root,
+[data-theme="dark"] {
+  --bg-0: #15121e;
+  --bg-1: #1c1829;
+  --bg-2: #241f35;
+  --border-subtle: #342d4a;
+  --border-strong: #6f6596;
+  --text: #e8e6f7;
+  --text-muted: #a9a3c7;
+  --text-faint: #8f88b0;
+  --violet-brand: #8b13fc;
+  --violet-btn: #7a0fe0;
+  --violet-btn-hover: #8b2bf0;
+  --violet-text: #b57bff;
+  --magenta-brand: #f01070;
+  --magenta-btn: #c80a58;
+  --magenta-btn-hover: #d81b68;
+  --magenta-text: #ff5c9e;
+  --cyan: #10f0f0;
+  --horn-red: #d01050;
+  --success: #3ddc97;
+  --warning: #ffb84d;
+  --danger: #ff5470;
+  --info: #5ab8ff;
+  --grad-brand: linear-gradient(90deg, #8b13fc 0%, #dc24af 55%, #f01070 100%);
+  --grad-edge: linear-gradient(135deg, #8b13fc, #dc24af 50%, #10c8f0);
+  --radius-panel: 14px;
+  --radius-control: 8px;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg-0: #faf8ff;
+  --bg-1: #ffffff;
+  --bg-2: #f1edfb;
+  --border-subtle: #ded8f0;
+  --border-strong: #7a72a0;
+  --text: #1b1530;
+  --text-muted: #5b5478;
+  --text-faint: #6b6488;
+  --violet-btn: #6a0fd0;
+  --violet-btn-hover: #5a0bb5;
+  --violet-text: #6a0fd0;
+  --magenta-btn: #b8084f;
+  --magenta-btn-hover: #9c0643;
+  --magenta-text: #b8084f;
+  --cyan: #00727a;
+  --success: #0b7a4b;
+  --warning: #8a5300;
+  --danger: #c0213f;
+  --info: #0a5fa8;
+  color-scheme: light;
+}
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-bg-0: var(--bg-0);
+  --color-bg-1: var(--bg-1);
+  --color-bg-2: var(--bg-2);
+  --color-line: var(--border-subtle);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-violet: var(--violet-text);
+  --color-magenta: var(--magenta-text);
+  --color-cyan: var(--cyan);
+  --color-ok: var(--success);
+  --color-warn: var(--warning);
+  --color-bad: var(--danger);
+  --color-info: var(--info);
+  --radius-panel: 14px;
+  --radius-control: 8px;
+}
+
+html {
+  font-size: 15px;
+  line-height: 1.5;
+}
+body {
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible focus everywhere (WCAG 2.2 AA, SPEC §5.7). */
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Panel with the thin gradient edge of the app icon (decorative only). */
+.panel {
+  position: relative;
+  background: var(--bg-1);
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--border-subtle);
+}
+.panel-edge::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--grad-edge);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: var(--radius-control);
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 120ms ease;
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--violet-btn);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--violet-btn-hover);
+}
+.btn-danger {
+  background: var(--magenta-btn);
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--magenta-btn-hover);
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-2);
+}
+
+.input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-0);
+  color: var(--text);
+  font: inherit;
+}
+.input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+textarea.input {
+  font-family: var(--font-mono);
+  min-height: 6rem;
+}
+
+.grad-text {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.grad-bar {
+  background: var(--grad-brand);
+}
+
+/* Elevated (root) mode bar — never dismissable (SPEC §5.5). */
+.elevated-bar {
+  background: var(--magenta-btn);
+  color: #fff;
+}

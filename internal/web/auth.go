@@ -245,6 +245,8 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/setup/domain", pre("setup.set_domain"))
 	mux.Handle("POST /api/v1/setup/allowlist", pre("setup.set_allowlist"))
 	mux.Handle("POST /api/v1/setup/linux-users", pre("setup.linux_users"))
+	mux.Handle("POST /api/v1/setup/certificate/acme", pre("setup.acme_issue"))
+	mux.Handle("POST /api/v1/setup/certificate/upload", s.forward(endpoint{op: "setup.upload_cert", preauth: true, maxBody: 64 << 10}))
 	mux.Handle("POST /api/v1/setup/register/begin", pre("setup.begin_register"))
 	mux.Handle("POST /api/v1/setup/register/finish", s.forward(endpoint{op: "setup.finish_register", preauth: true, setGrant: true, maxBody: 64 << 10}))
 

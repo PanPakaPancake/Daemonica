@@ -1,0 +1,184 @@
+{
+  "app": {
+    "name": "Daemonia",
+    "tagline": "Your server. Under control."
+  },
+  "common": {
+    "next": "Next",
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "retry": "Try again",
+    "loading": "Loading …",
+    "close": "Close",
+    "rename": "Rename",
+    "remove": "Remove",
+    "yes": "Yes",
+    "no": "No",
+    "whatHappens": "What happens here?",
+    "comingSoon": "Coming in a later milestone."
+  },
+  "errors": {
+    "unauthorized": "Not signed in or session expired.",
+    "forbidden": "Your role is not allowed to do this.",
+    "step_up_required": "This action requires confirming with your passkey again.",
+    "token_invalid": "The token is invalid, expired or already used.",
+    "setup_complete": "Setup has already been completed.",
+    "rate_limited": "Too many attempts. Please wait a moment.",
+    "validation_failed": "The input is invalid.",
+    "bad_request": "The request was malformed.",
+    "lockout_protection": "Refused because it would lock you out.",
+    "helper_unavailable": "The system service is not reachable.",
+    "unavailable": "This is not possible right now.",
+    "not_found": "Not found.",
+    "csrf_failed": "Security check failed. Please reload the page.",
+    "origin_mismatch": "Security check failed (wrong address).",
+    "internal_error": "Unexpected error.",
+    "passkey_cancelled": "The passkey operation was cancelled or failed.",
+    "webauthn_unsupported": "This browser does not support passkeys.",
+    "reference": "Reference: {{id}}"
+  },
+  "login": {
+    "title": "Sign in",
+    "intro": "Sign in with your passkey – no password.",
+    "button": "Sign in with passkey",
+    "recovery": "Lost your passkey? Recovery is only possible on the server: sudo daemonia-admin recover <account>",
+    "recoveryLink": "I have a recovery token"
+  },
+  "setup": {
+    "title": "Initial setup",
+    "steps": {
+      "token": "Token",
+      "domain": "Domain",
+      "allowlist": "Access",
+      "certificate": "Certificate",
+      "switch": "Switch-over",
+      "passkey": "Passkey",
+      "done": "Done"
+    },
+    "token": {
+      "label": "Setup token",
+      "help": "Create the token on the server with: sudo daemonia-admin bootstrap",
+      "explain": "The token proves you have access to the server. It is valid for 60 minutes and is consumed when the first passkey is registered."
+    },
+    "domain": {
+      "label": "Dashboard domain",
+      "port": "Port",
+      "help": "The domain's DNS record must point to this server.",
+      "explain": "Passkeys are bound to the domain. That is why the first passkey is registered on the final domain."
+    },
+    "allowlist": {
+      "label": "Allowed networks (one address or CIDR per line)",
+      "help": "Only connections from these networks are accepted – before the TLS handshake.",
+      "public": "Make the dashboard publicly reachable (0.0.0.0/0)",
+      "publicWarning": "Public means anyone on the Internet can see and attack the login page. Fixed networks, a VPN or an SSH tunnel are recommended.",
+      "publicConfirm": "I understand the risk and want to make the dashboard publicly reachable.",
+      "explain": "The default is “allowed networks only”. Local access (127.0.0.1, ::1) always remains allowed."
+    },
+    "certificate": {
+      "acme": "Let’s Encrypt (recommended)",
+      "acmeHelp": "Free, automatically issued certificate. Port 80 must briefly be free and reachable from the Internet.",
+      "ca": "Certificate authority",
+      "production": "Let’s Encrypt (trusted)",
+      "staging": "Let’s Encrypt Staging (testing only, not trusted by browsers)",
+      "tos": "I accept the Let’s Encrypt terms of service.",
+      "own": "Upload my own certificate",
+      "certPem": "Certificate chain (PEM)",
+      "keyPem": "Private key (PEM, ECDSA P-256)",
+      "issue": "Request certificate",
+      "upload": "Use certificate",
+      "working": "Issuing certificate … this can take up to a minute.",
+      "ok": "Certificate installed, valid until {{date}}.",
+      "explain": "The dashboard only speaks TLS 1.3. The certificate is stored only for the web service."
+    },
+    "switch": {
+      "title": "Switching to the final address",
+      "text": "The service restarts now and will be reachable at {{url}}. Open that address and enter the token again to register your first passkey.",
+      "open": "Open {{url}}",
+      "waiting": "Waiting for the restart …"
+    },
+    "passkey": {
+      "account": "Account name",
+      "linuxUser": "Mapped Linux user",
+      "linuxUserHelp": "File access and the terminal run with this user's permissions. root is not allowed.",
+      "noUsers": "There is no regular Linux user on the server. Create one first: sudo adduser <name>",
+      "name": "Passkey name (e.g. laptop)",
+      "register": "Register passkey",
+      "explain": "Your device creates a key pair. The private key never leaves your device; the server stores only the public key."
+    },
+    "done": {
+      "title": "All set!",
+      "text": "The dashboard is set up and you are signed in. Register a second passkey next so you cannot lock yourself out.",
+      "go": "Go to dashboard"
+    },
+    "wrongOrigin": "Please open {{url}} for this step."
+  },
+  "recovery": {
+    "title": "Recover access",
+    "intro": "Enter the token from “sudo daemonia-admin recover” and register a new passkey.",
+    "token": "Recovery token",
+    "register": "Register new passkey"
+  },
+  "nav": {
+    "overview": "Overview",
+    "servicesJobs": "Services & jobs",
+    "system": "System",
+    "tools": "Tools",
+    "security": "Security",
+    "passkeys": "Passkeys",
+    "sessions": "Sessions",
+    "audit": "Audit log",
+    "settings": "Settings",
+    "collapse": "Collapse navigation",
+    "expand": "Expand navigation",
+    "skip": "Skip to content"
+  },
+  "header": {
+    "role": {
+      "admin": "Admin",
+      "operator": "Operator",
+      "readonly": "Read-only"
+    },
+    "stepUpActive": "Confirmed",
+    "logout": "Sign out",
+    "language": "Language",
+    "theme": "Theme",
+    "dark": "Dark",
+    "light": "Light"
+  },
+  "stepup": {
+    "title": "Confirm with passkey",
+    "text": "This action is security-relevant. Confirm it with your passkey. The confirmation is valid for 5 minutes.",
+    "confirm": "Confirm"
+  },
+  "overview": {
+    "title": "Overview",
+    "checklist": "Finish setup: {{done}} of {{total}} steps",
+    "items": {
+      "cert": "Valid certificate",
+      "allowlist": "Access limited to allowed networks",
+      "secondPasskey": "Second passkey registered",
+      "firewall": "Firewall active",
+      "updates": "Automatic security updates"
+    },
+    "empty": "System overview, services, logs and processes arrive with milestone M1.1."
+  },
+  "passkeys": {
+    "title": "Passkeys",
+    "intro": "Passkeys are your only sign-in method. Register at least two, e.g. laptop and phone.",
+    "secondHint": "Register a second passkey – without it, only server-side recovery helps if you lose this one.",
+    "add": "Add passkey",
+    "synced": "Synced passkey",
+    "deviceBound": "Device-bound",
+    "created": "Created",
+    "lastUsed": "Last used",
+    "never": "never",
+    "newName": "New name",
+    "lastOne": "The last passkey cannot be removed.",
+    "confirmRemove": "Really remove passkey “{{name}}”?"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Back to overview"
+  }
+}

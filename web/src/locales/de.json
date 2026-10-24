@@ -1,0 +1,184 @@
+{
+  "app": {
+    "name": "Daemonia",
+    "tagline": "Dein Server. Im Griff."
+  },
+  "common": {
+    "next": "Weiter",
+    "back": "Zurück",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "retry": "Erneut versuchen",
+    "loading": "Wird geladen …",
+    "close": "Schließen",
+    "rename": "Umbenennen",
+    "remove": "Entfernen",
+    "yes": "Ja",
+    "no": "Nein",
+    "whatHappens": "Was passiert hier?",
+    "comingSoon": "Folgt in einem späteren Meilenstein."
+  },
+  "errors": {
+    "unauthorized": "Nicht angemeldet oder Sitzung abgelaufen.",
+    "forbidden": "Dafür fehlt deiner Rolle die Berechtigung.",
+    "step_up_required": "Diese Aktion verlangt eine erneute Bestätigung mit deinem Passkey.",
+    "token_invalid": "Das Token ist ungültig, abgelaufen oder wurde bereits verwendet.",
+    "setup_complete": "Die Einrichtung ist bereits abgeschlossen.",
+    "rate_limited": "Zu viele Versuche. Bitte kurz warten.",
+    "validation_failed": "Die Eingabe ist ungültig.",
+    "bad_request": "Die Anfrage war fehlerhaft.",
+    "lockout_protection": "Abgelehnt, weil du dich sonst aussperren würdest.",
+    "helper_unavailable": "Der Systemdienst ist nicht erreichbar.",
+    "unavailable": "Der Vorgang ist gerade nicht möglich.",
+    "not_found": "Nicht gefunden.",
+    "csrf_failed": "Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden.",
+    "origin_mismatch": "Sicherheitsprüfung fehlgeschlagen (falsche Adresse).",
+    "internal_error": "Unerwarteter Fehler.",
+    "passkey_cancelled": "Der Passkey-Vorgang wurde abgebrochen oder ist fehlgeschlagen.",
+    "webauthn_unsupported": "Dieser Browser unterstützt keine Passkeys.",
+    "reference": "Referenz: {{id}}"
+  },
+  "login": {
+    "title": "Anmelden",
+    "intro": "Melde dich mit deinem Passkey an – ohne Passwort.",
+    "button": "Mit Passkey anmelden",
+    "recovery": "Passkey verloren? Wiederherstellung ist nur auf dem Server möglich: sudo daemonia-admin recover <konto>",
+    "recoveryLink": "Ich habe ein Wiederherstellungs-Token"
+  },
+  "setup": {
+    "title": "Ersteinrichtung",
+    "steps": {
+      "token": "Token",
+      "domain": "Domain",
+      "allowlist": "Zugriff",
+      "certificate": "Zertifikat",
+      "switch": "Umstellung",
+      "passkey": "Passkey",
+      "done": "Fertig"
+    },
+    "token": {
+      "label": "Einrichtungs-Token",
+      "help": "Das Token erzeugst du auf dem Server mit: sudo daemonia-admin bootstrap",
+      "explain": "Das Token beweist, dass du Zugriff auf den Server hast. Es ist 60 Minuten gültig und wird mit der Registrierung des ersten Passkeys verbraucht."
+    },
+    "domain": {
+      "label": "Domain des Dashboards",
+      "port": "Port",
+      "help": "Der DNS-Eintrag der Domain muss auf diesen Server zeigen.",
+      "explain": "Passkeys sind fest an die Domain gebunden. Deshalb wird der erste Passkey erst auf der endgültigen Domain registriert."
+    },
+    "allowlist": {
+      "label": "Erlaubte Netze (eine Adresse oder ein CIDR-Netz pro Zeile)",
+      "help": "Nur Verbindungen aus diesen Netzen werden angenommen – noch vor dem TLS-Handshake.",
+      "public": "Dashboard öffentlich erreichbar machen (0.0.0.0/0)",
+      "publicWarning": "Öffentlich erreichbar heißt: jeder im Internet kann die Anmeldeseite sehen und angreifen. Empfohlen sind feste Netze, ein VPN oder ein SSH-Tunnel.",
+      "publicConfirm": "Ich habe das Risiko verstanden und möchte das Dashboard öffentlich erreichbar machen.",
+      "explain": "Standard ist „nur freigegebene Netze“. Lokaler Zugriff (127.0.0.1, ::1) bleibt immer erlaubt."
+    },
+    "certificate": {
+      "acme": "Let’s Encrypt (empfohlen)",
+      "acmeHelp": "Kostenloses, automatisch ausgestelltes Zertifikat. Port 80 muss dafür kurz frei und aus dem Internet erreichbar sein.",
+      "ca": "Zertifizierungsstelle",
+      "production": "Let’s Encrypt (vertrauenswürdig)",
+      "staging": "Let’s Encrypt Staging (nur für Tests, Browser vertrauen ihm nicht)",
+      "tos": "Ich akzeptiere die Nutzungsbedingungen von Let’s Encrypt.",
+      "own": "Eigenes Zertifikat hochladen",
+      "certPem": "Zertifikatskette (PEM)",
+      "keyPem": "Privater Schlüssel (PEM, ECDSA P-256)",
+      "issue": "Zertifikat anfordern",
+      "upload": "Zertifikat übernehmen",
+      "working": "Zertifikat wird ausgestellt … das kann bis zu einer Minute dauern.",
+      "ok": "Zertifikat installiert, gültig bis {{date}}.",
+      "explain": "Das Dashboard spricht nur TLS 1.3. Das Zertifikat liegt ausschließlich beim Web-Dienst."
+    },
+    "switch": {
+      "title": "Wechsel auf die endgültige Adresse",
+      "text": "Der Dienst startet jetzt neu und ist anschließend unter {{url}} erreichbar. Öffne diese Adresse und gib das Token dort erneut ein, um deinen ersten Passkey zu registrieren.",
+      "open": "{{url}} öffnen",
+      "waiting": "Warte auf den Neustart …"
+    },
+    "passkey": {
+      "account": "Kontoname",
+      "linuxUser": "Zugeordneter Linux-Benutzer",
+      "linuxUserHelp": "Dateizugriffe und Terminal laufen mit den Rechten dieses Benutzers. root ist nicht erlaubt.",
+      "noUsers": "Auf dem Server gibt es keinen normalen Linux-Benutzer. Lege zuerst einen an: sudo adduser <name>",
+      "name": "Name des Passkeys (z. B. Laptop)",
+      "register": "Passkey registrieren",
+      "explain": "Dein Gerät erzeugt ein Schlüsselpaar. Der private Schlüssel verlässt dein Gerät nie; der Server speichert nur den öffentlichen Schlüssel."
+    },
+    "done": {
+      "title": "Geschafft!",
+      "text": "Das Dashboard ist eingerichtet und du bist angemeldet. Registriere als Nächstes einen zweiten Passkey, damit du dich bei Verlust nicht aussperrst.",
+      "go": "Zum Dashboard"
+    },
+    "wrongOrigin": "Bitte öffne für diesen Schritt {{url}}."
+  },
+  "recovery": {
+    "title": "Zugang wiederherstellen",
+    "intro": "Gib das Token aus „sudo daemonia-admin recover“ ein und registriere einen neuen Passkey.",
+    "token": "Wiederherstellungs-Token",
+    "register": "Neuen Passkey registrieren"
+  },
+  "nav": {
+    "overview": "Übersicht",
+    "servicesJobs": "Dienste & Jobs",
+    "system": "System",
+    "tools": "Werkzeuge",
+    "security": "Sicherheit",
+    "passkeys": "Passkeys",
+    "sessions": "Sitzungen",
+    "audit": "Audit-Log",
+    "settings": "Einstellungen",
+    "collapse": "Navigation einklappen",
+    "expand": "Navigation ausklappen",
+    "skip": "Zum Inhalt springen"
+  },
+  "header": {
+    "role": {
+      "admin": "Admin",
+      "operator": "Operator",
+      "readonly": "Nur-Lesen"
+    },
+    "stepUpActive": "Bestätigt",
+    "logout": "Abmelden",
+    "language": "Sprache",
+    "theme": "Darstellung",
+    "dark": "Dunkel",
+    "light": "Hell"
+  },
+  "stepup": {
+    "title": "Mit Passkey bestätigen",
+    "text": "Diese Aktion ist sicherheitsrelevant. Bestätige sie mit deinem Passkey. Die Bestätigung gilt 5 Minuten.",
+    "confirm": "Bestätigen"
+  },
+  "overview": {
+    "title": "Übersicht",
+    "checklist": "Einrichtung abschließen: {{done}} von {{total}} Schritten",
+    "items": {
+      "cert": "Gültiges Zertifikat",
+      "allowlist": "Zugriff auf freigegebene Netze beschränkt",
+      "secondPasskey": "Zweiten Passkey registriert",
+      "firewall": "Firewall aktiv",
+      "updates": "Automatische Sicherheitsupdates"
+    },
+    "empty": "Systemübersicht, Dienste, Logs und Prozesse folgen mit Meilenstein M1.1."
+  },
+  "passkeys": {
+    "title": "Passkeys",
+    "intro": "Passkeys sind deine einzige Anmeldemethode. Registriere mindestens zwei, z. B. Laptop und Smartphone.",
+    "secondHint": "Registriere einen zweiten Passkey – ohne ihn hilft bei Verlust nur die Wiederherstellung auf dem Server.",
+    "add": "Passkey hinzufügen",
+    "synced": "Synchronisierter Passkey",
+    "deviceBound": "Gerätegebunden",
+    "created": "Erstellt",
+    "lastUsed": "Zuletzt benutzt",
+    "never": "nie",
+    "newName": "Neuer Name",
+    "lastOne": "Der letzte Passkey kann nicht entfernt werden.",
+    "confirmRemove": "Passkey „{{name}}“ wirklich entfernen?"
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "back": "Zur Übersicht"
+  }
+}

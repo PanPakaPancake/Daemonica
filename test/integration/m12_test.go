@@ -62,7 +62,9 @@ func TestUsersAndKeysOnHost(t *testing.T) {
 	if _, err := run("users.create", map[string]any{"name": testUser, "create_home": true}); err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	defer func() { _, _ = run("users.delete", map[string]any{"name": testUser, "confirm_name": testUser, "remove_home": true}) }()
+	defer func() {
+		_, _ = run("users.delete", map[string]any{"name": testUser, "confirm_name": testUser, "remove_home": true})
+	}()
 
 	l1, err := run("sshkeys.list", map[string]any{"user": testUser})
 	if err != nil {

@@ -19,12 +19,20 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/helper"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
 	"github.com/PanPakaPancake/daemonica/internal/services"
+	"github.com/PanPakaPancake/daemonica/internal/sshkeys"
 	"github.com/PanPakaPancake/daemonica/internal/sysinfo"
+	"github.com/PanPakaPancake/daemonica/internal/users"
+	"github.com/PanPakaPancake/daemonica/internal/worker"
 )
 
 var version = "0.1.0-dev"
 
 func main() {
+	// Worker mode: re-executed by the helper with a Linux user's credentials
+	// (SPEC §3.2 rule 6). Must run before any flag parsing or root checks.
+	if len(os.Args) > 1 && os.Args[1] == worker.Arg {
+		worker.Main(sshkeys.WorkerHandlers())
+	}
 	stateDir := flag.String("state-dir", "/var/lib/daemonica-helper", "helper state directory (root 0700)")
 	runDir := flag.String("run-dir", "/run/daemonica", "runtime directory for sockets")
 	auditPath := flag.String("audit-log", "/var/log/daemonica/audit.log", "audit log path")
@@ -130,6 +138,12 @@ func main() {
 	(&helper.SysOps{Collector: collector, SelfPID: os.Getpid()}).Register(ops)
 	(&helper.ServiceOps{Systemd: sd}).Register(ops)
 	(&helper.LogOps{}).Register(ops)
+
+	// M1.2: SSH keys and Linux users/groups.
+	keyOps := &helper.SSHKeyOps{Worker: &worker.Runner{Timeout: 30 * time.Second}, Lookup: worker.Lookup,
+		Config: sshkeys.EffectiveConfig, HostKeyDir: "/etc/ssh"}
+	keyOps.Register(ops)
+	(&helper.UserOps{DB: users.DB{Root: "/"}, Accts: db, KeyCount: keyOps.Count}).Register(ops)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to
 	// traverse it to reach helper.sock (admin.sock stays 0600 root).

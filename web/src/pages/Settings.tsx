@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "../components/icons";
 import { Explain, Field, Notice, Panel } from "../components/ui";
@@ -31,11 +31,24 @@ interface Change {
 
 const loopback = new Set(["127.0.0.0/8", "::1/128"]);
 
-function useCountdown(deadline?: string) {
+/** Seconds left until deadline; onExpire fires once from the timer callback. */
+function useCountdown(deadline: string | undefined, onExpire: () => void) {
   const [now, setNow] = useState(() => Date.now());
+  const expire = useRef(onExpire);
+  useEffect(() => {
+    expire.current = onExpire;
+  });
   useEffect(() => {
     if (!deadline) return;
-    const id = window.setInterval(() => setNow(Date.now()), 500);
+    const end = Date.parse(deadline);
+    const id = window.setInterval(() => {
+      const n = Date.now();
+      setNow(n);
+      if (n >= end) {
+        window.clearInterval(id);
+        expire.current();
+      }
+    }, 500);
     return () => window.clearInterval(id);
   }, [deadline]);
   return deadline ? Math.max(0, Math.ceil((Date.parse(deadline) - now) / 1000)) : 0;
@@ -56,7 +69,12 @@ export function Settings() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string>();
   const [done, setDone] = useState<string>();
-  const left = useCountdown(change?.state === "applied" ? change.deadline : undefined);
+  // The change is rolled back by the helper when the timer runs out (independent of the browser).
+  const left = useCountdown(change?.state === "applied" ? change.deadline : undefined, () => {
+    setChange((c) => (c ? { ...c, state: "rolled_back" } : c));
+    setDone(t("settings.rolledBackTimeout"));
+    void qc.invalidateQueries({ queryKey: ["settings"] });
+  });
 
   const s = q.data;
   const current = s ? s.allowlist.filter((x) => !loopback.has(x)).join("\n") : "";
@@ -66,14 +84,6 @@ export function Settings() {
     .map((x) => x.trim())
     .filter(Boolean);
 
-  // The change rolled back on the server when the timer ran out.
-  useEffect(() => {
-    if (change?.state === "applied" && left === 0) {
-      setChange({ ...change, state: "rolled_back" });
-      setDone(t("settings.rolledBackTimeout"));
-      void qc.invalidateQueries({ queryKey: ["settings"] });
-    }
-  }, [left, change, qc, t]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);

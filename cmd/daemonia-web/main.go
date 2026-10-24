@@ -181,7 +181,13 @@ func watchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger, start hel
 			continue
 		}
 		wantDomainMode := cur.Domain != "" && cur.CertVersion != 0
-		if cur.Domain != start.Domain || cur.Port != start.Port || cur.CertVersion != start.CertVersion || wantDomainMode != domainMode {
+		// In loopback setup mode only switching to domain mode matters; restarting
+		// on every wizard step would abort in-flight requests (e.g. ACME issuance).
+		changed := wantDomainMode != domainMode
+		if domainMode && (cur.Domain != start.Domain || cur.Port != start.Port || cur.CertVersion != start.CertVersion) {
+			changed = true
+		}
+		if changed {
 			log.Info("listener configuration changed; restarting")
 			os.Exit(ExitRestart)
 		}

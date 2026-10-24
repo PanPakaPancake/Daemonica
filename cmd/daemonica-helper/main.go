@@ -72,7 +72,16 @@ func main() {
 		log.Error("planner init failed", "err", err)
 		os.Exit(1)
 	}
-	// Handlers for network/firewall/allowlist are registered here as modules land.
+	// Plan→Apply→Confirm handlers (network/firewall follow with their modules).
+	pm.Register(&helper.AllowlistHandler{Config: cfg})
+	pm.OnEvent = func(ch planner.Change, event string, err error) {
+		ev := audit.Event{Action: "change." + event, Target: "change:" + ch.ID, Result: audit.ResultOK,
+			Actor: audit.Actor{AccountID: ch.Owner}, Params: map[string]string{"kind": ch.Kind, "risk": ch.Risk}}
+		if err != nil {
+			ev.Result, ev.Reason = audit.ResultError, "handler failed"
+		}
+		_, _ = al.Append(ev)
+	}
 	for _, e := range pm.Recover(context.Background()) {
 		log.Error("rollback recovery failed", "err", e)
 	}
@@ -98,6 +107,7 @@ func main() {
 	authOps.Register(ops)
 	certOps := &helper.CertOps{Config: cfg, Guard: authOps.SetupGuard, TLSDir: *tlsDir, StateDir: *stateDir, WebUID: webUIDInt, WebGID: webGID}
 	certOps.Register(ops)
+	(&helper.SettingsOps{Config: cfg, Planner: pm}).Register(ops)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()

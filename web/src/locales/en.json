@@ -271,5 +271,41 @@
     },
     "chainOk": "Hash chain intact: {{count}} records verified.",
     "chainBad": "Hash chain broken at line {{line}}: {{problem}}"
+  },
+  "settings": {
+    "title": "Settings",
+    "intro": "Access and behaviour of the dashboard. Risky changes are first shown as a plan, then applied and must be confirmed within 90 seconds – otherwise the server reverts them automatically.",
+    "access": "Network allowlist",
+    "domain": "Address",
+    "yourIp": "Your IP",
+    "allowed": "allowed",
+    "notAllowed": "not allowed",
+    "current": "Currently allowed",
+    "publicWarn": "The dashboard is publicly reachable. Restricting it to known networks or a VPN is recommended.",
+    "newList": "Allowed networks",
+    "newListHelp": "One entry per line as IP or CIDR, e.g. 203.0.113.5/32 or 2001:db8::/48. Loopback is always allowed.",
+    "lockoutAck": "I understand: my current IP {{ip}} will no longer be allowed. Without a confirmation from an allowed network the change is reverted after 90 seconds.",
+    "publicAck": "I deliberately want to make the dashboard publicly reachable.",
+    "plan": "Plan change",
+    "preview": "Change preview",
+    "apply": "Apply",
+    "keep": "I am still connected – keep it",
+    "undo": "Revert now",
+    "confirmPrompt": "The new allowlist is active. Confirm within {{seconds}} s that you can still reach the dashboard; otherwise it is reverted automatically.",
+    "confirmed": "Change confirmed and saved.",
+    "rolledBack": "Change reverted.",
+    "rolledBackTimeout": "No confirmation received – the server restored the previous allowlist.",
+    "risk": {
+      "low": "Low risk.",
+      "medium": "Medium risk: networks that are removed lose access immediately.",
+      "high": "High risk: your own connection will be locked out."
+    },
+    "explain": "Daemonica checks the allowlist when a connection is accepted, before TLS, and again on every request. After applying, the server closes your connection; the confirmation must arrive over a new connection and thereby proves you still get in with the new allowlist. The revert timer runs in the privileged helper – independent of the browser and the web process.",
+    "general": "General",
+    "tls": "Certificate",
+    "sessionTimes": "Session lifetime",
+    "sessionTimesValue": "{{idle}} min idle, max. {{abs}} h",
+    "upload": "Upload limit",
+    "moreLater": "More settings (switch certificate, session lifetime, language) will follow."
   }
 }

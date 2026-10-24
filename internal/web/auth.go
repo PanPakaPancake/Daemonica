@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/PanPakaPancake/daemonica/internal/rpc"
 )
@@ -94,6 +95,12 @@ type endpoint struct {
 	setGrant bool  // response carries a grant → create session, strip grant
 	stepUp   bool  // successful call upgrades the session (rotate cookie)
 	logout   bool  // destroy session after the call
+	// newConn: the response closes the connection (HTTP/1.1 close, HTTP/2
+	// GOAWAY) and the config is reloaded, so the next request must pass the
+	// new allowlist on a fresh connection.
+	newConn bool
+	// connSince adds the connection accept time as "connection_since".
+	connSince bool
 }
 
 func (s *Server) forward(e endpoint) http.Handler {
@@ -117,7 +124,10 @@ func (s *Server) forward(e endpoint) http.Handler {
 		}
 		// Path parameters are merged into the params object by the caller via pathParam.
 		if pv := r.PathValue("id"); pv != "" {
-			params = mergeID(params, pv)
+			params = mergeField(params, "id", pv)
+		}
+		if e.connSince {
+			params = mergeField(params, "connection_since", connSince(r).Format(time.RFC3339Nano))
 		}
 		var out json.RawMessage
 		err = s.Helper.Call(r.Context(), e.op, grant, ip.String(), params, &out)
@@ -137,6 +147,12 @@ func (s *Server) forward(e endpoint) http.Handler {
 		}
 		if e.preauth {
 			s.Limiter.Success(ip)
+		}
+		if e.newConn {
+			w.Header().Set("Connection", "close")
+			if s.ReloadConfig != nil {
+				s.ReloadConfig()
+			}
 		}
 		switch {
 		case e.setGrant || e.stepUp:
@@ -173,12 +189,12 @@ func (s *Server) forward(e endpoint) http.Handler {
 	return LimitBody(max, h)
 }
 
-func mergeID(params json.RawMessage, id string) json.RawMessage {
+func mergeField(params json.RawMessage, key, val string) json.RawMessage {
 	m := map[string]any{}
 	if len(params) > 0 {
 		_ = json.Unmarshal(params, &m)
 	}
-	m["id"] = id
+	m[key] = val
 	b, _ := json.Marshal(m)
 	return b
 }
@@ -235,4 +251,12 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	// Audit log (admin).
 	mux.Handle("POST /api/v1/audit/query", sess("audit.query"))
 	mux.Handle("POST /api/v1/audit/verify", sess("audit.verify"))
+
+	// Settings with Plan → Apply → Confirm (SPEC §3.2 rule 10).
+	mux.Handle("GET /api/v1/settings", sess("settings.get"))
+	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))
+	mux.Handle("GET /api/v1/changes/{id}", sess("settings.change_get"))
+	mux.Handle("POST /api/v1/changes/{id}/apply", s.forward(endpoint{op: "settings.change_apply", session: true, newConn: true}))
+	mux.Handle("POST /api/v1/changes/{id}/confirm", s.forward(endpoint{op: "settings.change_confirm", session: true, connSince: true}))
+	mux.Handle("POST /api/v1/changes/{id}/rollback", s.forward(endpoint{op: "settings.change_rollback", session: true, newConn: true}))
 }

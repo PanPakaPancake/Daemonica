@@ -94,7 +94,8 @@ func main() {
 	// Watch the helper-owned configuration: allowlist changes apply live; a
 	// changed domain, port, certificate or setup phase restarts the process
 	// (exit 75 → systemd Restart=on-failure) so listener and origins are rebuilt.
-	go watchConfig(ctx, client, log, cfg, allow, domainMode)
+	kick := make(chan struct{}, 1)
+	go watchConfig(ctx, client, log, cfg, allow, domainMode, kick)
 
 	srv := &web.Server{
 		Helper:   client,
@@ -103,6 +104,14 @@ func main() {
 		Origins:  func() []string { return origins },
 		Limiter:  web.NewRateLimiter(0.5, 10, 10, 100),
 		Sessions: web.NewSessions(),
+		Allow:    allow,
+		// Settings changes reload the allowlist at once instead of at the next poll.
+		ReloadConfig: func() {
+			select {
+			case kick <- struct{}{}:
+			default:
+			}
+		},
 	}
 	httpSrv := &http.Server{
 		Handler:           srv.Handler(),
@@ -113,6 +122,7 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 		MaxHeaderBytes:    32 << 10,
 		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
+		ConnContext:       web.ConnAccepted,
 	}
 
 	inner, err := net.Listen("tcp", listenAddr)
@@ -155,7 +165,7 @@ func fetchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger) (helper.W
 // ExitRestart asks systemd to restart the service (Restart=on-failure).
 const ExitRestart = 75
 
-func watchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger, start helper.WebConfig, allow *netallow.Allowlist, domainMode bool) {
+func watchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger, start helper.WebConfig, allow *netallow.Allowlist, domainMode bool, kick <-chan struct{}) {
 	t := time.NewTicker(3 * time.Second)
 	defer t.Stop()
 	for {
@@ -163,6 +173,7 @@ func watchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger, start hel
 		case <-ctx.Done():
 			return
 		case <-t.C:
+		case <-kick:
 		}
 		var cur helper.WebConfig
 		if err := c.Call(ctx, "config.web", "", "", nil, &cur); err != nil {

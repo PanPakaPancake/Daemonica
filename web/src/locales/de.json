@@ -271,5 +271,41 @@
     },
     "chainOk": "Hash-Kette intakt: {{count}} Einträge geprüft.",
     "chainBad": "Hash-Kette beschädigt in Zeile {{line}}: {{problem}}"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "intro": "Zugriff und Verhalten des Dashboards. Riskante Änderungen werden erst als Plan gezeigt, dann angewendet und müssen innerhalb von 90 Sekunden bestätigt werden – sonst setzt der Server sie automatisch zurück.",
+    "access": "Netzfreigabe (Allowlist)",
+    "domain": "Adresse",
+    "yourIp": "Deine IP",
+    "allowed": "freigegeben",
+    "notAllowed": "nicht freigegeben",
+    "current": "Aktuell freigegeben",
+    "publicWarn": "Das Dashboard ist öffentlich erreichbar. Empfohlen ist eine Beschränkung auf bekannte Netze oder ein VPN.",
+    "newList": "Freigegebene Netze",
+    "newListHelp": "Ein Eintrag pro Zeile als IP oder CIDR, z. B. 203.0.113.5/32 oder 2001:db8::/48. Loopback bleibt immer erlaubt.",
+    "lockoutAck": "Ich verstehe: Meine aktuelle IP {{ip}} ist danach nicht mehr freigegeben. Ohne Bestätigung aus einem erlaubten Netz wird die Änderung nach 90 Sekunden zurückgesetzt.",
+    "publicAck": "Ich will das Dashboard bewusst öffentlich erreichbar machen.",
+    "plan": "Änderung planen",
+    "preview": "Vorschau der Änderung",
+    "apply": "Anwenden",
+    "keep": "Ich bin noch verbunden – beibehalten",
+    "undo": "Sofort zurücksetzen",
+    "confirmPrompt": "Die neue Freigabe ist aktiv. Bestätige innerhalb von {{seconds}} s, dass du das Dashboard weiterhin erreichst; sonst wird automatisch zurückgesetzt.",
+    "confirmed": "Änderung bestätigt und gespeichert.",
+    "rolledBack": "Änderung zurückgesetzt.",
+    "rolledBackTimeout": "Keine Bestätigung erhalten – der Server hat die vorherige Freigabe wiederhergestellt.",
+    "risk": {
+      "low": "Geringes Risiko.",
+      "medium": "Mittleres Risiko: Netze, die entfallen, verlieren sofort den Zugriff.",
+      "high": "Hohes Risiko: Deine eigene Verbindung wird ausgesperrt."
+    },
+    "explain": "Daemonica prüft die Allowlist beim Verbindungsaufbau, noch vor TLS, und zusätzlich bei jeder Anfrage. Nach dem Anwenden schließt der Server deine Verbindung; die Bestätigung muss über eine neue Verbindung kommen und beweist so, dass du mit der neuen Freigabe noch hineinkommst. Der Rücksetz-Timer läuft im privilegierten Helfer – unabhängig von Browser und Web-Prozess.",
+    "general": "Allgemein",
+    "tls": "Zertifikat",
+    "sessionTimes": "Sitzungsdauer",
+    "sessionTimesValue": "{{idle}} min Leerlauf, max. {{abs}} h",
+    "upload": "Upload-Limit",
+    "moreLater": "Weitere Einstellungen (Zertifikat wechseln, Sitzungszeiten, Sprache) folgen."
   }
 }

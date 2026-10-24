@@ -87,6 +87,7 @@ const (
 	ActOwnSessions        Action = "self.sessions"
 	ActOwnPasskeys        Action = "self.passkeys"
 	ActAuditRead          Action = "audit.read"
+	ActSettingsRead       Action = "settings.read"
 	ActSettingsWrite      Action = "settings.write"
 )
 
@@ -134,6 +135,7 @@ var table = map[Action][3]Rule{
 	ActOwnSessions:        {own, own, own},
 	ActOwnPasskeys:        {ownStepUp, ownStepUp, ownStepUp},
 	ActAuditRead:          {all, deny, deny},
+	ActSettingsRead:       {all, deny, deny},
 	ActSettingsWrite:      {allStepUp, deny, deny},
 }
 

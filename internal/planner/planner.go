@@ -55,6 +55,7 @@ type Change struct {
 	State     State           `json:"state"`
 	Owner     string          `json:"owner"` // account ID that planned it
 	Payload   json.RawMessage `json:"payload"`
+	AppliedAt time.Time       `json:"applied_at,omitempty"`
 	Deadline  time.Time       `json:"deadline,omitempty"`
 	CreatedAt time.Time       `json:"created_at"`
 	Error     string          `json:"error,omitempty"`
@@ -157,7 +158,8 @@ func (m *Manager) Apply(ctx context.Context, id, owner string) (Change, error) {
 	}
 	h := m.handlers[c.Kind]
 	c.State = StateApplied
-	c.Deadline = m.now().UTC().Add(m.window)
+	c.AppliedAt = m.now().UTC()
+	c.Deadline = c.AppliedAt.Add(m.window)
 	if err := m.writeJournal(c); err != nil {
 		c.State = StateFailed
 		c.Error = "journal write failed"

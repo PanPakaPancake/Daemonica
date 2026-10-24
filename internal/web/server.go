@@ -1,14 +1,17 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/netip"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/PanPakaPancake/daemonica/internal/netallow"
 	"github.com/PanPakaPancake/daemonica/internal/rpc"
@@ -22,6 +25,39 @@ type Server struct {
 	Origins  func() []string
 	Limiter  *RateLimiter
 	Sessions *Sessions
+	// Allow, if set, is re-checked on every request so connections opened
+	// before an allowlist was tightened cannot keep using the dashboard.
+	Allow *netallow.Allowlist
+	// ReloadConfig asks the process to re-read the helper config now.
+	ReloadConfig func()
+}
+
+type connKey struct{}
+
+// ConnAccepted is used as http.Server.ConnContext: it records when the TCP
+// connection was accepted (Plan→Apply→Confirm needs proof of a new connection).
+func ConnAccepted(ctx context.Context, _ net.Conn) context.Context {
+	return context.WithValue(ctx, connKey{}, time.Now().UTC())
+}
+
+func connSince(r *http.Request) time.Time {
+	t, _ := r.Context().Value(connKey{}).(time.Time)
+	return t
+}
+
+// AllowCheck rejects requests whose peer is no longer in the allowlist.
+func AllowCheck(a *netallow.Allowlist, next http.Handler) http.Handler {
+	if a == nil {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if ip := clientIP(r); !ip.IsValid() || !a.Contains(ip) {
+			w.Header().Set("Connection", "close")
+			http.Error(w, "", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Handler builds the full middleware chain. Before login only the UI shell,
@@ -41,6 +77,7 @@ func (s *Server) Handler() http.Handler {
 	h = CSRF(s.Origins, h)
 	h = SecurityHeaders(h)
 	h = WithCorrelationID(h)
+	h = AllowCheck(s.Allow, h)
 	h = Recover(s.Log, h)
 	return h
 }

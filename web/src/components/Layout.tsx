@@ -57,7 +57,7 @@ const groups: NavGroup[] = [
       { to: "/security/sessions", key: "nav.sessions", icon: "sessions" },
       { to: "/security/accounts", key: "nav.accounts", icon: "shield", adminOnly: true },
       { to: "/security/audit", key: "nav.audit", icon: "audit", adminOnly: true },
-      { key: "nav.settings", icon: "settings" },
+      { to: "/security/settings", key: "nav.settings", icon: "settings", adminOnly: true },
     ],
   },
 ];

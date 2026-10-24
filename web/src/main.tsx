@@ -14,6 +14,7 @@ import { Login } from "./pages/Login";
 import { Passkeys } from "./pages/Passkeys";
 import { Accounts } from "./pages/Accounts";
 import { Audit } from "./pages/Audit";
+import { Settings } from "./pages/Settings";
 import { Invite, Recovery } from "./pages/Recovery";
 import { Sessions } from "./pages/Sessions";
 import { Setup } from "./pages/Setup";
@@ -109,6 +110,7 @@ if (root) {
                 <Route path="security/sessions" element={<Sessions />} />
                 <Route path="security/accounts" element={<Accounts />} />
                 <Route path="security/audit" element={<Audit />} />
+                <Route path="security/settings" element={<Settings />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>

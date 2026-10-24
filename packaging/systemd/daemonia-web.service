@@ -4,6 +4,8 @@ Documentation=file:///usr/share/doc/daemonia/README.md
 After=network-online.target daemonia-helper.service
 Wants=network-online.target
 Requires=daemonia-helper.service
+# Restart together with the helper so the socket directory view stays current.
+PartOf=daemonia-helper.service
 
 [Service]
 Type=simple
@@ -51,8 +53,6 @@ CapabilityBoundingSet=
 AmbientCapabilities=
 DevicePolicy=closed
 KeyringMode=private
-# The helper socket directory is the only path outside its state the web process needs.
-ReadWritePaths=/run/daemonia
 TasksMax=512
 MemoryMax=512M
 

@@ -70,6 +70,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/setup/state", LimitBody(0, http.HandlerFunc(s.setupState)))
 	mux.Handle("POST /api/v1/setup/token", LimitBody(4<<10, http.HandlerFunc(s.setupToken)))
 	s.registerAuthRoutes(mux)
+	s.registerFileRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		// Unknown API routes: never reveal whether a route exists to anonymous clients.
 		Problem(w, r, http.StatusUnauthorized, "unauthorized")

@@ -85,6 +85,27 @@ func (e *OpError) Error() string { return e.Code + ": " + e.Msg }
 // Run executes op as id. Root (UID 0) is only allowed when elevated is true
 // (admin "as root" mode after step-up, SPEC §7.4).
 func (r *Runner) Run(ctx context.Context, id Identity, elevated bool, op string, args, out any) error {
+	timeout := r.Timeout
+	if timeout == 0 {
+		timeout = 60 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	return r.run(ctx, id, elevated, op, args, out, nil)
+}
+
+// RunStream is Run with a data pipe end passed to the worker as fd 3 (see
+// Data). The caller keeps the other end and feeds or drains it concurrently;
+// RunStream closes data in the parent once the worker has started. Its
+// lifetime is bounded by ctx only.
+func (r *Runner) RunStream(ctx context.Context, id Identity, elevated bool, op string, args, out any, data *os.File) error {
+	return r.run(ctx, id, elevated, op, args, out, data)
+}
+
+func (r *Runner) run(ctx context.Context, id Identity, elevated bool, op string, args, out any, data *os.File) error {
+	if data != nil {
+		defer func() { _ = data.Close() }()
+	}
 	if id.UID == 0 && !elevated {
 		return errors.New("worker: refusing to run as root without elevation")
 	}
@@ -92,17 +113,11 @@ func (r *Runner) Run(ctx context.Context, id Identity, elevated bool, op string,
 	if bin == "" {
 		bin = "/proc/self/exe"
 	}
-	timeout := r.Timeout
-	if timeout == 0 {
-		timeout = 60 * time.Second
-	}
 	raw, err := json.Marshal(args)
 	if err != nil {
 		return err
 	}
 	req, _ := json.Marshal(Request{Op: op, Args: raw})
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
 	cmd := exec.CommandContext(ctx, bin, Arg) //nolint:gosec // own binary, fixed argument
 	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C.UTF-8", "HOME=" + id.Home, "USER=" + id.Name}
 	cmd.Dir = "/"
@@ -115,7 +130,20 @@ func (r *Runner) Run(ctx context.Context, id Identity, elevated bool, op string,
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &limited{&stdout, MaxIO}, &limited{&stderr, 64 << 10}
 	cmd.WaitDelay = 2 * time.Second
-	if err := cmd.Run(); err != nil && stdout.Len() == 0 {
+	if data != nil {
+		cmd.ExtraFiles = []*os.File{data}
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("worker: %w", err)
+	}
+	if data != nil {
+		// The worker holds its own copy; closing ours lets EOF/EPIPE propagate.
+		_ = data.Close()
+	}
+	if err := cmd.Wait(); err != nil && stdout.Len() == 0 {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		return fmt.Errorf("worker: %w", err)
 	}
 	var resp Response
@@ -147,6 +175,18 @@ func (l *limited) Write(p []byte) (int, error) {
 	}
 	l.n -= len(p)
 	return l.w.Write(p)
+}
+
+// Data returns the stream passed by RunStream as fd 3, or nil.
+func Data() *os.File {
+	f := os.NewFile(3, "data")
+	if f == nil {
+		return nil
+	}
+	if _, err := f.Stat(); err != nil {
+		return nil
+	}
+	return f
 }
 
 // Handler implements one worker operation.

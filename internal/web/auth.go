@@ -66,6 +66,20 @@ func httpStatus(code string) int {
 		return http.StatusGatewayTimeout
 	case rpc.CodeNotSupported:
 		return http.StatusNotImplemented
+	// File manager (M1.3).
+	case "permission_denied", "path_blocked", "protected_path", "root_mode_required":
+		return http.StatusForbidden
+	case "sensitive_path", "already_exists", "not_empty", "symlink_refused", "virtual_fs", "busy", "mount_point",
+		"not_regular_file", "is_a_directory", "not_a_directory", "read_only_fs", "limit_exceeded":
+		return http.StatusConflict
+	case "no_space":
+		return http.StatusInsufficientStorage
+	case "too_large":
+		return http.StatusRequestEntityTooLarge
+	case "range_not_satisfiable":
+		return http.StatusRequestedRangeNotSatisfiable
+	case "aborted":
+		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError
 	}

@@ -46,9 +46,7 @@ export function Setup() {
 
   useEffect(() => {
     if (state.data?.setup_done) void nav("/login", { replace: true });
-    if (state.data?.domain && !domain) setDomain(state.data.domain);
-    if (state.data?.port) setPort(String(state.data.port));
-  }, [state.data, nav, domain]);
+  }, [state.data, nav]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -66,6 +64,8 @@ export function Setup() {
   const afterToken = async () => {
     await api("POST", "/setup/token", { token });
     const s = await qc.fetchQuery({ queryKey: ["setup-state"], queryFn: () => api<SetupState>("GET", "/setup/state") });
+    if (s.domain) setDomain(s.domain);
+    if (s.port) setPort(String(s.port));
     if (!isLoopback() && s.domain && s.has_certificate) {
       setUsers(await api<LinuxUser[]>("POST", "/setup/linux-users", { token }));
       setStep("passkey");

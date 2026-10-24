@@ -46,9 +46,9 @@ func TestDumpFixtures(t *testing.T) {
 	days := 89
 	snap.CertDays = &days
 	ops := map[string]*helper.Op{}
-	(&helper.UserOps{DB: users.DB{Root: "/"}}).Register(ops)
 	ko := &helper.SSHKeyOps{Worker: &worker.Runner{Timeout: 20 * time.Second}, Lookup: worker.Lookup, Config: sshkeys.EffectiveConfig, HostKeyDir: "/etc/ssh"}
 	ko.Register(ops)
+	(&helper.UserOps{DB: users.DB{Root: "/"}, KeyCount: ko.Count}).Register(ops)
 	admin := policy.Subject{AccountID: "it", Role: policy.RoleAdmin, LinuxUID: 1000, StepUp: true}
 	call := func(op string, p any) any {
 		v, err := ops[op].Handle(ctx, helper.Call{Subject: &admin, Params: mustJSON(p)})

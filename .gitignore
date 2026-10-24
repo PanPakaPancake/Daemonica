@@ -1,5 +1,6 @@
 # Local connection details for the test VM – never commit (SPEC §3.7)
 test_vm.md
+.secrets/
 *.key
 *.pem
 !testdata/**/*.pem

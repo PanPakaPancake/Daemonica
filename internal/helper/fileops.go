@@ -446,8 +446,16 @@ func (f *FileOps) Register(ops map[string]*Op) {
 			f.mu.Unlock()
 			return status(c.SessionKey), nil
 		}})
-	Register(ops, &Op{Name: "fs.root_status", Action: policy.ActFiles, NoAudit: true,
-		Handle: func(_ context.Context, c Call) (any, error) { return status(c.SessionKey), nil }})
+	// fs.info tells the UI where to start and what applies to this session.
+	Register(ops, &Op{Name: "fs.info", Action: policy.ActFiles, NoAudit: true,
+		Handle: func(_ context.Context, c Call) (any, error) {
+			home := "/"
+			if id, err := f.Lookup(c.Subject.LinuxUser); err == nil && files.ValidPath(id.Home) {
+				home = id.Home
+			}
+			return map[string]any{"home": home, "root": status(c.SessionKey), "upload_limit_mib": f.uploadMax() >> 20,
+				"edit_limit": files.MaxEditBytes}, nil
+		}})
 
 	// --- editor ---
 	type readParams struct {

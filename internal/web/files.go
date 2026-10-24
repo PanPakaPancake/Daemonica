@@ -29,7 +29,7 @@ func (s *Server) registerFileRoutes(mux *http.ServeMux) {
 	for _, op := range []string{"list", "stat", "create", "rename", "transfer", "delete", "chmod", "chown", "download_token"} {
 		mux.Handle("POST /api/v1/files/"+op, sess("fs."+op))
 	}
-	mux.Handle("GET /api/v1/files/root", sess("fs.root_status"))
+	mux.Handle("GET /api/v1/files/info", sess("fs.info"))
 	mux.Handle("POST /api/v1/files/root/enable", sess("fs.root_enable"))
 	mux.Handle("POST /api/v1/files/root/disable", sess("fs.root_disable"))
 	mux.Handle("POST /api/v1/files/content/read", LimitBody(16<<10, http.HandlerFunc(s.fileRead)))

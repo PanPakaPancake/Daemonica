@@ -3,16 +3,20 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/PanPakaPancake/daemonica/internal/files"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
 	"github.com/PanPakaPancake/daemonica/internal/journal"
 	"github.com/PanPakaPancake/daemonica/internal/policy"
+	"github.com/PanPakaPancake/daemonica/internal/rpc"
 	"github.com/PanPakaPancake/daemonica/internal/services"
 	"github.com/PanPakaPancake/daemonica/internal/sshkeys"
 	"github.com/PanPakaPancake/daemonica/internal/sysinfo"
@@ -60,7 +64,23 @@ func TestDumpFixtures(t *testing.T) {
 	ul := call("users.list", map[string]any{})
 	kl := call("sshkeys.list", map[string]any{"user": "pancake"})
 	srv := call("sshkeys.server", map[string]any{})
-	for name, v := range map[string]any{"overview": snap, "services": units, "journal": j, "processes": procs, "users": ul, "sshkeys": kl, "sshserver": srv} {
+	// File manager: a real directory listing, the tree root and a config file.
+	fl, err := files.List(files.ListArgs{Path: "/etc", Limit: 200})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ft, _ := files.List(files.ListArgs{Path: "/", DirsOnly: true, Limit: 500})
+	var buf bytes.Buffer
+	if _, err := files.Read(files.ReadArgs{Target: files.Target{Dir: "/etc/ssh", Name: "sshd_config"}, Edit: true}, &buf); err != nil {
+		t.Fatal(err)
+	}
+	metaRaw, _ := rpc.ReadChunk(&buf)
+	content, _ := io.ReadAll(&rpc.ChunkReader{R: &buf})
+	fc := map[string]any{}
+	_ = json.Unmarshal(metaRaw, &fc)
+	fc["content"] = string(content)
+	for name, v := range map[string]any{"overview": snap, "services": units, "journal": j, "processes": procs, "users": ul, "sshkeys": kl, "sshserver": srv,
+		"fslist": fl, "fstree": ft, "fscontent": fc} {
 		b, _ := json.Marshal(v)
 		if err := os.WriteFile(filepath.Join(dir, name+".json"), b, 0o600); err != nil {
 			t.Fatal(err)

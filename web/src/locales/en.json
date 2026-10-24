@@ -148,7 +148,9 @@
     "processes": "Processes",
     "capture": "Packet capture",
     "soon": "soon",
-    "accounts": "Accounts"
+    "accounts": "Accounts",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "header": {
     "role": {

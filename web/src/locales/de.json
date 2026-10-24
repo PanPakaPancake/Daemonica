@@ -148,7 +148,9 @@
     "processes": "Prozesse",
     "capture": "Paketmitschnitt",
     "soon": "folgt",
-    "accounts": "Konten"
+    "accounts": "Konten",
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen"
   },
   "header": {
     "role": {

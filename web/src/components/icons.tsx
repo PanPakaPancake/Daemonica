@@ -28,6 +28,8 @@ export type IconName =
   | "moon"
   | "logout"
   | "language"
+  | "menu"
+  | "close"
   | "chevronLeft"
   | "chevronRight"
   | "check";
@@ -179,6 +181,8 @@ const paths: Record<IconName, ReactNode> = {
   chevronLeft: <path d="m14.5 6-6 6 6 6" />,
   chevronRight: <path d="m9.5 6 6 6-6 6" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  close: <path d="m6 6 12 12M18 6 6 18" />,
 };
 
 export function Icon({ name, className = "h-[18px] w-[18px]" }: { name: IconName; className?: string }) {

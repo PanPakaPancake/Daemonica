@@ -13,6 +13,7 @@ import { applyTheme, initialTheme } from "./lib/theme";
 import { Login } from "./pages/Login";
 import { Passkeys } from "./pages/Passkeys";
 import { Recovery } from "./pages/Recovery";
+import { Sessions } from "./pages/Sessions";
 import { Setup } from "./pages/Setup";
 
 applyTheme(initialTheme());
@@ -102,6 +103,7 @@ if (root) {
               >
                 <Route index element={<Overview />} />
                 <Route path="security/passkeys" element={<Passkeys />} />
+                <Route path="security/sessions" element={<Sessions />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>

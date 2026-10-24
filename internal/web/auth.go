@@ -1,15 +1,11 @@
 package web
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
-	"sync"
-	"time"
+	"strings"
 
-	"github.com/PanPakaPancake/daemonica/internal/auth"
 	"github.com/PanPakaPancake/daemonica/internal/rpc"
 )
 
@@ -17,92 +13,34 @@ import (
 // forces Secure, Path=/ and no Domain attribute.
 const SessionCookie = "__Host-daemonia_session"
 
-// Sessions maps browser session cookies to helper grants. Only SHA-256 hashes
-// of cookie values are kept. Authorization state (role, step-up, expiry) lives
-// in the helper; this table only binds a cookie to a grant.
-type Sessions struct {
-	mu sync.Mutex
-	m  map[string]*websession
+// Sessions binds the browser to a helper grant. The cookie value IS the opaque
+// grant token (256 bit); the helper stores only its SHA-256 hash and owns all
+// session state (expiry, step-up, revocation), so sessions survive restarts of
+// both processes and nothing session-related is kept in the web process.
+type Sessions struct{}
+
+// NewSessions returns the cookie binder.
+func NewSessions() *Sessions { return &Sessions{} }
+
+func setCookie(w http.ResponseWriter, value string, maxAge int) {
+	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: value, Path: "/", Secure: true, HttpOnly: true,
+		SameSite: http.SameSiteStrictMode, MaxAge: maxAge})
 }
 
-type websession struct {
-	grant    string
-	created  time.Time
-	lastSeen time.Time
-	ip       string
-}
+// Create sets the session cookie for grant (replacing any previous cookie).
+func (s *Sessions) Create(w http.ResponseWriter, _ *http.Request, grant string) { setCookie(w, grant, 0) }
 
-// NewSessions creates an empty session table.
-func NewSessions() *Sessions { return &Sessions{m: map[string]*websession{}} }
-
-func newCookieValue() string {
-	b := make([]byte, auth.TokenBytes)
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
-	}
-	return base64.RawURLEncoding.EncodeToString(b)
-}
-
-// Create stores a new session for grant and sets the cookie. Any session
-// presented with the request is destroyed (rotation, no fixation).
-func (s *Sessions) Create(w http.ResponseWriter, r *http.Request, grant string) {
-	s.drop(r)
-	v := newCookieValue()
-	now := time.Now()
-	s.mu.Lock()
-	s.m[auth.Hash(v)] = &websession{grant: grant, created: now, lastSeen: now, ip: clientIP(r).String()}
-	s.mu.Unlock()
-	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: v, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode})
-}
-
-// Rotate issues a new cookie value for the same grant (after step-up).
-func (s *Sessions) Rotate(w http.ResponseWriter, r *http.Request) {
-	if g := s.Grant(r); g != "" {
-		s.Create(w, r, g)
-	}
-}
-
-// Grant returns the grant bound to the request's cookie ("" if none).
+// Grant returns the grant presented by the request ("" if none or malformed).
 func (s *Sessions) Grant(r *http.Request) string {
 	c, err := r.Cookie(SessionCookie)
-	if err != nil || len(c.Value) > 64 {
+	if err != nil || len(c.Value) > 96 || !strings.HasPrefix(c.Value, "dmn_grant_") {
 		return ""
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	ws, ok := s.m[auth.Hash(c.Value)]
-	if !ok {
-		return ""
-	}
-	ws.lastSeen = time.Now()
-	return ws.grant
+	return c.Value
 }
 
-// drop removes the request's session server-side only.
-func (s *Sessions) drop(r *http.Request) {
-	if c, err := r.Cookie(SessionCookie); err == nil {
-		s.mu.Lock()
-		delete(s.m, auth.Hash(c.Value))
-		s.mu.Unlock()
-	}
-}
-
-// Destroy removes the request's session and clears the cookie.
-func (s *Sessions) Destroy(w http.ResponseWriter, r *http.Request) {
-	s.drop(r)
-	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: "", Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1})
-}
-
-// Prune drops sessions not seen within maxIdle (the helper enforces the real timeout).
-func (s *Sessions) Prune(maxIdle time.Duration) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for k, v := range s.m {
-		if time.Since(v.lastSeen) > maxIdle {
-			delete(s.m, k)
-		}
-	}
-}
+// Destroy clears the cookie.
+func (s *Sessions) Destroy(w http.ResponseWriter, _ *http.Request) { setCookie(w, "", -1) }
 
 // httpStatus maps stable helper codes to HTTP status codes.
 func httpStatus(code string) int {
@@ -199,7 +137,7 @@ func (s *Server) forward(e endpoint) http.Handler {
 			s.Limiter.Success(ip)
 		}
 		switch {
-		case e.setGrant:
+		case e.setGrant || e.stepUp:
 			var gr struct {
 				Grant   string          `json:"grant"`
 				Account json.RawMessage `json:"account"`
@@ -209,10 +147,12 @@ func (s *Server) forward(e endpoint) http.Handler {
 				return
 			}
 			s.Sessions.Create(w, r, gr.Grant)
+			if e.stepUp {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
 			writeJSON(w, http.StatusOK, map[string]json.RawMessage{"account": gr.Account})
 			return
-		case e.stepUp:
-			s.Sessions.Rotate(w, r)
 		case e.logout:
 			s.Sessions.Destroy(w, r)
 		}
@@ -268,6 +208,9 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/auth/stepup/begin", sess("auth.begin_stepup"))
 	mux.Handle("POST /api/v1/auth/stepup/finish", s.forward(endpoint{op: "auth.finish_stepup", session: true, stepUp: true, maxBody: 64 << 10}))
 	mux.Handle("POST /api/v1/auth/logout", s.forward(endpoint{op: "auth.logout", session: true, logout: true}))
+	mux.Handle("GET /api/v1/sessions", sess("sessions.list"))
+	mux.Handle("POST /api/v1/sessions/list", sess("sessions.list"))
+	mux.Handle("DELETE /api/v1/sessions/{id}", sess("sessions.revoke"))
 	mux.Handle("GET /api/v1/passkeys", sess("passkeys.list"))
 	mux.Handle("POST /api/v1/passkeys/begin", sess("passkeys.begin_add"))
 	mux.Handle("POST /api/v1/passkeys/finish", s.forward(endpoint{op: "passkeys.finish_add", session: true, maxBody: 64 << 10}))

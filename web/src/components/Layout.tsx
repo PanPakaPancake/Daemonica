@@ -23,7 +23,7 @@ const groups: NavGroup[] = [
   { key: "nav.tools", items: [] },
   {
     key: "nav.security",
-    items: [{ to: "/security/passkeys", key: "nav.passkeys" }, { key: "nav.sessions" }, { key: "nav.audit" }, { key: "nav.settings" }],
+    items: [{ to: "/security/passkeys", key: "nav.passkeys" }, { to: "/security/sessions", key: "nav.sessions" }, { key: "nav.audit" }, { key: "nav.settings" }],
   },
 ];
 
@@ -115,7 +115,7 @@ export function Layout() {
             </label>
             <select
               id="lang"
-              className="input min-h-9 w-auto py-1"
+              className="input min-h-9 py-1 header-select"
               value={i18n.language}
               onChange={(e) => setLanguage(e.target.value === "en" ? "en" : "de")}
             >
@@ -126,7 +126,7 @@ export function Layout() {
               {theme === "dark" ? t("header.light") : t("header.dark")}
             </button>
             {me && (
-              <button type="button" className="btn btn-secondary min-h-9" onClick={() => void logout()}>
+              <button type="button" className="btn btn-secondary min-h-9 whitespace-nowrap" onClick={() => void logout()}>
                 {me.linux_user} · {t("header.logout")}
               </button>
             )}

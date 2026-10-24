@@ -335,3 +335,58 @@ func (t *dbTokens) RevokePurpose(purpose, subject string) error {
 	_, err := t.d.sql.Exec(`UPDATE tokens SET used=1 WHERE purpose=? AND subject=?`, purpose, subject)
 	return err
 }
+
+// --- grant persistence (implements GrantPersistence) ---
+
+// SaveGrant inserts or replaces a grant record.
+func (d *DB) SaveGrant(r GrantRecord) error {
+	su := ""
+	if !r.StepUpUntil.IsZero() {
+		su = ts(r.StepUpUntil)
+	}
+	_, err := d.sql.Exec(`INSERT OR REPLACE INTO grants(hash,account_id,role,linux_user,linux_uid,created_at,last_used_at,step_up_until,source_ip) VALUES(?,?,?,?,?,?,?,?,?)`,
+		r.Hash, r.Subject.AccountID, string(r.Subject.Role), r.Subject.LinuxUser, r.Subject.LinuxUID, ts(r.Created), ts(r.LastUsed), su, r.SourceIP)
+	return err
+}
+
+// DeleteGrant removes one grant.
+func (d *DB) DeleteGrant(hash string) error {
+	_, err := d.sql.Exec(`DELETE FROM grants WHERE hash=?`, hash)
+	return err
+}
+
+// DeleteAccountGrants removes all grants of an account.
+func (d *DB) DeleteAccountGrants(accountID string) error {
+	_, err := d.sql.Exec(`DELETE FROM grants WHERE account_id=?`, accountID)
+	return err
+}
+
+// TouchGrant updates the last-use time.
+func (d *DB) TouchGrant(hash string, lastUsed time.Time) error {
+	_, err := d.sql.Exec(`UPDATE grants SET last_used_at=? WHERE hash=?`, ts(lastUsed), hash)
+	return err
+}
+
+// LoadGrants returns all stored grants of enabled accounts.
+func (d *DB) LoadGrants() ([]GrantRecord, error) {
+	rows, err := d.sql.Query(`SELECT g.hash,g.account_id,g.role,g.linux_user,g.linux_uid,g.created_at,g.last_used_at,g.step_up_until,g.source_ip
+	 FROM grants g JOIN accounts a ON a.id=g.account_id WHERE a.disabled=0`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []GrantRecord
+	for rows.Next() {
+		var r GrantRecord
+		var role, created, last, su string
+		if err := rows.Scan(&r.Hash, &r.Subject.AccountID, &role, &r.Subject.LinuxUser, &r.Subject.LinuxUID, &created, &last, &su, &r.SourceIP); err != nil {
+			return nil, err
+		}
+		r.Subject.Role, r.Created, r.LastUsed = policy.Role(role), parseTS(created), parseTS(last)
+		if su != "" {
+			r.StepUpUntil = parseTS(su)
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}

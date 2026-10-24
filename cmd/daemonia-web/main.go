@@ -104,18 +104,6 @@ func main() {
 		Limiter:  web.NewRateLimiter(0.5, 10, 10, 100),
 		Sessions: web.NewSessions(),
 	}
-	go func() {
-		t := time.NewTicker(5 * time.Minute)
-		defer t.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-t.C:
-				srv.Sessions.Prune(24 * time.Hour)
-			}
-		}
-	}()
 	httpSrv := &http.Server{
 		Handler:           srv.Handler(),
 		TLSConfig:         tlsconf.Config(holder),

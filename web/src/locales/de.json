@@ -180,5 +180,18 @@
   "notFound": {
     "title": "Seite nicht gefunden",
     "back": "Zur Übersicht"
+  },
+  "sessions": {
+    "title": "Sitzungen",
+    "intro": "Hier siehst du, wo du angemeldet bist, und kannst Sitzungen beenden. Sitzungen enden automatisch nach 30 Minuten Inaktivität bzw. spätestens nach 12 Stunden.",
+    "showAll": "Sitzungen aller Konten anzeigen",
+    "account": "Konto",
+    "ip": "Adresse",
+    "created": "Angemeldet",
+    "lastUsed": "Zuletzt aktiv",
+    "state": "Status",
+    "current": "Diese Sitzung",
+    "end": "Beenden",
+    "confirmEnd": "Sitzung wirklich beenden?"
   }
 }

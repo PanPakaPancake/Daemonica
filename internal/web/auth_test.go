@@ -91,20 +91,31 @@ func sessionCookie(rec *httptest.ResponseRecorder) *http.Cookie {
 }
 
 func TestLoginCreatesHardenedSessionWithoutLeakingGrant(t *testing.T) {
-	var lastGrant string
+	g1 := "dmn_grant_" + strings.Repeat("A", 43)
+	g2 := "dmn_grant_" + strings.Repeat("B", 43)
+	valid := map[string]bool{}
 	h := newAuthServer(t, func(r *rpc.Request) *rpc.Response {
-		lastGrant = r.Grant
 		switch r.Op {
 		case "auth.finish_login":
-			resp, _ := rpc.Succeed(r.ID, map[string]any{"grant": "dmn_grant_SECRET", "account": map[string]string{"name": "Pancake"}})
+			valid[g1] = true
+			resp, _ := rpc.Succeed(r.ID, map[string]any{"grant": g1, "account": map[string]string{"name": "Pancake"}})
 			return resp
 		case "session.whoami":
-			if r.Grant != "dmn_grant_SECRET" {
+			if !valid[r.Grant] {
 				return rpc.Fail(r.ID, rpc.CodeUnauthorized, "")
 			}
 			resp, _ := rpc.Succeed(r.ID, map[string]any{"role": "admin"})
 			return resp
-		case "auth.finish_stepup", "auth.logout":
+		case "auth.finish_stepup":
+			if !valid[r.Grant] {
+				return rpc.Fail(r.ID, rpc.CodeUnauthorized, "")
+			}
+			delete(valid, r.Grant)
+			valid[g2] = true
+			resp, _ := rpc.Succeed(r.ID, map[string]any{"grant": g2})
+			return resp
+		case "auth.logout":
+			delete(valid, r.Grant)
 			return &rpc.Response{V: rpc.Version, ID: r.ID, OK: true}
 		}
 		return rpc.Fail(r.ID, rpc.CodeUnknownOp, "")
@@ -117,25 +128,22 @@ func TestLoginCreatesHardenedSessionWithoutLeakingGrant(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("login: %d %s", rec.Code, rec.Body.String())
 	}
-	if strings.Contains(rec.Body.String(), "SECRET") {
-		t.Fatal("grant leaked to the browser")
+	if strings.Contains(rec.Body.String(), "dmn_grant_") {
+		t.Fatal("grant leaked into the response body (readable by scripts)")
 	}
 	c := sessionCookie(rec)
-	if c == nil || !c.Secure || !c.HttpOnly || c.SameSite != http.SameSiteStrictMode || c.Path != "/" || c.Domain != "" {
+	if c == nil || !c.Secure || !c.HttpOnly || c.SameSite != http.SameSiteStrictMode || c.Path != "/" || c.Domain != "" || c.Value != g1 {
 		t.Fatalf("cookie flags wrong: %+v", c)
 	}
-	if len(c.Value) < 40 {
-		t.Fatal("cookie too short")
-	}
-	if rec := get(h, "/api/v1/session", c); rec.Code != 200 || lastGrant != "dmn_grant_SECRET" {
-		t.Fatalf("session lookup: %d grant=%q", rec.Code, lastGrant)
+	if rec := get(h, "/api/v1/session", c); rec.Code != 200 {
+		t.Fatalf("session lookup: %d", rec.Code)
 	}
 
-	// Step-up rotates the cookie; the old value stops working.
+	// Step-up rotates the token; the old cookie stops working.
 	rec = post(h, "/api/v1/auth/stepup/finish", `{"ceremony_id":"y","response":{}}`, c)
 	c2 := sessionCookie(rec)
-	if rec.Code != 204 || c2 == nil || c2.Value == c.Value {
-		t.Fatalf("step-up did not rotate cookie: %d", rec.Code)
+	if rec.Code != 204 || c2 == nil || c2.Value != g2 || strings.Contains(rec.Body.String(), "dmn_grant_") {
+		t.Fatalf("step-up did not rotate cookie: %d %+v", rec.Code, c2)
 	}
 	if rec := get(h, "/api/v1/session", c); rec.Code != 401 {
 		t.Fatal("old cookie valid after rotation (fixation)")
@@ -148,6 +156,10 @@ func TestLoginCreatesHardenedSessionWithoutLeakingGrant(t *testing.T) {
 	}
 	if rec := get(h, "/api/v1/session", c2); rec.Code != 401 {
 		t.Fatal("session valid after logout")
+	}
+	// Malformed cookies never reach the helper as grants.
+	if rec := get(h, "/api/v1/session", &http.Cookie{Name: SessionCookie, Value: "x' OR 1=1"}); rec.Code != 401 {
+		t.Fatal("malformed cookie accepted")
 	}
 }
 

@@ -408,7 +408,7 @@ func (a *AuthOps) Register(ops map[string]*Op) {
 				return nil, err
 			}
 			acc, _ = a.DB.AccountByID(ctx, acc.ID)
-			return a.issue(acc)
+			return a.issue(acc, c.SourceIP)
 		}})
 
 	// ----- login (pre-auth) -----
@@ -453,7 +453,7 @@ func (a *AuthOps) Register(ops map[string]*Op) {
 			if err := a.updateCredential(ctx, cred); err != nil {
 				return nil, err
 			}
-			return a.issue(acc)
+			return a.issue(acc, c.SourceIP)
 		}})
 
 	// ----- authenticated session operations -----
@@ -487,15 +487,66 @@ func (a *AuthOps) Register(ops map[string]*Op) {
 			if err := a.updateCredential(ctx, cred); err != nil {
 				return nil, err
 			}
-			if err := a.Grants.MarkStepUp(c.Grant, a.now()); err != nil {
+			// Rotate the session token on step-up (no fixation, SPEC §3.5).
+			tok, err := a.Grants.RotateWithStepUp(c.Grant, a.now())
+			if err != nil {
 				return nil, Errf(rpc.CodeUnauthorized, "")
 			}
-			return map[string]any{"step_up_until": a.now().Add(auth.StepUpTTL).UTC()}, nil
+			return map[string]any{"grant": tok, "step_up_until": a.now().Add(auth.StepUpTTL).UTC()}, nil
 		}})
 
 	Register(ops, &Op{Name: "auth.logout", Action: policy.ActOwnSessions,
 		Handle: func(_ context.Context, c Call) (any, error) {
 			a.Grants.Revoke(c.Grant)
+			return nil, nil
+		}})
+
+	Register(ops, &Op{Name: "sessions.list", Action: policy.ActOwnSessions, NoAudit: true,
+		Handle: func(ctx context.Context, c Call) (any, error) {
+			var p struct {
+				All bool `json:"all,omitempty"`
+			}
+			if len(c.Params) > 0 {
+				if err := decode(c, &p); err != nil {
+					return nil, err
+				}
+			}
+			scope := c.Subject.AccountID
+			if p.All {
+				if c.Subject.Role != policy.RoleAdmin {
+					return nil, Errf(rpc.CodeForbidden, "")
+				}
+				scope = ""
+			}
+			list := a.Grants.List(scope, c.GrantID, a.now())
+			names := map[string]string{}
+			if accs, err := a.DB.ListAccounts(ctx); err == nil {
+				for _, x := range accs {
+					names[x.ID] = x.Name
+				}
+			}
+			for i := range list {
+				list[i].AccountName = names[list[i].AccountID]
+			}
+			return list, nil
+		}})
+
+	Register(ops, &Op{Name: "sessions.revoke", Action: policy.ActOwnSessions,
+		AuditTarget: func(c Call) string { var p struct{ ID string `json:"id"` }; _ = json.Unmarshal(c.Params, &p); return "session:" + p.ID },
+		Handle: func(_ context.Context, c Call) (any, error) {
+			var p struct {
+				ID string `json:"id"`
+			}
+			if err := decode(c, &p); err != nil {
+				return nil, err
+			}
+			scope := c.Subject.AccountID
+			if c.Subject.Role == policy.RoleAdmin {
+				scope = "" // admins may end any session (SPEC §3.5)
+			}
+			if !a.Grants.RevokeByID(p.ID, scope) {
+				return nil, Errf(rpc.CodeNotFound, "")
+			}
 			return nil, nil
 		}})
 
@@ -661,7 +712,7 @@ func (a *AuthOps) Register(ops map[string]*Op) {
 				return nil, err
 			}
 			acc, _ = a.DB.AccountByID(ctx, acc.ID)
-			return a.issue(acc)
+			return a.issue(acc, c.SourceIP)
 		}})
 }
 
@@ -694,8 +745,8 @@ func (a *AuthOps) updateCredential(ctx context.Context, cred *webauthn.Credentia
 	return a.DB.UpdatePasskeyAfterUse(ctx, cred.ID, raw, cred.Flags.BackupState, a.now())
 }
 
-func (a *AuthOps) issue(acc Account) (any, error) {
-	tok, err := a.Grants.Issue(policy.Subject{AccountID: acc.ID, Role: acc.Role, LinuxUser: acc.LinuxUser, LinuxUID: acc.LinuxUID}, a.now())
+func (a *AuthOps) issue(acc Account, ip string) (any, error) {
+	tok, err := a.Grants.IssueFrom(policy.Subject{AccountID: acc.ID, Role: acc.Role, LinuxUser: acc.LinuxUser, LinuxUID: acc.LinuxUID}, a.now(), ip)
 	if err != nil {
 		return nil, err
 	}

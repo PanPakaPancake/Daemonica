@@ -152,8 +152,19 @@ func TestSetupLoginStepUp(t *testing.T) {
 	var cs CeremonyStart
 	_ = json.Unmarshal(res, &cs)
 	resp, _ := sa.Get(cs.Options, testOrigin, nil)
-	r, _ = e.call(t, e.web, "auth.finish_stepup", g2, map[string]any{"ceremony_id": cs.CeremonyID, "response": json.RawMessage(resp)})
+	r, res = e.call(t, e.web, "auth.finish_stepup", g2, map[string]any{"ceremony_id": cs.CeremonyID, "response": json.RawMessage(resp)})
 	mustOK(t, r, "finish_stepup")
+	var rot struct {
+		Grant string `json:"grant"`
+	}
+	_ = json.Unmarshal(res, &rot)
+	if rot.Grant == "" || rot.Grant == g2 {
+		t.Fatal("step-up must rotate the grant")
+	}
+	if r, _ := e.call(t, e.web, "session.whoami", g2, nil); code(r) != rpc.CodeUnauthorized {
+		t.Fatal("pre-step-up grant still valid after rotation")
+	}
+	g2 = rot.Grant
 	if r, _ := e.call(t, e.web, "test.privileged", g2, nil); !r.OK {
 		t.Fatalf("privileged op after step-up failed: %+v", r.Error)
 	}
@@ -305,4 +316,59 @@ func TestTokensPersistAcrossReopen(t *testing.T) {
 	if fi, _ := os.Stat(filepath.Join(dir, "a.db")); fi.Mode().Perm() != 0o600 {
 		t.Fatalf("db mode %v", fi.Mode().Perm())
 	}
+}
+
+func TestSessionsPersistListAndRevoke(t *testing.T) {
+	e := newAuthEnv(t)
+	grant, sa, _ := setupAdmin(t, e)
+	_, g2 := login(t, e, sa, testOrigin)
+
+	// Sessions survive a helper restart (new GrantStore loading from the DB).
+	persistent := NewGrantStore(0, 0)
+	_ = persistent.WithPersistence(e.db, time.Now())
+	tok, err := persistent.IssueFrom(policy.Subject{AccountID: mustAccount(t, e).ID, Role: policy.RoleAdmin, LinuxUser: "pancake", LinuxUID: 1000}, time.Now(), "198.51.100.9")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reloaded := NewGrantStore(0, 0)
+	if err := reloaded.WithPersistence(e.db, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := reloaded.Resolve(tok, time.Now()); err != nil {
+		t.Fatal("session lost across restart")
+	}
+	if _, _, err := reloaded.Resolve(tok, time.Now().Add(2*time.Hour)); err == nil {
+		t.Fatal("idle timeout not enforced after reload")
+	}
+
+	// List own sessions and revoke the other one.
+	r, res := e.call(t, e.web, "sessions.list", grant, nil)
+	mustOK(t, r, "sessions.list")
+	var list []SessionInfo
+	_ = json.Unmarshal(res, &list)
+	if len(list) != 2 {
+		t.Fatalf("want 2 sessions, got %d", len(list))
+	}
+	var other string
+	for _, s := range list {
+		if !s.Current {
+			other = s.ID
+		}
+	}
+	mustOK(t, e.web.Dispatch(context.Background(), req("sessions.revoke", grant, map[string]string{"id": other})), "revoke")
+	if r, _ := e.call(t, e.web, "session.whoami", g2, nil); code(r) != rpc.CodeUnauthorized {
+		t.Fatal("revoked session still valid")
+	}
+	if r, _ := e.call(t, e.web, "sessions.revoke", grant, map[string]string{"id": "../../etc/passwd"}); r.OK {
+		t.Fatal("bogus session id accepted")
+	}
+}
+
+func mustAccount(t *testing.T, e *authEnv) Account {
+	t.Helper()
+	a, err := e.db.AccountByName(context.Background(), "Pancake")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return a
 }

@@ -87,6 +87,10 @@ func main() {
 
 	c := cfg.Get()
 	grants := helper.NewGrantStore(time.Duration(c.IdleMinutes)*time.Minute, time.Duration(c.AbsHours)*time.Hour)
+	if err := grants.WithPersistence(db, time.Now()); err != nil {
+		log.Error("cannot load sessions", "err", err)
+		os.Exit(1)
+	}
 	core := &helper.Core{Config: cfg, Tokens: tokens, Grants: grants, AuditPath: *auditPath, TLSDir: *tlsDir, Version: version}
 	ops := map[string]*helper.Op{}
 	core.Register(ops, al)

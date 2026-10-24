@@ -203,3 +203,7 @@ textarea.input {
   background: var(--magenta-btn);
   color: #fff;
 }
+
+.input.header-select {
+  width: auto;
+}

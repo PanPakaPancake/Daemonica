@@ -180,5 +180,18 @@
   "notFound": {
     "title": "Page not found",
     "back": "Back to overview"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "intro": "See where you are signed in and end sessions. Sessions end automatically after 30 minutes of inactivity or at the latest after 12 hours.",
+    "showAll": "Show sessions of all accounts",
+    "account": "Account",
+    "ip": "Address",
+    "created": "Signed in",
+    "lastUsed": "Last active",
+    "state": "State",
+    "current": "This session",
+    "end": "End",
+    "confirmEnd": "Really end this session?"
   }
 }

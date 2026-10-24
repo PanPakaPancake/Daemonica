@@ -152,22 +152,24 @@ func TestLoginCreatesHardenedSessionWithoutLeakingGrant(t *testing.T) {
 }
 
 func TestHelperCodesMapToHTTP(t *testing.T) {
-	h := newAuthServer(t, func(r *rpc.Request) *rpc.Response {
+	handler := func(r *rpc.Request) *rpc.Response {
 		var p map[string]string
 		_ = json.Unmarshal(r.Params, &p)
 		return rpc.Fail(r.ID, p["want"], "internal detail must not leak")
-	})
+	}
 	cases := map[string]int{
 		rpc.CodeTokenInvalid: 401, rpc.CodeValidation: 400, rpc.CodeSetupComplete: 409,
 		rpc.CodeLockout: 409, rpc.CodeUnavailable: 503, "weird": 500,
 	}
 	for code, status := range cases {
+		// Fresh server per case: token failures legitimately trigger per-IP backoff.
+		h := newAuthServer(t, handler)
 		rec := post(h, "/api/v1/setup/domain", `{"want":"`+code+`"}`)
 		if rec.Code != status || strings.Contains(rec.Body.String(), "internal detail") {
 			t.Errorf("%s → %d %s", code, rec.Code, rec.Body.String())
 		}
 	}
-	if rec := post(h, "/api/v1/setup/domain", `not json`); rec.Code != 400 {
+	if rec := post(newAuthServer(t, handler), "/api/v1/setup/domain", `not json`); rec.Code != 400 {
 		t.Fatalf("invalid json: %d", rec.Code)
 	}
 }
@@ -187,5 +189,15 @@ func TestSessionEndpointsRequireCookieAndCSRF(t *testing.T) {
 	h.ServeHTTP(rec, r)
 	if rec.Code != 403 || called {
 		t.Fatal("cross-origin request reached the helper")
+	}
+}
+
+func TestTokenFailuresTriggerBackoff(t *testing.T) {
+	h := newAuthServer(t, func(r *rpc.Request) *rpc.Response { return rpc.Fail(r.ID, rpc.CodeTokenInvalid, "") })
+	if rec := post(h, "/api/v1/setup/domain", `{}`); rec.Code != 401 {
+		t.Fatalf("first: %d", rec.Code)
+	}
+	if rec := post(h, "/api/v1/setup/domain", `{}`); rec.Code != 429 {
+		t.Fatalf("second attempt must be throttled, got %d", rec.Code)
 	}
 }

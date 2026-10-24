@@ -3,7 +3,9 @@ package audit
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -15,7 +17,7 @@ type Filter struct {
 	Text         string `json:"text,omitempty"`   // case-insensitive substring of target/reason/source IP
 	Since        string `json:"since,omitempty"`  // RFC 3339, inclusive
 	Until        string `json:"until,omitempty"`  // RFC 3339, exclusive
-	Before       string `json:"before,omitempty"` // cursor: only events with event_id < Before
+	Before       string `json:"before,omitempty"` // cursor from Page.Next: only older records
 	Limit        int    `json:"limit,omitempty"`
 }
 
@@ -33,8 +35,6 @@ func (f Filter) match(e *Event) bool {
 	case f.Since != "" && e.TS < f.Since:
 		return false
 	case f.Until != "" && e.TS >= f.Until:
-		return false
-	case f.Before != "" && e.EventID >= f.Before:
 		return false
 	}
 	if f.Text != "" {
@@ -58,16 +58,33 @@ func Query(r io.Reader, f Filter) (Page, error) {
 	if f.Limit <= 0 || f.Limit > MaxQueryLimit {
 		f.Limit = 100
 	}
-	ring := make([]Event, 0, f.Limit+1)
+	// The cursor is a line number: ULIDs created within one millisecond are
+	// not ordered, line positions in the append-only log are.
+	before := -1
+	if f.Before != "" {
+		n, err := strconv.Atoi(f.Before)
+		if err != nil || n < 0 {
+			return Page{}, errors.New("invalid cursor")
+		}
+		before = n
+	}
+	type rec struct {
+		e    Event
+		line int
+	}
+	ring := make([]rec, 0, f.Limit+1)
 	more := false
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 64*1024), 1<<20)
-	for sc.Scan() {
+	for line := 0; sc.Scan(); line++ {
+		if before >= 0 && line >= before {
+			break
+		}
 		var e Event
 		if json.Unmarshal(sc.Bytes(), &e) != nil || !f.match(&e) {
 			continue
 		}
-		ring = append(ring, e)
+		ring = append(ring, rec{e, line})
 		if len(ring) > f.Limit {
 			ring = ring[1:]
 			more = true
@@ -78,11 +95,11 @@ func Query(r io.Reader, f Filter) (Page, error) {
 	}
 	out := make([]Event, len(ring))
 	for i := range ring {
-		out[i] = ring[len(ring)-1-i]
+		out[i] = ring[len(ring)-1-i].e
 	}
 	p := Page{Events: out}
-	if more && len(out) > 0 {
-		p.Next = out[len(out)-1].EventID
+	if more && len(ring) > 0 {
+		p.Next = strconv.Itoa(ring[0].line)
 	}
 	return p, nil
 }

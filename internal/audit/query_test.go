@@ -34,7 +34,7 @@ func TestQueryFilterAndPaging(t *testing.T) {
 		return p
 	}
 	p := read(Filter{ActionPrefix: "accounts.", Limit: 3})
-	if len(p.Events) != 3 || p.Next == "" || p.Events[0].EventID <= p.Events[2].EventID {
+	if len(p.Events) != 3 || p.Next == "" || p.Events[0].TS < p.Events[2].TS {
 		t.Fatalf("page 1 wrong: %+v", p)
 	}
 	p2 := read(Filter{ActionPrefix: "accounts.", Limit: 3, Before: p.Next})

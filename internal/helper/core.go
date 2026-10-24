@@ -219,7 +219,11 @@ func (c *Core) Register(ops map[string]*Op, al *audit.Logger) {
 				return nil, Errf(rpc.CodeNotFound, "audit log not readable")
 			}
 			defer func() { _ = fh.Close() }()
-			return audit.Query(fh, f)
+			page, err := audit.Query(fh, f)
+			if err != nil {
+				return nil, Errf(rpc.CodeValidation, "invalid query")
+			}
+			return page, nil
 		}})
 
 	Register(ops, &Op{Name: "audit.verify", Action: policy.ActAuditRead, Timeout: 5 * time.Minute,

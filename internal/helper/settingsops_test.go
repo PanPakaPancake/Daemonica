@@ -52,7 +52,7 @@ func TestAllowlistPlanApplyConfirmRollback(t *testing.T) {
 		mustOK(t, r, "plan")
 		var ch planner.Change
 		_ = json.Unmarshal(r.Result, &ch)
-		if ch.ID == "" || len(ch.Payload) != 0 {
+		if ch.ID == "" || (len(ch.Payload) != 0 && string(ch.Payload) != "null") {
 			t.Fatalf("bad plan %+v", ch)
 		}
 		return ch

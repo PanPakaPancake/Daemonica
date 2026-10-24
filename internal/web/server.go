@@ -1,7 +1,10 @@
 package web
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -139,6 +142,32 @@ func (s *Server) setupToken(w http.ResponseWriter, r *http.Request) {
 
 // static serves the embedded UI. Unknown non-asset paths fall back to
 // index.html (client-side routing). Directory listings are never produced.
+// NoncePlaceholder in index.html is replaced by a fresh per-response nonce.
+const NoncePlaceholder = "__STYLE_NONCE__"
+
+// serveIndex renders index.html with a fresh style nonce and the matching CSP.
+// The nonce only authorises <style> elements created by UI libraries (Radix
+// scroll lock); scripts remain restricted to 'self' (DEC-018).
+func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
+	b, err := fs.ReadFile(s.UI, "index.html")
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	nb := make([]byte, 16)
+	_, _ = rand.Read(nb)
+	nonce := base64.RawURLEncoding.EncodeToString(nb)
+	w.Header().Set("Content-Security-Policy", strings.Replace(CSP, "style-src 'self'", "style-src 'self' 'nonce-"+nonce+"'", 1))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	if r.Method == http.MethodHead {
+		return
+	}
+	_, _ = w.Write(bytes.ReplaceAll(b, []byte(NoncePlaceholder), []byte(nonce)))
+}
+
+// static serves the embedded UI. Unknown non-asset paths fall back to
+// index.html (client-side routing). Directory listings are never produced.
 func (s *Server) static() http.Handler {
 	fileServer := http.FileServerFS(s.UI)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -148,17 +177,16 @@ func (s *Server) static() http.Handler {
 		}
 		p := path.Clean("/" + r.URL.Path)
 		name := strings.TrimPrefix(p, "/")
-		if name == "" {
-			name = "index.html"
+		if name == "" || name == "index.html" {
+			s.serveIndex(w, r)
+			return
 		}
 		if fi, err := fs.Stat(s.UI, name); err != nil || fi.IsDir() {
 			if strings.HasPrefix(name, "assets/") || strings.Contains(path.Base(name), ".") {
 				http.NotFound(w, r)
 				return
 			}
-			r2 := r.Clone(r.Context())
-			r2.URL.Path = "/"
-			fileServer.ServeHTTP(w, r2)
+			s.serveIndex(w, r)
 			return
 		}
 		if strings.HasPrefix(name, "assets/") {

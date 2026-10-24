@@ -109,3 +109,9 @@ Format per SPEC §0.3: ID, date, context, decision, rejected alternatives, secur
 - **Context:** SPEC §7.2 asks for live log follow "per WebSocket". The WebSocket infrastructure (tickets, origin check, rate limits) is built with the terminal in M1.4.
 - **Decision:** For now the UI polls `journal.query` with the last cursor every 1.5 s while "Follow" is active (meets the < 2 s requirement). The endpoint is switched to `/api/v1/ws/journal` in M1.4 without API changes for the helper.
 - **Security:** Same session, CSRF and rate-limit rules as every other API call; no new attack surface.
+
+## DEC-018 — Per-response style nonce for UI-library <style> elements
+- **Date:** 2026-10-24
+- **Context:** The headless screenshot test (scripts/e2e/screens.mjs) showed CSP violations: Radix dialogs (via react-remove-scroll) insert a `<style>` element for the body scroll lock, which `style-src 'self'` blocks. Alternatives were dropping modal behaviour (focus trap, a11y regression) or `'unsafe-inline'` (not acceptable).
+- **Decision:** `index.html` is rendered per response with a fresh 128-bit nonce; the CSP of that response becomes `style-src 'self' 'nonce-…'`. The app passes the nonce to `get-nonce` (the hook the Radix stack reads). Scripts stay `script-src 'self'` without nonce; API and asset responses keep the static CSP. Dependency `get-nonce` 1.0.1 (MIT, no dependencies) was already a transitive dependency and is now direct.
+- **Security:** Only `<style>` elements carrying the nonce are allowed; style injection by an attacker would additionally need the per-response nonce. No script relaxation. Covered by `TestIndexGetsFreshStyleNonce` and the screenshot smoke test (fails on any console/CSP error).

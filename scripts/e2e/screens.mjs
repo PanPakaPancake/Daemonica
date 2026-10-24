@@ -32,6 +32,7 @@ async function shot(name, path, { width = 1440, height = 900, after, theme = "da
     "**/api/v1/users/list": fx("users"),
     "**/api/v1/ssh-keys/list": fx("sshkeys"),
     "**/api/v1/ssh-keys/server": fx("sshserver"),
+    "**/api/v1/services/get": JSON.stringify({ name: "ssh.service", type: "service", description: "OpenBSD Secure Shell server", load: "loaded", active: "active", sub: "running", file_state: "enabled", protected: true, fragment_path: "/usr/lib/systemd/system/ssh.service", unit_file: "[Unit]\nDescription=OpenBSD Secure Shell server\nAfter=network.target\n\n[Service]\nExecStart=/usr/sbin/sshd -D\n", main_pid: 1043, after: ["network.target"] }),
   };
   for (const [pat, body] of Object.entries(routes)) await p.route(pat, json(body));
   await p.goto(base + path, { waitUntil: "networkidle" });

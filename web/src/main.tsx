@@ -3,6 +3,7 @@ import { StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router";
+import { setNonce } from "get-nonce";
 import "./styles.css";
 import "./i18n";
 import { Layout } from "./components/Layout";
@@ -24,6 +25,11 @@ import { Logs } from "./pages/Logs";
 import { Processes } from "./pages/Processes";
 import { Users } from "./pages/Users";
 import { SSHKeys } from "./pages/SSHKeys";
+
+// Per-response style nonce from the server (DEC-018): lets Radix's scroll lock
+// insert its <style> element under the strict CSP.
+const styleNonce = document.querySelector<HTMLMetaElement>('meta[name="style-nonce"]')?.content;
+if (styleNonce && styleNonce !== "__STYLE_NONCE__") setNonce(styleNonce);
 
 applyTheme(initialTheme());
 

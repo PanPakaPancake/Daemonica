@@ -96,3 +96,16 @@ Format per SPEC §0.3: ID, date, context, decision, rejected alternatives, secur
 - **Decision:** Helper planner kind `allowlist` (payload old/new list, journaled for crash recovery). Loopback is always kept. Excluding the caller's IP is refused with `lockout_protection` unless `confirm_lockout` is set (UI: explicit checkbox); public lists need `confirm_public`. The apply response sets `Connection: close` (HTTP/2: GOAWAY) and triggers an immediate config reload in the web process; the confirmation must arrive on a TCP connection accepted **after** the apply (web passes the accept time, helper compares with `applied_at`). Without confirmation the helper reverts after 90 s. In addition, the web process now re-checks the allowlist on every request, so keep-alive connections from removed networks lose access at once.
 - **Rejected:** Confirm over the existing connection (proves nothing); client-side timers (die with the browser).
 - **Security:** A compromised web process could fake the accept time, but it could also confirm anyway (A3 can act within the logged-in admin's rights); the mechanism protects against honest mistakes, the helper still enforces step-up and owner binding.
+
+## DEC-016 — M1.1 data sources: /proc collector, D-Bus, journalctl JSON
+- **Date:** 2026-10-24
+- **Context:** SPEC §7.2 and §4.1 (prefer /proc, /sys, D-Bus, statfs over command output).
+- **Decision:** (1) One `sysinfo.Collector` in the helper samples /proc, /sys and statfs every 3 s; all sessions read the cached snapshot (no polling storm). (2) systemd is controlled exclusively over D-Bus with `github.com/godbus/dbus/v5` **v5.2.2** — v5.2.3/v5.2.4 are younger than 14 days (SPEC §4.4), BSD-2-Clause, no transitive dependencies. (3) journald has no stable, CGO-free Go reader; the helper runs `/usr/bin/journalctl --output=json` with an argv array, fixed environment, 20 s timeout and 32 MiB output cap (`internal/execx`); every value is a single `--opt=value` element, leading dashes are rejected, search text is regex-escaped. Results are capped at 640 KiB to stay below the 1 MiB RPC frame. (4) Process signals use a pidfd (`os.FindProcess`) after re-reading the process and comparing its start time with the one shown to the user (PID-reuse guard). (5) Pending update counts come from Ubuntu's update-notifier summary until the apt module (M1.7) exists.
+- **Rejected:** `systemctl`/`ps`/`df` output parsing; cgo `sd-journal` bindings (CGO_ENABLED=0).
+- **Security:** argv-only execution, no shell; all system strings sanitised (control/bidi characters removed) before leaving the helper.
+
+## DEC-017 — Log follow by polling until the WebSocket layer lands (M1.4)
+- **Date:** 2026-10-24
+- **Context:** SPEC §7.2 asks for live log follow "per WebSocket". The WebSocket infrastructure (tickets, origin check, rate limits) is built with the terminal in M1.4.
+- **Decision:** For now the UI polls `journal.query` with the last cursor every 1.5 s while "Follow" is active (meets the < 2 s requirement). The endpoint is switched to `/api/v1/ws/journal` in M1.4 without API changes for the helper.
+- **Security:** Same session, CSRF and rate-limit rules as every other API call; no new attack surface.

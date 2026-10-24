@@ -66,8 +66,8 @@ type Result struct {
 
 var (
 	bootRE   = regexp.MustCompile(`^(0|-[1-9][0-9]?|[0-9a-f]{32})$`)
-	cursorRE = regexp.MustCompile(`^[A-Za-z0-9=;_\-]{1,512}$`)
-	identRE  = regexp.MustCompile(`^[A-Za-z0-9_.@:\-]{1,64}$`)
+	cursorRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9=;_\-]{0,511}$`)
+	identRE  = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.@:\-]{0,63}$`)
 )
 
 // Args validates q and builds the journalctl argv. Every value is passed as

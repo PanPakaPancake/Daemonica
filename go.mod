@@ -6,6 +6,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.4
 	github.com/go-acme/lego/v4 v4.35.2
 	github.com/go-webauthn/webauthn v0.18.2
+	github.com/godbus/dbus/v5 v5.2.2
 	modernc.org/sqlite v1.60.1
 )
 

@@ -14,11 +14,11 @@ import (
 
 func testServer() http.Handler {
 	s := &Server{
-		Helper:  &rpc.Client{Socket: "/nonexistent.sock"},
-		Log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
-		UI:      fstest.MapFS{"index.html": {Data: []byte("<html>shell</html>")}, "assets/app.js": {Data: []byte("x")}},
-		Origins: func() []string { return []string{"https://example.org:8443"} },
-		Limiter: NewRateLimiter(1, 5, 10, 10),
+		Helper:   &rpc.Client{Socket: "/nonexistent.sock"},
+		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		UI:       fstest.MapFS{"index.html": {Data: []byte("<html>shell</html>")}, "assets/app.js": {Data: []byte("x")}},
+		Origins:  func() []string { return []string{"https://example.org:8443"} },
+		Limiter:  NewRateLimiter(1, 5, 10, 10),
 		Sessions: NewSessions(),
 	}
 	return s.Handler()

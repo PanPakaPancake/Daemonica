@@ -13,7 +13,7 @@ import (
 
 // CertOps installs the dashboard certificate (SPEC §3.6): own PEM upload or
 // Let's Encrypt via HTTP-01 / TLS-ALPN-01. Files are written for the web
-// process only: <TLSDir>/fullchain.pem and privkey.pem, owner daemonia-web, 0600.
+// process only: <TLSDir>/fullchain.pem and privkey.pem, owner daemonica-web, 0600.
 type CertOps struct {
 	Config   *ConfigStore
 	Guard    func(token string) error // setup guard (bootstrap token + setup mode)

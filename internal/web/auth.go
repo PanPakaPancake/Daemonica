@@ -11,7 +11,7 @@ import (
 
 // SessionCookie is the session cookie name (SPEC §3.5). The __Host- prefix
 // forces Secure, Path=/ and no Domain attribute.
-const SessionCookie = "__Host-daemonia_session"
+const SessionCookie = "__Host-daemonica_session"
 
 // Sessions binds the browser to a helper grant. The cookie value IS the opaque
 // grant token (256 bit); the helper stores only its SHA-256 hash and owns all
@@ -28,7 +28,9 @@ func setCookie(w http.ResponseWriter, value string, maxAge int) {
 }
 
 // Create sets the session cookie for grant (replacing any previous cookie).
-func (s *Sessions) Create(w http.ResponseWriter, _ *http.Request, grant string) { setCookie(w, grant, 0) }
+func (s *Sessions) Create(w http.ResponseWriter, _ *http.Request, grant string) {
+	setCookie(w, grant, 0)
+}
 
 // Grant returns the grant presented by the request ("" if none or malformed).
 func (s *Sessions) Grant(r *http.Request) string {
@@ -199,7 +201,7 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/auth/login/begin", pre("auth.begin_login"))
 	mux.Handle("POST /api/v1/auth/login/finish", s.forward(endpoint{op: "auth.finish_login", preauth: true, setGrant: true, maxBody: 64 << 10}))
 
-	// Recovery (token from `daemonia-admin recover`).
+	// Recovery (token from `daemonica-admin recover`).
 	mux.Handle("POST /api/v1/recovery/begin", pre("recovery.begin_register"))
 	mux.Handle("POST /api/v1/recovery/finish", s.forward(endpoint{op: "recovery.finish_register", preauth: true, setGrant: true, maxBody: 64 << 10}))
 

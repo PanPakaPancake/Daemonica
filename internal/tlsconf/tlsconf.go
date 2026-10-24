@@ -60,7 +60,7 @@ func SelfSignedSetup(names []string, ips []net.IP, validity time.Duration) (*tls
 	now := time.Now()
 	tpl := &x509.Certificate{
 		SerialNumber:          serial,
-		Subject:               pkix.Name{CommonName: "daemonia-setup"},
+		Subject:               pkix.Name{CommonName: "daemonica-setup"},
 		NotBefore:             now.Add(-time.Minute),
 		NotAfter:              now.Add(validity),
 		KeyUsage:              x509.KeyUsageDigitalSignature,

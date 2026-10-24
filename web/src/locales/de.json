@@ -42,7 +42,7 @@
     "title": "Anmelden",
     "intro": "Melde dich mit deinem Passkey an – ohne Passwort.",
     "button": "Mit Passkey anmelden",
-    "recovery": "Passkey verloren? Wiederherstellung ist nur auf dem Server möglich: sudo daemonia-admin recover <konto>",
+    "recovery": "Passkey verloren? Wiederherstellung ist nur auf dem Server möglich: sudo daemonica-admin recover <konto>",
     "recoveryLink": "Ich habe ein Wiederherstellungs-Token"
   },
   "setup": {
@@ -58,7 +58,7 @@
     },
     "token": {
       "label": "Einrichtungs-Token",
-      "help": "Das Token erzeugst du auf dem Server mit: sudo daemonia-admin bootstrap",
+      "help": "Das Token erzeugst du auf dem Server mit: sudo daemonica-admin bootstrap",
       "explain": "Das Token beweist, dass du Zugriff auf den Server hast. Es ist 60 Minuten gültig und wird mit der Registrierung des ersten Passkeys verbraucht."
     },
     "domain": {
@@ -115,7 +115,7 @@
   },
   "recovery": {
     "title": "Zugang wiederherstellen",
-    "intro": "Gib das Token aus „sudo daemonia-admin recover“ ein und registriere einen neuen Passkey.",
+    "intro": "Gib das Token aus „sudo daemonica-admin recover“ ein und registriere einen neuen Passkey.",
     "token": "Wiederherstellungs-Token",
     "register": "Neuen Passkey registrieren"
   },
@@ -131,7 +131,23 @@
     "settings": "Einstellungen",
     "collapse": "Navigation einklappen",
     "expand": "Navigation ausklappen",
-    "skip": "Zum Inhalt springen"
+    "skip": "Zum Inhalt springen",
+    "services": "Dienste",
+    "jobs": "Jobs",
+    "users": "Benutzer",
+    "sshKeys": "SSH-Schlüssel",
+    "network": "Netzwerk",
+    "firewall": "Firewall",
+    "updates": "Updates",
+    "disks": "Datenträger",
+    "timeHost": "Zeit & Host",
+    "terminal": "Terminal",
+    "files": "Dateien",
+    "logs": "Logs",
+    "processes": "Prozesse",
+    "capture": "Paketmitschnitt",
+    "soon": "folgt",
+    "accounts": "Konten"
   },
   "header": {
     "role": {
@@ -144,7 +160,9 @@
     "language": "Sprache",
     "theme": "Darstellung",
     "dark": "Dunkel",
-    "light": "Hell"
+    "light": "Hell",
+    "toLight": "Zum hellen Design wechseln",
+    "toDark": "Zum dunklen Design wechseln"
   },
   "stepup": {
     "title": "Mit Passkey bestätigen",

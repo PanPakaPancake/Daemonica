@@ -1,12 +1,12 @@
-# nfpm configuration for the daemonia .deb (SPEC §4.3).
+# nfpm configuration for the daemonica .deb (SPEC §4.3).
 # Built by `make package`; ARCH and VERSION are injected by the Makefile.
-name: daemonia
+name: daemonica
 arch: ${ARCH}
 platform: linux
 version: ${VERSION}
 section: admin
 priority: optional
-maintainer: "Daemonia maintainers <tnebert@gmail.com>"
+maintainer: "Daemonica maintainers <tnebert@gmail.com>"
 description: |
   Web-based administration dashboard for a single Debian/Ubuntu server.
   Passkey-only login, privilege-separated helper, tamper-evident audit log.
@@ -19,23 +19,23 @@ recommends:
   - ufw
   - tcpdump
 contents:
-  - src: ./dist/${ARCH}/daemonia-web
-    dst: /usr/bin/daemonia-web
+  - src: ./dist/${ARCH}/daemonica-web
+    dst: /usr/bin/daemonica-web
     file_info: {mode: 0755}
-  - src: ./dist/${ARCH}/daemonia-helper
-    dst: /usr/bin/daemonia-helper
+  - src: ./dist/${ARCH}/daemonica-helper
+    dst: /usr/bin/daemonica-helper
     file_info: {mode: 0755}
-  - src: ./dist/${ARCH}/daemonia-admin
-    dst: /usr/sbin/daemonia-admin
+  - src: ./dist/${ARCH}/daemonica-admin
+    dst: /usr/sbin/daemonica-admin
     file_info: {mode: 0750}
-  - src: ./packaging/systemd/daemonia-web.service
-    dst: /usr/lib/systemd/system/daemonia-web.service
-  - src: ./packaging/systemd/daemonia-helper.service
-    dst: /usr/lib/systemd/system/daemonia-helper.service
+  - src: ./packaging/systemd/daemonica-web.service
+    dst: /usr/lib/systemd/system/daemonica-web.service
+  - src: ./packaging/systemd/daemonica-helper.service
+    dst: /usr/lib/systemd/system/daemonica-helper.service
   - src: ./README.md
-    dst: /usr/share/doc/daemonia/README.md
+    dst: /usr/share/doc/daemonica/README.md
   - src: ./docs/INSTALL.md
-    dst: /usr/share/doc/daemonia/INSTALL.md
+    dst: /usr/share/doc/daemonica/INSTALL.md
 scripts:
   postinstall: ./packaging/maintainer-scripts/postinst
   preremove: ./packaging/maintainer-scripts/prerm

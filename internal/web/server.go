@@ -14,11 +14,11 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/rpc"
 )
 
-// Server holds the HTTP handlers of daemonia-web.
+// Server holds the HTTP handlers of daemonica-web.
 type Server struct {
-	Helper  *rpc.Client
-	Log     *slog.Logger
-	UI      fs.FS
+	Helper   *rpc.Client
+	Log      *slog.Logger
+	UI       fs.FS
 	Origins  func() []string
 	Limiter  *RateLimiter
 	Sessions *Sessions

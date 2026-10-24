@@ -1,4 +1,4 @@
-# Daemonia
+# Daemonica
 
 Web-based administration dashboard for a single Debian/Ubuntu server — passkey-only
 login, privilege-separated helper, tamper-evident audit log.
@@ -10,9 +10,9 @@ login, privilege-separated helper, tamper-evident audit log.
 
 | Binary | Runs as | Purpose |
 |---|---|---|
-| `daemonia-web` | `daemonia-web` | HTTPS (TLS 1.3), UI, API; no privileges |
-| `daemonia-helper` | root | Typed, allowlisted privileged operations over Unix sockets |
-| `daemonia-admin` | root (CLI) | Bootstrap, recovery, emergency commands |
+| `daemonica-web` | `daemonica-web` | HTTPS (TLS 1.3), UI, API; no privileges |
+| `daemonica-helper` | root | Typed, allowlisted privileged operations over Unix sockets |
+| `daemonica-admin` | root (CLI) | Bootstrap, recovery, emergency commands |
 
 Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · Threat model:
 [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) · Decisions: [`docs/DECISIONS.md`](docs/DECISIONS.md) ·

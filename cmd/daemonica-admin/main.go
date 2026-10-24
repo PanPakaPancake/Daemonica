@@ -1,5 +1,5 @@
-// Command daemonia-admin is the root-only CLI for bootstrap, recovery and
-// emergency operations. It talks to the helper over /run/daemonia/admin.sock
+// Command daemonica-admin is the root-only CLI for bootstrap, recovery and
+// emergency operations. It talks to the helper over /run/daemonica/admin.sock
 // (mode 0600 root) — the helper additionally verifies UID 0 via SO_PEERCRED.
 package main
 
@@ -18,11 +18,11 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/rpc"
 )
 
-const usage = `daemonia-admin – Notfall- und Einrichtungswerkzeug (nur root)
+const usage = `daemonica-admin – Notfall- und Einrichtungswerkzeug (nur root)
 
 Befehle:
   bootstrap [--allow <CIDR>]   Einmal-Token für die Ersteinrichtung erzeugen (60 min gültig)
-  status                       Zustand von Daemonia anzeigen
+  status                       Zustand von Daemonica anzeigen
   allowlist-reset              Netz-Allowlist auf Loopback zurücksetzen (Notfall)
   audit-verify                 Hash-Kette des Audit-Logs prüfen
   recover <konto> [--revoke-all]  Wiederherstellung bei Passkey-Verlust
@@ -36,12 +36,12 @@ func main() {
 		os.Exit(2)
 	}
 	if os.Geteuid() != 0 {
-		fmt.Fprintln(os.Stderr, "Fehler: daemonia-admin muss als root ausgeführt werden (sudo).")
+		fmt.Fprintln(os.Stderr, "Fehler: daemonica-admin muss als root ausgeführt werden (sudo).")
 		os.Exit(1)
 	}
-	sock := os.Getenv("DAEMONIA_ADMIN_SOCKET")
+	sock := os.Getenv("DAEMONICA_ADMIN_SOCKET")
 	if sock == "" {
-		sock = "/run/daemonia/admin.sock"
+		sock = "/run/daemonica/admin.sock"
 	}
 	c := &rpc.Client{Socket: sock, Timeout: 5 * time.Minute}
 	ctx := context.Background()
@@ -56,7 +56,7 @@ func main() {
 	case "allowlist-reset":
 		var out []string
 		if err = c.Call(ctx, "admin.allowlist_reset", "", "", nil, &out); err == nil {
-			fmt.Printf("Allowlist zurückgesetzt auf: %s\nBitte 'systemctl restart daemonia-web' ausführen.\n", strings.Join(out, ", "))
+			fmt.Printf("Allowlist zurückgesetzt auf: %s\nBitte 'systemctl restart daemonica-web' ausführen.\n", strings.Join(out, ", "))
 		}
 	case "audit-verify":
 		var res audit.VerifyResult
@@ -95,7 +95,7 @@ func main() {
 	}
 	if err != nil {
 		if code := rpc.ErrorCode(err); code == rpc.CodeUnavailable {
-			fmt.Fprintln(os.Stderr, "Fehler: daemonia-helper ist nicht erreichbar. Läuft 'systemctl status daemonia-helper'?")
+			fmt.Fprintln(os.Stderr, "Fehler: daemonica-helper ist nicht erreichbar. Läuft 'systemctl status daemonica-helper'?")
 		} else {
 			fmt.Fprintf(os.Stderr, "Fehler: %v\n", err)
 		}
@@ -112,7 +112,7 @@ func bootstrap(ctx context.Context, c *rpc.Client, args []string) error {
 	if len(allow) == 0 {
 		if s := suggestFromSSH(os.Getenv("SSH_CLIENT")); s != "" {
 			fmt.Printf("Hinweis: Du bist per SSH aus %s verbunden.\n", s)
-			fmt.Printf("  Um dieses Netz direkt freizugeben: sudo daemonia-admin bootstrap --allow %s\n\n", s)
+			fmt.Printf("  Um dieses Netz direkt freizugeben: sudo daemonica-admin bootstrap --allow %s\n\n", s)
 		}
 	}
 	var res helper.BootstrapResult
@@ -149,7 +149,7 @@ func recoverAccount(ctx context.Context, c *rpc.Client, args []string) error {
 		name = fs.Arg(0)
 	}
 	if name == "" {
-		return fmt.Errorf("Kontoname fehlt: daemonia-admin recover <konto> [--revoke-all]")
+		return fmt.Errorf("Kontoname fehlt: daemonica-admin recover <konto> [--revoke-all]")
 	}
 	var res struct {
 		Token           string    `json:"token"`

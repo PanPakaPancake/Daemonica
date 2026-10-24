@@ -1,5 +1,5 @@
 // Package policy is the single source of truth for authorization (SPEC §3.4,
-// Annex A). It is evaluated inside daemonia-helper for every operation; the
+// Annex A). It is evaluated inside daemonica-helper for every operation; the
 // web process consults the same table only to shape the UI.
 //
 // Default is deny: an action missing from the table is never allowed.

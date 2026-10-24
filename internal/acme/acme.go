@@ -125,7 +125,7 @@ func Obtain(ctx context.Context, r Request) (*Result, error) {
 	cfg := lego.NewConfig(u)
 	cfg.CADirURL = r.CA
 	cfg.Certificate.KeyType = certcrypto.EC256
-	cfg.UserAgent = "daemonia"
+	cfg.UserAgent = "daemonica"
 	client, err := lego.NewClient(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("acme: client: %w", err)

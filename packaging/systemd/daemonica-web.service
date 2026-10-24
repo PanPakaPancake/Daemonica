@@ -1,24 +1,24 @@
 [Unit]
-Description=Daemonia web dashboard (unprivileged HTTPS front end)
-Documentation=file:///usr/share/doc/daemonia/README.md
-After=network-online.target daemonia-helper.service
+Description=Daemonica web dashboard (unprivileged HTTPS front end)
+Documentation=file:///usr/share/doc/daemonica/README.md
+After=network-online.target daemonica-helper.service
 Wants=network-online.target
-Requires=daemonia-helper.service
+Requires=daemonica-helper.service
 # Restart together with the helper so the socket directory view stays current.
-PartOf=daemonia-helper.service
+PartOf=daemonica-helper.service
 
 [Service]
 Type=simple
-User=daemonia-web
-Group=daemonia-web
-ExecStart=/usr/bin/daemonia-web --helper-socket /run/daemonia/helper.sock --tls-dir /var/lib/daemonia/tls
+User=daemonica-web
+Group=daemonica-web
+ExecStart=/usr/bin/daemonica-web --helper-socket /run/daemonica/helper.sock --tls-dir /var/lib/daemonica/tls
 Restart=on-failure
 RestartSec=2s
-SyslogIdentifier=daemonia-web
+SyslogIdentifier=daemonica-web
 
-StateDirectory=daemonia
+StateDirectory=daemonica
 StateDirectoryMode=0700
-LogsDirectory=daemonia-web
+LogsDirectory=daemonica-web
 LogsDirectoryMode=0700
 UMask=0077
 

@@ -1,20 +1,20 @@
 # Architecture
 
-Daemonia manages exactly one Debian/Ubuntu host. It is split into three binaries
+Daemonica manages exactly one Debian/Ubuntu host. It is split into three binaries
 (SPEC §3.2):
 
 ```
- Browser ──TLS 1.3──▶ daemonia-web (user daemonia-web, no capabilities)
+ Browser ──TLS 1.3──▶ daemonica-web (user daemonica-web, no capabilities)
                         │  allowlist check at accept() → TLS → CSP/CSRF/session middleware
                         │  opaque grant token per session
                         ▼
-              /run/daemonia/helper.sock (0660 root:daemonia-web, SO_PEERCRED = daemonia-web)
+              /run/daemonica/helper.sock (0660 root:daemonica-web, SO_PEERCRED = daemonica-web)
                         ▼
-                 daemonia-helper (root) ── typed op allowlist ── policy (Annex A) ── audit chain
+                 daemonica-helper (root) ── typed op allowlist ── policy (Annex A) ── audit chain
                         ▲
-              /run/daemonia/admin.sock (0600 root, SO_PEERCRED = 0)
+              /run/daemonica/admin.sock (0600 root, SO_PEERCRED = 0)
                         │
-                 daemonia-admin (root CLI: bootstrap, recover, allowlist-reset, audit-verify…)
+                 daemonica-admin (root CLI: bootstrap, recover, allowlist-reset, audit-verify…)
 ```
 
 ## Packages
@@ -54,7 +54,7 @@ Daemonia manages exactly one Debian/Ubuntu host. It is split into three binaries
 | `config.web` | web | pre-auth (socket-local only) | Listener settings |
 | `session.whoami` | web | grant | Current subject |
 
-## Hardening exceptions (daemonia-helper.service)
+## Hardening exceptions (daemonica-helper.service)
 
 | Directive not set | Reason |
 |---|---|

@@ -1,4 +1,4 @@
-# Daemonia – local, CI-agnostic build targets (SPEC §4.3).
+# Daemonica – local, CI-agnostic build targets (SPEC §4.3).
 SHELL       := /bin/bash
 VERSION     ?= 0.1.0~dev
 ARCHES      ?= amd64 arm64

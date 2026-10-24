@@ -1,4 +1,4 @@
-// Package web implements the unprivileged HTTPS front end (daemonia-web).
+// Package web implements the unprivileged HTTPS front end (daemonica-web).
 package web
 
 import (
@@ -18,7 +18,7 @@ const CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 's
 	"form-action 'self'; require-trusted-types-for 'script'"
 
 // CSRFHeader must be present on every state-changing request.
-const CSRFHeader = "X-Daemonia-CSRF"
+const CSRFHeader = "X-Daemonica-CSRF"
 
 type ctxKey int
 

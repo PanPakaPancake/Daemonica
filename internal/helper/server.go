@@ -1,4 +1,4 @@
-// Package helper implements daemonia-helper: the small privileged process that
+// Package helper implements daemonica-helper: the small privileged process that
 // executes typed, allowlisted operations on behalf of the web process and the
 // root-only admin CLI (SPEC §3.2). It never listens on TCP.
 package helper
@@ -24,9 +24,9 @@ import (
 type Channel int
 
 const (
-	// ChannelWeb is /run/daemonia/helper.sock (peer must be the daemonia-web UID).
+	// ChannelWeb is /run/daemonica/helper.sock (peer must be the daemonica-web UID).
 	ChannelWeb Channel = iota
-	// ChannelAdmin is /run/daemonia/admin.sock (peer must be UID 0).
+	// ChannelAdmin is /run/daemonica/admin.sock (peer must be UID 0).
 	ChannelAdmin
 )
 
@@ -286,7 +286,7 @@ func (s *Server) audit(op *Op, c Call, params map[string]string, result, reason 
 		ev.Actor = audit.Actor{AccountID: c.Subject.AccountID, Role: string(c.Subject.Role), LinuxUser: c.Subject.LinuxUser}
 		ev.StepUp = c.Subject.StepUp
 	} else if c.Channel == ChannelAdmin {
-		ev.Actor = audit.Actor{Name: "root (daemonia-admin)", LinuxUser: "root"}
+		ev.Actor = audit.Actor{Name: "root (daemonica-admin)", LinuxUser: "root"}
 	}
 	if op.AuditTarget != nil {
 		ev.Target = op.AuditTarget(c)

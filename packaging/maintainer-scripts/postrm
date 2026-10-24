@@ -3,14 +3,14 @@
 set -e
 case "$1" in
   purge)
-    echo "WARNUNG: daemonia wird vollständig entfernt – Konten, Passkeys, Konfiguration,"
+    echo "WARNUNG: daemonica wird vollständig entfernt – Konten, Passkeys, Konfiguration,"
     echo "Backups und das Audit-Log werden gelöscht." >&2
-    rm -rf /var/lib/daemonia-helper /var/lib/daemonia /var/log/daemonia
-    if getent passwd daemonia-web >/dev/null; then deluser --system daemonia-web >/dev/null || true; fi
-    if getent group daemonia-web >/dev/null; then delgroup --system daemonia-web >/dev/null || true; fi
+    rm -rf /var/lib/daemonica-helper /var/lib/daemonica /var/log/daemonica
+    if getent passwd daemonica-web >/dev/null; then deluser --system daemonica-web >/dev/null || true; fi
+    if getent group daemonica-web >/dev/null; then delgroup --system daemonica-web >/dev/null || true; fi
     ;;
   remove)
-    echo "Hinweis: Daten unter /var/lib/daemonia* und /var/log/daemonia bleiben erhalten (apt purge daemonia löscht sie)."
+    echo "Hinweis: Daten unter /var/lib/daemonica* und /var/log/daemonica bleiben erhalten (apt purge daemonica löscht sie)."
     ;;
 esac
 if [ -d /run/systemd/system ]; then systemctl daemon-reload >/dev/null 2>&1 || true; fi

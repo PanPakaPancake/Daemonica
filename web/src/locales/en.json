@@ -42,7 +42,7 @@
     "title": "Sign in",
     "intro": "Sign in with your passkey – no password.",
     "button": "Sign in with passkey",
-    "recovery": "Lost your passkey? Recovery is only possible on the server: sudo daemonia-admin recover <account>",
+    "recovery": "Lost your passkey? Recovery is only possible on the server: sudo daemonica-admin recover <account>",
     "recoveryLink": "I have a recovery token"
   },
   "setup": {
@@ -58,7 +58,7 @@
     },
     "token": {
       "label": "Setup token",
-      "help": "Create the token on the server with: sudo daemonia-admin bootstrap",
+      "help": "Create the token on the server with: sudo daemonica-admin bootstrap",
       "explain": "The token proves you have access to the server. It is valid for 60 minutes and is consumed when the first passkey is registered."
     },
     "domain": {
@@ -115,7 +115,7 @@
   },
   "recovery": {
     "title": "Recover access",
-    "intro": "Enter the token from “sudo daemonia-admin recover” and register a new passkey.",
+    "intro": "Enter the token from “sudo daemonica-admin recover” and register a new passkey.",
     "token": "Recovery token",
     "register": "Register new passkey"
   },
@@ -131,7 +131,23 @@
     "settings": "Settings",
     "collapse": "Collapse navigation",
     "expand": "Expand navigation",
-    "skip": "Skip to content"
+    "skip": "Skip to content",
+    "services": "Services",
+    "jobs": "Jobs",
+    "users": "Users",
+    "sshKeys": "SSH keys",
+    "network": "Network",
+    "firewall": "Firewall",
+    "updates": "Updates",
+    "disks": "Disks",
+    "timeHost": "Time & host",
+    "terminal": "Terminal",
+    "files": "Files",
+    "logs": "Logs",
+    "processes": "Processes",
+    "capture": "Packet capture",
+    "soon": "soon",
+    "accounts": "Accounts"
   },
   "header": {
     "role": {
@@ -144,7 +160,9 @@
     "language": "Language",
     "theme": "Theme",
     "dark": "Dark",
-    "light": "Light"
+    "light": "Light",
+    "toLight": "Switch to light theme",
+    "toDark": "Switch to dark theme"
   },
   "stepup": {
     "title": "Confirm with passkey",

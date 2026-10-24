@@ -5,7 +5,7 @@ Scope: Phase 1, state of M1.0. Attackers A1–A6 as in SPEC §3.1.
 | Threat | Attacker | Asset | Mitigation (implemented ✓ / planned ○) |
 |---|---|---|---|
 | **S**poofing a user | A1, A2 | Accounts | Passkey-only login with UV ○; no passwords; uniform login errors ○; helper verifies WebAuthn ○ |
-| Spoofing the web process toward the helper | A6 | Helper ops | `SO_PEERCRED` UID check ✓; socket 0660 root:daemonia-web ✓ |
+| Spoofing the web process toward the helper | A6 | Helper ops | `SO_PEERCRED` UID check ✓; socket 0660 root:daemonica-web ✓ |
 | Spoofing root toward the admin socket | A6 | Admin ops | admin.sock 0600 ✓ + UID 0 check ✓ |
 | **T**ampering with configuration | A3 | Allowlist, TLS, setup state | Config owned by helper, root 0600 ✓; web gets read-only copy ✓ |
 | Tampering with audit records | A3, A6 | Audit log | Written only by helper ✓; hash chain + verify ✓; `chattr +a` ○ |

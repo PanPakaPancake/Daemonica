@@ -71,7 +71,7 @@ func NewPasskeys(rpID string, origins []string) (*Passkeys, error) {
 	}
 	cfg := &webauthn.Config{
 		RPID:                  rpID,
-		RPDisplayName:         "Daemonia",
+		RPDisplayName:         "Daemonica",
 		RPOrigins:             origins,
 		AttestationPreference: protocol.PreferNoAttestation,
 		AuthenticatorSelection: protocol.AuthenticatorSelection{

@@ -21,7 +21,7 @@ export function setUnauthorizedHandler(fn: () => void) {
 
 export async function api<T = unknown>(method: Method, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (method !== "GET") headers["X-Daemonia-CSRF"] = "1";
+  if (method !== "GET") headers["X-Daemonica-CSRF"] = "1";
   if (body !== undefined) headers["Content-Type"] = "application/json";
   const res = await fetch(`/api/v1${path}`, {
     method,

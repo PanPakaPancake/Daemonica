@@ -1,5 +1,5 @@
 // Package planner implements the Plan → Apply → Confirm pattern for risky
-// changes (SPEC §3.2 rule 10). It runs inside daemonia-helper so the rollback
+// changes (SPEC §3.2 rule 10). It runs inside daemonica-helper so the rollback
 // timer is independent of the browser and of the web process.
 //
 // Crash safety: before a change is applied, a journal record is written. If

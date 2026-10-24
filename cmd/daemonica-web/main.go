@@ -1,6 +1,6 @@
-// Command daemonia-web is the unprivileged HTTPS front end. It terminates TLS
+// Command daemonica-web is the unprivileged HTTPS front end. It terminates TLS
 // itself, enforces the network allowlist at accept time and talks to the
-// helper exclusively over /run/daemonia/helper.sock (SPEC §3.2, §3.6).
+// helper exclusively over /run/daemonica/helper.sock (SPEC §3.2, §3.6).
 package main
 
 import (
@@ -29,13 +29,13 @@ import (
 )
 
 func main() {
-	sock := flag.String("helper-socket", "/run/daemonia/helper.sock", "helper socket")
-	tlsDir := flag.String("tls-dir", "/var/lib/daemonia/tls", "directory with fullchain.pem and privkey.pem")
+	sock := flag.String("helper-socket", "/run/daemonica/helper.sock", "helper socket")
+	tlsDir := flag.String("tls-dir", "/var/lib/daemonica/tls", "directory with fullchain.pem and privkey.pem")
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	if os.Geteuid() == 0 {
-		log.Error("daemonia-web must not run as root")
+		log.Error("daemonica-web must not run as root")
 		os.Exit(1)
 	}
 	client := &rpc.Client{Socket: *sock, Timeout: 5 * time.Minute}
@@ -75,7 +75,7 @@ func main() {
 		}
 		log.Info("listening for domain", "domain", cfg.Domain, "addr", listenAddr, "setup_done", cfg.SetupDone)
 	case cfg.SetupDone:
-		log.Error("setup is complete but no usable TLS certificate exists; see 'daemonia-admin tls-status'", "err", certErr)
+		log.Error("setup is complete but no usable TLS certificate exists; see 'daemonica-admin tls-status'", "err", certErr)
 		os.Exit(1)
 	default:
 		// Setup mode: loopback only, ephemeral self-signed certificate (§3.3 Bootstrap 1).
@@ -97,10 +97,10 @@ func main() {
 	go watchConfig(ctx, client, log, cfg, allow, domainMode)
 
 	srv := &web.Server{
-		Helper:  client,
-		Log:     log,
-		UI:      ui.FS(),
-		Origins: func() []string { return origins },
+		Helper:   client,
+		Log:      log,
+		UI:       ui.FS(),
+		Origins:  func() []string { return origins },
 		Limiter:  web.NewRateLimiter(0.5, 10, 10, 100),
 		Sessions: web.NewSessions(),
 	}
@@ -128,7 +128,7 @@ func main() {
 		defer cancel()
 		_ = httpSrv.Shutdown(sctx)
 	}()
-	log.Info("daemonia-web started", "addr", listenAddr, "setup_mode", !cfg.SetupDone)
+	log.Info("daemonica-web started", "addr", listenAddr, "setup_mode", !cfg.SetupDone)
 	if err := httpSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Error("server failed", "err", err)
 		os.Exit(1)

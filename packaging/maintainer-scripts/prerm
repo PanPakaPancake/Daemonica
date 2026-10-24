@@ -3,8 +3,8 @@ set -e
 case "$1" in
   remove|deconfigure)
     if [ -d /run/systemd/system ]; then
-      systemctl stop daemonia-web.service daemonia-helper.service >/dev/null 2>&1 || true
-      systemctl disable daemonia-web.service daemonia-helper.service >/dev/null 2>&1 || true
+      systemctl stop daemonica-web.service daemonica-helper.service >/dev/null 2>&1 || true
+      systemctl disable daemonica-web.service daemonica-helper.service >/dev/null 2>&1 || true
     fi
     ;;
 esac

@@ -1,23 +1,23 @@
 [Unit]
-Description=Daemonia privileged helper (Unix sockets only)
-Documentation=file:///usr/share/doc/daemonia/README.md
+Description=Daemonica privileged helper (Unix sockets only)
+Documentation=file:///usr/share/doc/daemonica/README.md
 After=local-fs.target dbus.service
-Before=daemonia-web.service
+Before=daemonica-web.service
 
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/bin/daemonia-helper --state-dir /var/lib/daemonia-helper --run-dir /run/daemonia --audit-log /var/log/daemonia/audit.log --web-user daemonia-web
+ExecStart=/usr/bin/daemonica-helper --state-dir /var/lib/daemonica-helper --run-dir /run/daemonica --audit-log /var/log/daemonica/audit.log --web-user daemonica-web
 Restart=on-failure
 RestartSec=2s
-SyslogIdentifier=daemonia-helper
+SyslogIdentifier=daemonica-helper
 
-RuntimeDirectory=daemonia
+RuntimeDirectory=daemonica
 RuntimeDirectoryMode=0750
 RuntimeDirectoryPreserve=no
-StateDirectory=daemonia-helper
+StateDirectory=daemonica-helper
 StateDirectoryMode=0700
-LogsDirectory=daemonia
+LogsDirectory=daemonica
 LogsDirectoryMode=0750
 UMask=0077
 

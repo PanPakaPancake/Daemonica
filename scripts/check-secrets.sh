@@ -1,6 +1,6 @@
 #!/bin/sh
 # Minimal secret scan used by `make sec` when gitleaks is unavailable.
-# Fails on private keys, tokens in the Daemonia format, or test_vm.md being tracked.
+# Fails on private keys, tokens in the Daemonica format, or test_vm.md being tracked.
 set -eu
 fail=0
 if git ls-files --error-unmatch test_vm.md >/dev/null 2>&1; then

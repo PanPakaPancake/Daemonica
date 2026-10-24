@@ -41,7 +41,7 @@ func Unit(s string) error {
 	return match(unitRE, s)
 }
 
-// JobName validates the user-chosen part of a managed job unit (daemonia-job-<name>).
+// JobName validates the user-chosen part of a managed job unit (daemonica-job-<name>).
 func JobName(s string) error { return match(jobNameRE, s) }
 
 // AccountName validates a dashboard account display name.

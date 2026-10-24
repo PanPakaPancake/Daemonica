@@ -268,7 +268,11 @@ func (a *AuthOps) Register(ops map[string]*Op) {
 
 	// ----- setup mode (pre-auth, bootstrap token on every call) -----
 	Register(ops, &Op{Name: "setup.set_domain", PreAuth: true,
-		AuditTarget: func(c Call) string { var p setDomainParams; _ = json.Unmarshal(c.Params, &p); return "domain:" + p.Domain },
+		AuditTarget: func(c Call) string {
+			var p setDomainParams
+			_ = json.Unmarshal(c.Params, &p)
+			return "domain:" + p.Domain
+		},
 		Handle: func(_ context.Context, c Call) (any, error) {
 			var p setDomainParams
 			if err := decode(c, &p); err != nil {
@@ -532,7 +536,13 @@ func (a *AuthOps) Register(ops map[string]*Op) {
 		}})
 
 	Register(ops, &Op{Name: "sessions.revoke", Action: policy.ActOwnSessions,
-		AuditTarget: func(c Call) string { var p struct{ ID string `json:"id"` }; _ = json.Unmarshal(c.Params, &p); return "session:" + p.ID },
+		AuditTarget: func(c Call) string {
+			var p struct {
+				ID string `json:"id"`
+			}
+			_ = json.Unmarshal(c.Params, &p)
+			return "session:" + p.ID
+		},
 		Handle: func(_ context.Context, c Call) (any, error) {
 			var p struct {
 				ID string `json:"id"`

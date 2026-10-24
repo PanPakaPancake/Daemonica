@@ -12,7 +12,7 @@ _Last updated: 2026-10-24_
 | B2 | ~~Package registries blocked~~ — worked around: the test VM has full egress, builds run there (DEC-011). Original issue: in the build environment: `proxy.golang.org`, `sum.golang.org`, `registry.npmjs.org`, `gitlab.com`, `go.googlesource.com`. Without them neither WebAuthn/SQLite/PTY/WebSocket libraries nor the React frontend can be built in a verifiable way (DEC-002). | §4.1, §4.4, D-01 | Allow these domains for Claude (claude.ai → Settings → Capabilities, or org admin), **or** build on the test VM once B1 is solved. |
 | B3 | **Push to GitHub refused**: the Claude GitHub App has no write access to `PanPakaPancake/daemonica`. Commits exist locally only. | — | Install the Claude GitHub App for the repo or reconnect GitHub in claude.ai settings. |
 | B4 | ~~Go toolchain~~ — Go 1.27.3 installed on the VM from go.dev (SHA-256 verified against go.dev's release index); `go.mod` raised to 1.27.3. | §4.1 | — |
-| B5 | Branding assets (`daemonia-logo-transparent.png`, `daemonia-mascot.png`) not in the repository. | §5.4 | Add the two PNGs to `assets/branding/`. |
+| B5 | Branding assets (`daemonica-logo-transparent.png`, `daemonica-mascot.png`) not in the repository. | §5.4 | Add the two PNGs to `assets/branding/`. |
 | B6 | Package signing key. | S2, §4.3 | Later (release candidate); until then artifacts are `-UNSIGNED-TESTONLY`. |
 
 ### Test VM (first inspection 2026-10-24)
@@ -33,7 +33,7 @@ _Last updated: 2026-10-24_
 
 ### Test-VM operational notes
 
-- 2026-10-24: `/etc/ssh/sshd_config.d/90-daemonia-dev.conf` sets `PerSourcePenaltyExemptList 37.201.167.99` (owner's current IP) because sshd's per-source penalties locked out both the owner and the build connection. **Remove before the acceptance test.**
+- 2026-10-24: `/etc/ssh/sshd_config.d/90-daemonica-dev.conf` sets `PerSourcePenaltyExemptList 37.201.167.99` (owner's current IP) because sshd's per-source penalties locked out both the owner and the build connection. **Remove before the acceptance test.**
 
 ### Real-world setup on the VM (2026-10-24)
 
@@ -44,9 +44,9 @@ _Last updated: 2026-10-24_
 ### First install on the VM
 
 - `.deb` installs, both services active, web listens on **127.0.0.1:8443 only** (not reachable on the public IP).
-- `systemd-analyze security`: **daemonia-web 1.1** (target ≤ 2.0 ✓), **daemonia-helper 6.8** (target ≤ 6.0 ✖ — to be tightened).
+- `systemd-analyze security`: **daemonica-web 1.1** (target ≤ 2.0 ✓), **daemonica-helper 6.8** (target ≤ 6.0 ✖ — to be tightened).
 - Bootstrap → token check → helper restart → audit chain verify: all ok. `govulncheck`: no vulnerabilities.
-- Bug found and fixed: `/run/daemonia` was root:root 0750, so the web user could not reach `helper.sock` (fixed in d357a34).
+- Bug found and fixed: `/run/daemonica` was root:root 0750, so the web user could not reach `helper.sock` (fixed in d357a34).
 
 ### Milestones
 
@@ -61,13 +61,13 @@ _Last updated: 2026-10-24_
 |---|---|---|
 | Repo layout, Makefile targets (`deps lint test test-integration test-e2e sec build package sbom release`) | ⚠ | Targets exist; `sbom`, `test-e2e` are stubs (tools unavailable). |
 | Versioned, length-prefixed RPC, 1 MiB limit, strict decoding | ✓ | `internal/rpc`, tests + fuzz target |
-| Helper on Unix sockets only; `helper.sock 0660 root:daemonia-web`, `admin.sock 0600` | ✓ | `internal/helper/server.go`; smoke test (socket modes verified) |
+| Helper on Unix sockets only; `helper.sock 0660 root:daemonica-web`, `admin.sock 0600` | ✓ | `internal/helper/server.go`; smoke test (socket modes verified) |
 | `SO_PEERCRED` check | ✓ | `TestPeerCredOverRealSocket` |
 | Typed op allowlist, no generic exec, channel separation | ✓ | `TestChannelSeparation` |
 | Helper is trust anchor; grants resolved in helper; UID 0 mapping refused | ✓ | `grants.go`, `TestGrantRefusesRoot` |
 | Policy table = Annex A, deny-by-default, generated matrix | ✓ | `internal/policy`, `TestGeneratedMatrix` |
 | Step-up (5 min) enforced by helper | ✓ (state model) / ✖ (WebAuthn ceremony) | `TestGrantAndStepUpEnforcement` |
-| Audit log JSONL + SHA-256 chain, verify, control-char stripping | ✓ | `internal/audit`; `daemonia-admin audit-verify` |
+| Audit log JSONL + SHA-256 chain, verify, control-char stripping | ✓ | `internal/audit`; `daemonica-admin audit-verify` |
 | Plan → Apply → Confirm with helper-side rollback timer, crash recovery journal | ✓ | `internal/planner` (handlers for network/firewall/allowlist follow) |
 | Atomic config writes (temp + fsync + rename) | ✓ | `helper/config.go` |
 | TLS 1.3 only, ECDSA P-256 | ✓ | `internal/tlsconf`, smoke test: TLS 1.2 refused |
@@ -81,7 +81,7 @@ _Last updated: 2026-10-24_
 | Passkey management (list/add/rename/remove, last one protected, synced vs device-bound) | ✓ | API + UI `/security/passkeys` |
 | Sessions persisted in helper DB (token hash only), survive restarts; rotation on step-up; session list + end session (own; admin: all) | ✓ | `TestSessionsPersistListAndRevoke`, UI `/security/sessions` |
 | Accounts/roles management UI (invitations, role change, disable, last-admin protection) | ✖ | next |
-| Recovery (`daemonia-admin recover <account> [--revoke-all]`, ends sessions, 30 min token) | ✓ | `TestPasskeyManagementAndRecovery` |
+| Recovery (`daemonica-admin recover <account> [--revoke-all]`, ends sessions, 30 min token) | ✓ | `TestPasskeyManagementAndRecovery` |
 | Setup wizard (token → domain → allowlist → certificate → switch to domain → first passkey), UI shell, dark/light theme, de/en i18n | ✓ (UI) / ⚠ (end-to-end on real domain pending) | Headless Chromium on the VM: no CSP/Trusted-Types violations; branding assets still missing (B5) |
 | Session cookie `__Host-`, Secure, HttpOnly, SameSite=Strict, rotation on login/step-up, grant never sent to browser | ✓ | `internal/web/auth_test.go` |
 | ACME (Let's Encrypt, HTTP-01/TLS-ALPN-01, ECDSA P-256, staging/production) | ⚠ | implemented; not yet exercised against LE (needs owner OK for production, S2) |

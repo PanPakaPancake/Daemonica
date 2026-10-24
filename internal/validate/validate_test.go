@@ -35,7 +35,7 @@ func TestInterface(t *testing.T) {
 }
 
 func TestUnit(t *testing.T) {
-	for _, ok := range []string{"nginx.service", "getty@tty1.service", "daemonia-job-backup.timer"} {
+	for _, ok := range []string{"nginx.service", "getty@tty1.service", "daemonica-job-backup.timer"} {
 		if Unit(ok) != nil {
 			t.Errorf("rejected %q", ok)
 		}

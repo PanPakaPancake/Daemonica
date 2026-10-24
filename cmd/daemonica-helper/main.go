@@ -1,6 +1,6 @@
-// Command daemonia-helper is the privileged helper (runs as root). It listens
-// exclusively on Unix sockets: helper.sock for daemonia-web and admin.sock for
-// the root-only daemonia-admin CLI (SPEC §3.2).
+// Command daemonica-helper is the privileged helper (runs as root). It listens
+// exclusively on Unix sockets: helper.sock for daemonica-web and admin.sock for
+// the root-only daemonica-admin CLI (SPEC §3.2).
 package main
 
 import (
@@ -23,16 +23,16 @@ import (
 var version = "0.1.0-dev"
 
 func main() {
-	stateDir := flag.String("state-dir", "/var/lib/daemonia-helper", "helper state directory (root 0700)")
-	runDir := flag.String("run-dir", "/run/daemonia", "runtime directory for sockets")
-	auditPath := flag.String("audit-log", "/var/log/daemonia/audit.log", "audit log path")
-	webUser := flag.String("web-user", "daemonia-web", "system user of the web process")
-	tlsDir := flag.String("tls-dir", "/var/lib/daemonia/tls", "certificate directory of the web process")
+	stateDir := flag.String("state-dir", "/var/lib/daemonica-helper", "helper state directory (root 0700)")
+	runDir := flag.String("run-dir", "/run/daemonica", "runtime directory for sockets")
+	auditPath := flag.String("audit-log", "/var/log/daemonica/audit.log", "audit log path")
+	webUser := flag.String("web-user", "daemonica-web", "system user of the web process")
+	tlsDir := flag.String("tls-dir", "/var/lib/daemonica/tls", "certificate directory of the web process")
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	if os.Geteuid() != 0 {
-		log.Error("daemonia-helper must run as root")
+		log.Error("daemonica-helper must run as root")
 		os.Exit(1)
 	}
 	u, err := user.Lookup(*webUser)
@@ -63,7 +63,7 @@ func main() {
 	}
 	defer func() { _ = al.Close() }()
 	// Mirror audit records to the journal; the unit sets SyslogIdentifier so
-	// records can be found with `journalctl -t daemonia-helper`.
+	// records can be found with `journalctl -t daemonica-helper`.
 	auditLog := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	al.Mirror = func(line []byte) { auditLog.Info("audit", "record", string(line)) }
 
@@ -123,7 +123,7 @@ func main() {
 	adminSrv := &helper.Server{Channel: helper.ChannelAdmin, AllowedUID: 0, Ops: ops, Grants: grants, Audit: al, Log: log}
 
 	_, _ = al.Append(audit.Event{Action: "helper.start", Result: audit.ResultOK, Params: map[string]string{"version": version}})
-	log.Info("daemonia-helper started", "version", version)
+	log.Info("daemonica-helper started", "version", version)
 
 	errc := make(chan error, 2)
 	go func() { errc <- webSrv.Serve(ctx, webL) }()

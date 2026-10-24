@@ -186,7 +186,7 @@ func (c *Core) Register(ops map[string]*Op, al *audit.Logger) {
 		}})
 
 	// config.web hands the web process the non-secret listener settings. It is
-	// reachable only over helper.sock (peer UID daemonia-web), never via HTTP.
+	// reachable only over helper.sock (peer UID daemonica-web), never via HTTP.
 	Register(ops, &Op{Name: "config.web", PreAuth: true, NoAudit: true,
 		Handle: func(context.Context, Call) (any, error) {
 			cfg := c.Config.Get()

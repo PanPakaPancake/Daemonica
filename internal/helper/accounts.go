@@ -57,7 +57,7 @@ type Passkey struct {
 // DB wraps the helper's accounts.db.
 type DB struct{ sql *sql.DB }
 
-// OpenDB opens /var/lib/daemonia-helper/accounts.db (root 0600) and migrates it.
+// OpenDB opens /var/lib/daemonica-helper/accounts.db (root 0600) and migrates it.
 func OpenDB(ctx context.Context, path string) (*DB, error) {
 	sub, err := fs.Sub(migrationsFS, "migrations")
 	if err != nil {

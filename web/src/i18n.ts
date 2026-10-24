@@ -5,7 +5,7 @@ import en from "./locales/en.json";
 
 const stored = (() => {
   try {
-    return localStorage.getItem("daemonia.lang");
+    return localStorage.getItem("daemonica.lang");
   } catch {
     return null;
   }
@@ -23,7 +23,7 @@ export function setLanguage(lang: "de" | "en") {
   void i18n.changeLanguage(lang);
   document.documentElement.lang = lang;
   try {
-    localStorage.setItem("daemonia.lang", lang);
+    localStorage.setItem("daemonica.lang", lang);
   } catch {
     /* per-viewer convenience only */
   }

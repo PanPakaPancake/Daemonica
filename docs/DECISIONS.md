@@ -6,8 +6,8 @@ Format per SPEC §0.3: ID, date, context, decision, rejected alternatives, secur
 
 ## DEC-001 — Repository name vs. product name
 - **Date:** 2026-10-24
-- **Context:** The owner created the repository `PanPakaPancake/Daemonica`; the SPEC names the product **Daemonia** (A-01).
-- **Decision:** Product, binaries, package and UI use **Daemonia** as specified. The Go module path follows the repository: `github.com/PanPakaPancake/daemonica`.
+- **Context:** The owner created the repository `PanPakaPancake/Daemonica`; the SPEC names the product **Daemonica** (A-01).
+- **Decision:** Product, binaries, package and UI use **Daemonica** as specified. The Go module path follows the repository: `github.com/PanPakaPancake/daemonica`.
 - **Rejected:** Renaming the product to "Daemonica" (contradicts A-01 and the logo).
 - **Security:** none.
 
@@ -27,7 +27,7 @@ Format per SPEC §0.3: ID, date, context, decision, rejected alternatives, secur
 ## DEC-004 — Helper-owned configuration file
 - **Date:** 2026-10-24
 - **Context:** Security-relevant settings (domain, port, allowlist, session bounds, setup state) must be controlled by the trust anchor (SPEC §3.2 rule 3) and readable before the account DB exists.
-- **Decision:** `/var/lib/daemonia-helper/config.json` (root 0600), written atomically (temp + fsync + rename + dir fsync), validated on load and on every update. The web process receives a read-only subset via the `config.web` RPC.
+- **Decision:** `/var/lib/daemonica-helper/config.json` (root 0600), written atomically (temp + fsync + rename + dir fsync), validated on load and on every update. The web process receives a read-only subset via the `config.web` RPC.
 - **Rejected:** Storing settings in `web.db` (web process could alter its own allowlist after compromise, A3).
 - **Security:** Improves A3 resistance: a compromised web process cannot widen the allowlist.
 
@@ -39,7 +39,7 @@ Format per SPEC §0.3: ID, date, context, decision, rejected alternatives, secur
 
 ## DEC-006 — Audit log mirror
 - **Date:** 2026-10-24
-- **Decision:** Each audit record is fsynced to `/var/log/daemonia/audit.log` and mirrored as a JSON line to stdout of the helper (journald, `SyslogIdentifier=daemonia-helper`). A dedicated `daemonia-audit` identifier requires native journald protocol support and is planned with the journal module (M1.1).
+- **Decision:** Each audit record is fsynced to `/var/log/daemonica/audit.log` and mirrored as a JSON line to stdout of the helper (journald, `SyslogIdentifier=daemonica-helper`). A dedicated `daemonica-audit` identifier requires native journald protocol support and is planned with the journal module (M1.1).
 - **Security:** Records strip control characters (log forging). `chattr +a` is applied by the package in a later milestone (SOLL).
 
 ## DEC-007 — Bootstrap allowlist suggestion
@@ -71,7 +71,14 @@ Format per SPEC §0.3: ID, date, context, decision, rejected alternatives, secur
 
 ## DEC-012 — Branding asset and product name shown in the UI
 - **Date:** 2026-10-24
-- **Context:** The owner supplied the logo (`assets/branding/daemonica-logo-source.png`, 1672×940, opaque black background). The wordmark reads **"Daemonica"**, while SPEC A-01 assumed "Daemonia (from the logo)". The repository is also named Daemonica.
-- **Decision:** (1) Background made transparent by an edge-connected flood fill of near-black pixels (max channel ≤ 10) with 0.8 px feathering, then tightly cropped → `assets/branding/daemonica-logo.png`; derived PNGs in `web/public/brand/` (240/480/960 px wide) and square mascot crops for favicon and collapsed sidebar (32/48/180/512). No redrawing, recolouring or new poses (SPEC §5.4). (2) The user-visible product name follows the logo: **Daemonica** (page title, alt texts, i18n `app.name`). (3) Technical identifiers (`daemonia-*` binaries, units, paths, package name) are unchanged until the owner confirms the rename (A-01 to be confirmed).
-- **Rejected:** Showing the opaque image on the dark UI (visible black box); renaming every technical identifier without confirmation.
+- **Context:** The owner supplied the logo (`assets/branding/daemonica-logo-source.png`, 1672×940, opaque black background). The wordmark reads **"Daemonica"**, while SPEC A-01 (v1.2) carried the misspelling "Daemonia". The repository is named Daemonica.
+- **Decision:** (1) Background made transparent by an edge-connected flood fill of near-black pixels (max channel ≤ 10) with 0.8 px feathering, then tightly cropped → `assets/branding/daemonica-logo.png`; derived PNGs in `web/public/brand/` (240/480/960 px wide) and square mascot crops for favicon and collapsed sidebar (32/48/180/512). No redrawing, recolouring or new poses (SPEC §5.4). (2) The user-visible product name follows the logo: **Daemonica** (page title, alt texts, i18n `app.name`). (3) Superseded by DEC-013: the owner confirmed "Daemonica" and all technical identifiers were renamed.
+- **Rejected:** Showing the opaque image on the dark UI (visible black box); renaming every technical identifier before confirmation.
 - **Security:** none (static same-origin images, CSP `img-src 'self'`).
+
+## DEC-013 — Rename to "Daemonica", dark default theme, self-drawn icons
+- **Date:** 2026-10-24
+- **Context:** Owner: the correct name is "Daemonica" everywhere (incl. SPEC); supplied an app icon; dark design should be the default; UI may use symbols for functions/menu items.
+- **Decision:** (1) All identifiers renamed (`daemonica-web/-helper/-admin`, units, Go module `github.com/PanPakaPancake/daemonica`, paths `/var/lib/daemonica*`, `/run/daemonica`, `/var/log/daemonica`, cookie `__Host-daemonica_session`, header `X-Daemonica-CSRF`, token prefix unchanged `dmn_`). SPEC bumped to v1.3 (A-01 confirmed). Existing VM install migrated by moving the state directories; all sessions end because the cookie name changed. (2) The supplied icon is stored unchanged as `assets/branding/daemonica-mascot.png`; favicon/apple-touch/sidebar icons are pure downscales (SPEC §5.4). (3) Theme default is **dark** regardless of `prefers-color-scheme`; only an explicit toggle is stored (localStorage, per browser). (4) Icons are a small set of self-drawn 24×24 stroke SVGs in `web/src/components/icons.tsx`, always `aria-hidden` next to visible or screen-reader text.
+- **Rejected:** `lucide-react` (fine licence, but a new dependency + age rule for ~25 glyphs); following `prefers-color-scheme` (owner preference).
+- **Security:** none; inline SVG is React-rendered JSX, no `innerHTML`, CSP unchanged.

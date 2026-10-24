@@ -1,5 +1,5 @@
 // Package rpc defines the versioned, length-prefixed wire protocol spoken
-// between daemonia-web / daemonia-admin and daemonia-helper over Unix sockets
+// between daemonica-web / daemonica-admin and daemonica-helper over Unix sockets
 // (SPEC §3.2 rule 1).
 //
 // Frame layout: a 4-byte big-endian payload length followed by a JSON payload.

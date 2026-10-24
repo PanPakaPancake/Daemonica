@@ -209,6 +209,7 @@ func TestEditorRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	metaRaw, _ = rpc.ReadChunk(&out)
+	meta = ReadMeta{}
 	_ = json.Unmarshal(metaRaw, &meta)
 	if !meta.Binary || meta.Hash != "" {
 		t.Fatalf("binary: %+v", meta)

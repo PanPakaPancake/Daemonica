@@ -91,10 +91,10 @@ func TestSensitive(t *testing.T) {
 
 func TestDisplay(t *testing.T) {
 	cases := map[string]string{
-		"plain.txt":           "plain.txt",
-		"a\nb":                `a\u{000A}b`,
-		"evil‮txt.exe":   `evil\u{202E}txt.exe`,
-		"bad\xffbyte":         `bad\xffbyte`,
+		"plain.txt":          "plain.txt",
+		"a\nb":               `a\u{000A}b`,
+		"evil‮txt.exe":       `evil\u{202E}txt.exe`,
+		"bad\xffbyte":        `bad\xffbyte`,
 		"\x1b[31mred\x1b[0m": `\u{001B}[31mred\u{001B}[0m`,
 	}
 	for in, want := range cases {

@@ -12,30 +12,30 @@
     "i18n:check": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
-    "@fontsource/inter": "*",
-    "@fontsource/jetbrains-mono": "*",
-    "@radix-ui/react-dialog": "*",
-    "@tanstack/react-query": "*",
-    "i18next": "*",
-    "react": "*",
-    "react-dom": "*",
-    "react-i18next": "*",
-    "react-router": "*"
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@radix-ui/react-dialog": "1.2.0",
+    "@tanstack/react-query": "5.104.1",
+    "i18next": "26.4.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-i18next": "17.0.16",
+    "react-router": "8.4.0"
   },
   "devDependencies": {
-    "@eslint/js": "*",
-    "@tailwindcss/vite": "*",
-    "@testing-library/react": "*",
-    "@types/react": "*",
-    "@types/react-dom": "*",
-    "@vitejs/plugin-react": "*",
-    "eslint": "*",
-    "eslint-plugin-react-hooks": "*",
-    "jsdom": "*",
-    "tailwindcss": "*",
-    "typescript": "*",
-    "typescript-eslint": "*",
-    "vite": "*",
-    "vitest": "*"
+    "@eslint/js": "10.0.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/react": "16.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "eslint": "10.12.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "jsdom": "29.1.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1",
+    "vite": "8.3.4",
+    "vitest": "5.0.3"
   }
 }

@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Icon, type IconName } from "./icons";
 
@@ -34,36 +35,66 @@ export interface MenuItem {
   disabled?: boolean;
 }
 
-/** Small accessible action menu (button + list of menu items). */
+/** Small accessible action menu (button + list of menu items). The list is
+ * rendered in a portal with fixed positioning so that scroll containers
+ * (tables with overflow) never clip it; it opens upwards when there is no
+ * room below. */
 export function Menu({ label, items }: { label: string; items: MenuItem[] }) {
-  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ right: number; top?: number; bottom?: number } | null>(null);
+  const open = pos !== null;
   const id = useId();
-  const root = useRef<HTMLDivElement>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
   const first = useRef<HTMLButtonElement>(null);
+
+  const toggle = () => {
+    if (open || !btn.current) {
+      setPos(null);
+      return;
+    }
+    const r = btn.current.getBoundingClientRect();
+    const need = items.length * 34 + 12;
+    const right = Math.max(8, window.innerWidth - r.right);
+    if (window.innerHeight - r.bottom < need && r.top > window.innerHeight - r.bottom) setPos({ right, bottom: window.innerHeight - r.top + 4 });
+    else setPos({ right, top: r.bottom + 4 });
+  };
+
   useEffect(() => {
     if (!open) return;
     first.current?.focus();
     const onDown = (e: MouseEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
+      const n = e.target as Node;
+      if (!menu.current?.contains(n) && !btn.current?.contains(n)) setPos(null);
     };
+    const close = () => setPos(null);
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
   }, [open]);
+
   return (
     <div
-      ref={root}
       className="relative"
       onKeyDown={(e) => {
-        if (e.key === "Escape") setOpen(false);
-        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        if (e.key === "Escape" && open) {
+          setPos(null);
+          btn.current?.focus();
+        }
+        if (open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
           e.preventDefault();
-          const btns = Array.from(root.current?.querySelectorAll<HTMLButtonElement>("[role=menuitem]:not(:disabled)") ?? []);
+          const btns = Array.from(menu.current?.querySelectorAll<HTMLButtonElement>("[role=menuitem]:not(:disabled)") ?? []);
           const i = btns.indexOf(document.activeElement as HTMLButtonElement);
           btns[(i + (e.key === "ArrowDown" ? 1 : btns.length - 1)) % btns.length]?.focus();
         }
       }}
     >
       <button
+        ref={btn}
         type="button"
         className="btn btn-ghost min-h-8 px-2"
         aria-haspopup="menu"
@@ -71,31 +102,39 @@ export function Menu({ label, items }: { label: string; items: MenuItem[] }) {
         aria-controls={id}
         aria-label={label}
         title={label}
-        onClick={() => setOpen(!open)}
+        onClick={toggle}
       >
         <Icon name="more" className="h-5 w-5" />
       </button>
-      {open && (
-        <div id={id} role="menu" className="menu-pop absolute right-0 z-40 mt-1 min-w-52 py-1">
-          {items.map((it, i) => (
-            <button
-              key={it.label}
-              ref={i === 0 ? first : undefined}
-              type="button"
-              role="menuitem"
-              disabled={it.disabled}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-bg-2 focus:bg-bg-2 focus:outline-none disabled:opacity-50 ${it.danger ? "text-bad" : ""}`}
-              onClick={() => {
-                setOpen(false);
-                it.onSelect();
-              }}
-            >
-              {it.icon && <Icon name={it.icon} className="h-4 w-4" />}
-              {it.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {pos &&
+        createPortal(
+          <div
+            ref={menu}
+            id={id}
+            role="menu"
+            className="menu-pop fixed z-[55] min-w-52 py-1"
+            style={{ right: pos.right, top: pos.top, bottom: pos.bottom }}
+          >
+            {items.map((it, i) => (
+              <button
+                key={it.label}
+                ref={i === 0 ? first : undefined}
+                type="button"
+                role="menuitem"
+                disabled={it.disabled}
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-bg-2 focus:bg-bg-2 focus:outline-none disabled:opacity-50 ${it.danger ? "text-bad" : ""}`}
+                onClick={() => {
+                  setPos(null);
+                  it.onSelect();
+                }}
+              >
+                {it.icon && <Icon name={it.icon} className="h-4 w-4" />}
+                {it.label}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

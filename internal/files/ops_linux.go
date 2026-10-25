@@ -51,6 +51,27 @@ type Entry struct {
 	Blocked    bool      `json:"blocked,omitempty"`
 }
 
+// kindOf groups entry types for the list filter.
+func kindOf(e Entry) string {
+	switch e.Type {
+	case "dir", "file", "symlink":
+		return e.Type
+	}
+	return "other"
+}
+
+// ownerOf is "user:group" with numeric ids where no name is known.
+func ownerOf(e Entry) string {
+	u, g := e.User, e.Group
+	if u == "" {
+		u = strconv.FormatUint(uint64(e.UID), 10)
+	}
+	if g == "" {
+		g = strconv.FormatUint(uint64(e.GID), 10)
+	}
+	return u + ":" + g
+}
+
 func typeOf(mode uint32) string {
 	switch mode & unix.S_IFMT {
 	case unix.S_IFREG:
@@ -256,7 +277,9 @@ type ListArgs struct {
 	Path     string `json:"path"`
 	Hidden   bool   `json:"hidden,omitempty"`
 	Filter   string `json:"filter,omitempty"`
-	Sort     string `json:"sort,omitempty"` // name (default), size, mtime, type
+	Sort     string `json:"sort,omitempty"`  // name (default), size, mtime, type, mode, owner
+	Owner    string `json:"owner,omitempty"` // substring of "user:group" (or numeric ids)
+	Kind     string `json:"kind,omitempty"`  // dir, file, symlink, other
 	Desc     bool   `json:"desc,omitempty"`
 	Offset   int    `json:"offset,omitempty"`
 	Limit    int    `json:"limit,omitempty"`
@@ -302,6 +325,7 @@ func List(a ListArgs) (ListResult, error) {
 		}
 	}
 	filter := strings.ToLower(strings.TrimSpace(a.Filter))
+	owner := strings.ToLower(strings.TrimSpace(a.Owner))
 	ids := &idNames{}
 	all := make([]Entry, 0, len(names))
 	for _, n := range names {
@@ -328,6 +352,12 @@ func List(a ListArgs) (ListResult, error) {
 		if a.DirsOnly && !isDirEntry(e) {
 			continue
 		}
+		if a.Kind != "" && kindOf(e) != a.Kind {
+			continue
+		}
+		if owner != "" && !strings.Contains(strings.ToLower(ownerOf(e))+" "+strconv.FormatUint(uint64(e.UID), 10)+":"+strconv.FormatUint(uint64(e.GID), 10), owner) {
+			continue
+		}
 		e.Blocked = Blocked(Join(d.path, n))
 		all = append(all, e)
 	}
@@ -345,6 +375,14 @@ func List(a ListArgs) (ListResult, error) {
 		case "type":
 			if x.Type != y.Type {
 				return x.Type < y.Type
+			}
+		case "mode":
+			if x.Mode != y.Mode {
+				return x.Mode < y.Mode
+			}
+		case "owner":
+			if ox, oy := strings.ToLower(ownerOf(x)), strings.ToLower(ownerOf(y)); ox != oy {
+				return ox < oy
 			}
 		}
 		lx, ly := strings.ToLower(x.Name), strings.ToLower(y.Name)

@@ -555,7 +555,9 @@
     "hostKeys": "Server host keys",
     "hostKeysHelp": "Compare these fingerprints with what your SSH client shows on first connect.",
     "sshdConfig": "Effective sshd configuration",
-    "sshdReadOnly": "Read-only (sshd -T). Changes follow via the security checklist in phase 2."
+    "sshdReadOnly": "Read-only (sshd -T). Changes follow via the security checklist in phase 2.",
+    "option": "Option",
+    "value": "Value"
   },
   "files": {
     "title": "Files",
@@ -583,7 +585,8 @@
       "owner": "Owner",
       "mtime": "Modified",
       "user": "User",
-      "group": "Group"
+      "group": "Group",
+      "type": "Type"
     },
     "empty": "This folder is empty. Create a file or drop files here to upload them.",
     "noMatch": "No entries match the search.",
@@ -755,6 +758,31 @@
       "versionLoad": "Load into the editor",
       "versionLoaded": "Version from {{time}} loaded. Save to restore it.",
       "savedPreexisting": "Saved. The check with {{tool}} fails, but it already failed before this change. Review the configuration before reloading the service."
-    }
+    },
+    "kind": {
+      "dir": "Folder",
+      "file": "File",
+      "symlink": "Link",
+      "other": "Other"
+    },
+    "view": {
+      "label": "View",
+      "details": "Details",
+      "compact": "Compact",
+      "grid": "Tiles"
+    },
+    "sortBy": "Sort by",
+    "sortAsc": "Ascending",
+    "sortDesc": "Descending"
+  },
+  "table": {
+    "sortBy": "Sort by {{col}}",
+    "filters": "Show/hide filters",
+    "filter": "Filter …",
+    "filterBy": "Filter by {{col}}",
+    "all": "All",
+    "reset": "Reset filters",
+    "noMatch": "No entry matches the filters.",
+    "empty": "No entries."
   }
 }

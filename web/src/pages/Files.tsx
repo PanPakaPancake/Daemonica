@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router";
 import { Icon, type IconName } from "../components/icons";
+import { DataTable } from "../components/DataTable";
 import { Menu, Modal, type MenuItem } from "../components/Modal";
 import { Explain, Field, Notice, Panel } from "../components/ui";
 import { api, ApiError } from "../lib/api";
@@ -40,7 +41,32 @@ function iconFor(e: FsEntry): IconName {
   return e.type === "dir" ? "folder" : "file";
 }
 
-type SortKey = "name" | "size" | "mtime";
+type SortKey = "name" | "type" | "size" | "mode" | "owner" | "mtime";
+const sortKeys: SortKey[] = ["name", "type", "size", "mode", "owner", "mtime"];
+
+type Kind = "" | "dir" | "file" | "symlink" | "other";
+const kinds = ["dir", "file", "symlink", "other"] as const;
+
+function kindOf(e: FsEntry): Exclude<Kind, ""> {
+  return e.type === "dir" || e.type === "file" || e.type === "symlink" ? e.type : "other";
+}
+
+type View = "details" | "compact" | "grid";
+const views: { v: View; icon: IconName }[] = [
+  { v: "details", icon: "viewList" },
+  { v: "compact", icon: "viewCompact" },
+  { v: "grid", icon: "viewGrid" },
+];
+
+function loadView(): View {
+  try {
+    const v = localStorage.getItem("daemonica.files.view");
+    if (v === "details" || v === "compact" || v === "grid") return v;
+  } catch {
+    // storage unavailable: default view
+  }
+  return "details";
+}
 
 type Dlg =
   | { kind: "new"; dirKind: "file" | "dir" }
@@ -66,6 +92,10 @@ export function Files() {
   const [hidden, setHidden] = useState(false);
   const [filterInput, setFilterInput] = useState("");
   const [filter, setFilter] = useState("");
+  const [ownerInput, setOwnerInput] = useState("");
+  const [owner, setOwner] = useState("");
+  const [kind, setKind] = useState<Kind>("");
+  const [view, setViewState] = useState<View>(loadView);
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "name", desc: false });
   const [offset, setOffset] = useState(0);
   const [dlg, setDlg] = useState<Dlg>();
@@ -78,11 +108,28 @@ export function Files() {
     const id = setTimeout(() => setFilter(filterInput.trim()), 300);
     return () => clearTimeout(id);
   }, [filterInput]);
+  useEffect(() => {
+    const id = setTimeout(() => setOwner(ownerInput.trim()), 300);
+    return () => clearTimeout(id);
+  }, [ownerInput]);
+
+  const setView = (v: View) => {
+    setViewState(v);
+    try {
+      localStorage.setItem("daemonica.files.view", v);
+    } catch {
+      // per-browser convenience only
+    }
+  };
 
   const list = useQuery({
-    queryKey: ["fs-list", path, hidden, filter, sort, offset, asRoot],
+    queryKey: ["fs-list", path, hidden, filter, owner, kind, sort, offset, asRoot],
     queryFn: () =>
-      fsCall<FsListing>("list", { path, hidden, filter, sort: sort.key, desc: sort.desc, offset, limit: PAGE }, { as_root: asRoot }),
+      fsCall<FsListing>(
+        "list",
+        { path, hidden, filter, owner, ...(kind && { kind }), sort: sort.key, desc: sort.desc, offset, limit: PAGE },
+        { as_root: asRoot },
+      ),
     enabled: !!path,
     retry: false,
   });
@@ -98,6 +145,9 @@ export function Files() {
     setOffset(0);
     setFilterInput("");
     setFilter("");
+    setOwnerInput("");
+    setOwner("");
+    setKind("");
     setMsg(undefined);
     setParams({ path: p });
   };
@@ -140,8 +190,7 @@ export function Files() {
     setDlg({ kind: "props", e });
   };
 
-  const download = (e: FsEntry) =>
-    void act(() => run((f) => downloadFile(targetOf(dir, e), f), joinPath(dir, shownName(e))), t("files.downloadStarted"));
+  const download = (e: FsEntry) => void act(() => run((f) => downloadFile(targetOf(dir, e), f), joinPath(dir, shownName(e))), t("files.downloadStarted"));
 
   const items = (e: FsEntry): MenuItem[] => {
     const file = e.type === "file" || (e.type === "symlink" && e.target_type === "file");
@@ -157,18 +206,12 @@ export function Files() {
       { label: t("files.copy"), icon: "copy", onSelect: () => setDlg({ kind: "transfer", e, copy: true }) },
     );
     if (e.type !== "symlink") out.push({ label: t("files.permissions"), icon: "lock", onSelect: () => setDlg({ kind: "chmod", e }) });
-    if (isAdmin && e.type !== "symlink")
-      out.push({ label: t("files.owner"), icon: "users", disabled: !asRoot, onSelect: () => setDlg({ kind: "chown", e }) });
+    if (isAdmin && e.type !== "symlink") out.push({ label: t("files.owner"), icon: "users", disabled: !asRoot, onSelect: () => setDlg({ kind: "chown", e }) });
     out.push(
       { label: t("files.properties"), icon: "info", onSelect: () => setDlg({ kind: "props", e }) },
       { label: t("common.delete"), icon: "trash", danger: true, onSelect: () => setDlg({ kind: "delete", e }) },
     );
     return out;
-  };
-
-  const sortBy = (key: SortKey) => {
-    setOffset(0);
-    setSort((s) => ({ key, desc: s.key === key ? !s.desc : false }));
   };
 
   const addFiles = (fl: FileList | File[]) => {
@@ -188,6 +231,7 @@ export function Files() {
 
   if (me?.role === "readonly") return <Notice tone="info">{t("files.readonly")}</Notice>;
 
+  const filtered = !!(filter || owner || kind);
   const listErr = list.error instanceof ApiError ? list.error.code : undefined;
   const crumbs = dir.split("/").filter(Boolean);
   const from = data && data.total > 0 ? offset + 1 : 0;
@@ -267,11 +311,21 @@ export function Files() {
                 <Icon name="arrowUp" className="h-4 w-4" />
                 <span className="sr-only">{t("files.up")}</span>
               </button>
-              <button type="button" className="btn btn-secondary min-h-9 px-3" onClick={() => setDlg({ kind: "new", dirKind: "file" })} disabled={!data?.writable}>
+              <button
+                type="button"
+                className="btn btn-secondary min-h-9 px-3"
+                onClick={() => setDlg({ kind: "new", dirKind: "file" })}
+                disabled={!data?.writable}
+              >
                 <Icon name="filePlus" className="h-4 w-4" />
                 {t("files.newFile")}
               </button>
-              <button type="button" className="btn btn-secondary min-h-9 px-3" onClick={() => setDlg({ kind: "new", dirKind: "dir" })} disabled={!data?.writable}>
+              <button
+                type="button"
+                className="btn btn-secondary min-h-9 px-3"
+                onClick={() => setDlg({ kind: "new", dirKind: "dir" })}
+                disabled={!data?.writable}
+              >
                 <Icon name="folderPlus" className="h-4 w-4" />
                 {t("files.newFolder")}
               </button>
@@ -290,6 +344,21 @@ export function Files() {
                 }}
               />
               <div className="ml-auto flex flex-wrap items-center gap-2">
+                <div className="flex rounded-[8px] border border-line" role="group" aria-label={t("files.view.label")}>
+                  {views.map(({ v, icon }) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={`min-h-9 px-2 first:rounded-l-[7px] last:rounded-r-[7px] ${view === v ? "bg-bg-2 text-violet" : "text-muted hover:text-fg"}`}
+                      aria-pressed={view === v}
+                      title={t(`files.view.${v}`)}
+                      onClick={() => setView(v)}
+                    >
+                      <Icon name={icon} className="h-4 w-4" />
+                      <span className="sr-only">{t(`files.view.${v}`)}</span>
+                    </button>
+                  ))}
+                </div>
                 <label className="relative">
                   <span className="sr-only">{t("files.search")}</span>
                   <Icon name="search" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
@@ -337,64 +406,203 @@ export function Files() {
           {data?.virtual && <Notice tone="info">{t("files.virtual")}</Notice>}
 
           <Panel className="overflow-x-auto p-0">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-faint">
-                <tr>
-                  <SortTh label={t("files.col.name")} k="name" sort={sort} onSort={sortBy} />
-                  <SortTh label={t("files.col.size")} k="size" sort={sort} onSort={sortBy} className="w-24 text-right" />
-                  <th className="w-32 px-3 py-2">{t("files.col.mode")}</th>
-                  <th className="w-40 px-3 py-2">{t("files.col.owner")}</th>
-                  <SortTh label={t("files.col.mtime")} k="mtime" sort={sort} onSort={sortBy} className="w-44" />
-                  <th className="w-12 px-2 py-2">
-                    <span className="sr-only">{t("common.actions")}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.isLoading && (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-6 text-muted">
-                      {t("common.loading")}
-                    </td>
-                  </tr>
-                )}
-                {data && data.entries.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-6 text-muted">
-                      {filter ? t("files.noMatch") : t("files.empty")}
-                    </td>
-                  </tr>
-                )}
-                {data?.entries.map((e) => (
-                  <tr key={e.raw ?? e.name} className="border-t border-line hover:bg-bg-2/50">
-                    <td className="px-3 py-1.5">
-                      <button type="button" className="flex min-w-0 items-center gap-2 text-left" onClick={() => open(e)} onDoubleClick={() => open(e)}>
+            {view === "details" ? (
+              <DataTable
+                label={t("files.title")}
+                rows={data?.entries}
+                rowKey={(e) => e.raw ?? e.name}
+                loading={list.isLoading}
+                empty={filtered ? t("files.noMatch") : t("files.empty")}
+                sort={sort}
+                onSort={(s) => {
+                  setOffset(0);
+                  setSort((s as { key: SortKey; desc: boolean } | null) ?? { key: "name", desc: false });
+                }}
+                filters={{ name: filterInput, owner: ownerInput, kind }}
+                onFilters={(f) => {
+                  setOffset(0);
+                  setFilterInput(f.name ?? "");
+                  setOwnerInput(f.owner ?? "");
+                  setKind((f.kind ?? "") as Kind);
+                }}
+                columns={[
+                  {
+                    key: "name",
+                    label: t("files.col.name"),
+                    sortValue: (e) => e.name,
+                    filter: "text",
+                    cell: (e) => (
+                      <button type="button" className="flex min-w-0 items-center gap-2 text-left" onClick={() => open(e)}>
                         <Icon name={iconFor(e)} className={`h-4 w-4 ${isDir(e) ? "text-violet" : "text-faint"}`} />
                         <span className={`break-all font-mono ${e.display || e.raw ? "text-warn" : ""}`}>{shownName(e)}</span>
                         {e.type === "symlink" && <span className="break-all text-xs text-faint">→ {e.target ?? "?"}</span>}
                         {e.blocked && <span className="rounded-full border border-line px-1.5 text-[10px] text-bad">{t("files.blocked")}</span>}
                       </button>
-                    </td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-muted">{e.type === "file" ? bytes(e.size, lang) : "–"}</td>
-                    <td className="px-3 py-1.5 font-mono text-xs" title={octal(e.mode)}>
-                      {modeString(e.mode)}
-                    </td>
-                    <td className="px-3 py-1.5 text-muted">
-                      {e.user ?? e.uid}:{e.group ?? e.gid}
-                    </td>
-                    <td className="px-3 py-1.5 text-muted">{dateTime(e.mtime, lang)}</td>
-                    <td className="px-2 py-1">
-                      <Menu label={t("files.actionsFor", { name: shownName(e) })} items={items(e)} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    ),
+                  },
+                  {
+                    key: "type",
+                    label: t("files.col.type"),
+                    thClass: "w-28 hidden md:table-cell",
+                    tdClass: "hidden text-muted md:table-cell",
+                    sortValue: (e) => e.type,
+                    filter: { options: kinds.map((k) => ({ value: k, label: t(`files.kind.${k}`) })) },
+                    cell: (e) => <>{t(`files.kind.${kindOf(e)}`)}</>,
+                  },
+                  {
+                    key: "size",
+                    label: t("files.col.size"),
+                    thClass: "w-24 text-right",
+                    tdClass: "text-right tabular-nums text-muted",
+                    sortValue: (e) => e.size,
+                    cell: (e) => <>{e.type === "file" ? bytes(e.size, lang) : "–"}</>,
+                  },
+                  {
+                    key: "mode",
+                    label: t("files.col.mode"),
+                    thClass: "w-32",
+                    tdClass: "font-mono text-xs",
+                    tdTitle: (e) => octal(e.mode),
+                    sortValue: (e) => e.mode,
+                    cell: (e) => <>{modeString(e.mode)}</>,
+                  },
+                  {
+                    key: "owner",
+                    label: t("files.col.owner"),
+                    thClass: "w-40",
+                    tdClass: "text-muted",
+                    sortValue: (e) => `${e.user ?? e.uid}:${e.group ?? e.gid}`,
+                    filter: "text",
+                    cell: (e) => (
+                      <>
+                        {e.user ?? e.uid}:{e.group ?? e.gid}
+                      </>
+                    ),
+                  },
+                  {
+                    key: "mtime",
+                    label: t("files.col.mtime"),
+                    thClass: "w-44",
+                    tdClass: "text-muted",
+                    sortValue: (e) => e.mtime,
+                    cell: (e) => <>{dateTime(e.mtime, lang)}</>,
+                  },
+                  {
+                    key: "actions",
+                    label: t("common.actions"),
+                    srOnly: true,
+                    thClass: "w-12",
+                    cell: (e) => <Menu label={t("files.actionsFor", { name: shownName(e) })} items={items(e)} />,
+                  },
+                ]}
+              />
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2 text-sm">
+                  <label className="flex items-center gap-1.5">
+                    <span className="text-muted">{t("files.sortBy")}</span>
+                    <select
+                      className="input header-select min-h-8 py-1 text-sm"
+                      value={sort.key}
+                      onChange={(e) => {
+                        setOffset(0);
+                        setSort({ key: e.target.value as SortKey, desc: sort.desc });
+                      }}
+                    >
+                      {sortKeys.map((k) => (
+                        <option key={k} value={k}>
+                          {t(`files.col.${k}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    className="btn btn-secondary min-h-8 px-2"
+                    title={t(sort.desc ? "files.sortDesc" : "files.sortAsc")}
+                    onClick={() => {
+                      setOffset(0);
+                      setSort({ ...sort, desc: !sort.desc });
+                    }}
+                  >
+                    <span aria-hidden="true">{sort.desc ? "▼" : "▲"}</span>
+                    <span className="sr-only">{t(sort.desc ? "files.sortDesc" : "files.sortAsc")}</span>
+                  </button>
+                  <label className="flex items-center gap-1.5">
+                    <span className="text-muted">{t("files.col.type")}</span>
+                    <select
+                      className="input header-select min-h-8 py-1 text-sm"
+                      value={kind}
+                      onChange={(e) => {
+                        setOffset(0);
+                        setKind(e.target.value as Kind);
+                      }}
+                    >
+                      <option value="">{t("table.all")}</option>
+                      {kinds.map((k) => (
+                        <option key={k} value={k}>
+                          {t(`files.kind.${k}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                {list.isLoading && <p className="px-3 py-6 text-muted">{t("common.loading")}</p>}
+                {data && data.entries.length === 0 && <p className="px-3 py-6 text-muted">{filtered ? t("files.noMatch") : t("files.empty")}</p>}
+                {data && data.entries.length > 0 && (
+                  <ul
+                    className={
+                      view === "grid"
+                        ? "grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-2 p-3"
+                        : "grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-x-3 p-2"
+                    }
+                  >
+                    {data.entries.map((e) =>
+                      view === "grid" ? (
+                        <li key={e.raw ?? e.name} className="relative rounded-[8px] border border-transparent hover:border-line hover:bg-bg-2/50">
+                          <button
+                            type="button"
+                            className="flex w-full flex-col items-center gap-1.5 px-2 pb-2 pt-3 text-center"
+                            onClick={() => open(e)}
+                            title={`${shownName(e)} · ${modeString(e.mode)} · ${e.user ?? e.uid}:${e.group ?? e.gid} · ${dateTime(e.mtime, lang)}`}
+                          >
+                            <Icon name={iconFor(e)} className={`h-10 w-10 ${isDir(e) ? "text-violet" : "text-faint"}`} />
+                            <span className={`line-clamp-2 break-all font-mono text-xs ${e.display || e.raw ? "text-warn" : ""}`}>{shownName(e)}</span>
+                            <span className="text-[11px] text-faint">{e.type === "file" ? bytes(e.size, lang) : t(`files.kind.${kindOf(e)}`)}</span>
+                          </button>
+                          <div className="absolute right-0.5 top-0.5">
+                            <Menu label={t("files.actionsFor", { name: shownName(e) })} items={items(e)} />
+                          </div>
+                        </li>
+                      ) : (
+                        <li key={e.raw ?? e.name} className="flex min-w-0 items-center gap-1 rounded-[6px] hover:bg-bg-2/50">
+                          <button
+                            type="button"
+                            className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1 text-left"
+                            onClick={() => open(e)}
+                            title={`${shownName(e)} · ${e.type === "file" ? bytes(e.size, lang) + " · " : ""}${dateTime(e.mtime, lang)}`}
+                          >
+                            <Icon name={iconFor(e)} className={`h-4 w-4 ${isDir(e) ? "text-violet" : "text-faint"}`} />
+                            <span className={`truncate font-mono text-sm ${e.display || e.raw ? "text-warn" : ""}`}>{shownName(e)}</span>
+                          </button>
+                          <Menu label={t("files.actionsFor", { name: shownName(e) })} items={items(e)} />
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                )}
+              </>
+            )}
             {data && data.total > PAGE && (
               <div className="flex items-center justify-between border-t border-line px-3 py-2 text-sm">
                 <span className="text-muted">{t("files.range", { from, to, total: data.total })}</span>
                 <span className="flex gap-2">
-                  <button type="button" className="btn btn-secondary min-h-8 px-2" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary min-h-8 px-2"
+                    disabled={offset === 0}
+                    onClick={() => setOffset(Math.max(0, offset - PAGE))}
+                  >
                     <Icon name="chevronLeft" className="h-4 w-4" />
                     <span className="sr-only">{t("common.previous")}</span>
                   </button>
@@ -493,7 +701,11 @@ export function Files() {
           onClose={() => setDlg(undefined)}
           onSubmit={(user, group) =>
             act(
-              () => run((f) => fsCall("chown", { ...targetOf(dir, dlg.e), user: user || undefined, group: group || undefined }, f), joinPath(dir, shownName(dlg.e))),
+              () =>
+                run(
+                  (f) => fsCall("chown", { ...targetOf(dir, dlg.e), user: user || undefined, group: group || undefined }, f),
+                  joinPath(dir, shownName(dlg.e)),
+                ),
               t("files.chownDone"),
             ).then((ok) => ok && setDlg(undefined))
           }
@@ -508,8 +720,7 @@ export function Files() {
             act(
               () =>
                 run(
-                  (f) =>
-                    fsCall("delete", { ...targetOf(dir, dlg.e), recursive: recursive || undefined, confirm: recursive ? shownName(dlg.e) : undefined }, f),
+                  (f) => fsCall("delete", { ...targetOf(dir, dlg.e), recursive: recursive || undefined, confirm: recursive ? shownName(dlg.e) : undefined }, f),
                   joinPath(dir, shownName(dlg.e)),
                 ),
               t("files.deleted", { name: shownName(dlg.e) }),
@@ -588,30 +799,6 @@ function TreeNode({
   );
 }
 
-function SortTh({
-  label,
-  k,
-  sort,
-  onSort,
-  className = "",
-}: {
-  label: string;
-  k: SortKey;
-  sort: { key: SortKey; desc: boolean };
-  onSort: (k: SortKey) => void;
-  className?: string;
-}) {
-  const active = sort.key === k;
-  return (
-    <th className={`px-3 py-2 ${className}`} aria-sort={active ? (sort.desc ? "descending" : "ascending") : "none"}>
-      <button type="button" className="inline-flex items-center gap-1 uppercase hover:text-fg" onClick={() => onSort(k)}>
-        {label}
-        {active && <span aria-hidden="true">{sort.desc ? "▼" : "▲"}</span>}
-      </button>
-    </th>
-  );
-}
-
 function RootButton({ active, until, onEnable, onDisable }: { active: boolean; until?: string; onEnable: () => void; onDisable: () => void }) {
   const { t, i18n } = useTranslation();
   if (!active)
@@ -655,7 +842,17 @@ function useBusy() {
   return { busy, wrap };
 }
 
-function NameDialog({ title, initial, onClose, onSubmit }: { title: string; initial: string; onClose: () => void; onSubmit: (name: string) => Promise<unknown> }) {
+function NameDialog({
+  title,
+  initial,
+  onClose,
+  onSubmit,
+}: {
+  title: string;
+  initial: string;
+  onClose: () => void;
+  onSubmit: (name: string) => Promise<unknown>;
+}) {
   const { t } = useTranslation();
   const [name, setName] = useState(initial);
   const { busy, wrap } = useBusy();
@@ -821,7 +1018,9 @@ function ChownDialog({ entry, onClose, onSubmit }: { entry: FsEntry; onClose: ()
     <Modal title={t("files.chownTitle", { name: shownName(entry) })} onClose={onClose}>
       <form className="flex flex-col gap-4" onSubmit={wrap(() => onSubmit(user, group))}>
         <Field label={t("files.col.user")}>{(p) => <input {...p} className="input font-mono" value={user} onChange={(e) => setUser(e.target.value)} />}</Field>
-        <Field label={t("files.col.group")}>{(p) => <input {...p} className="input font-mono" value={group} onChange={(e) => setGroup(e.target.value)} />}</Field>
+        <Field label={t("files.col.group")}>
+          {(p) => <input {...p} className="input font-mono" value={group} onChange={(e) => setGroup(e.target.value)} />}
+        </Field>
         <Explain>{t("files.chownExplain")}</Explain>
         <div className="flex justify-end gap-2">
           <button type="button" className="btn btn-secondary" onClick={onClose}>
@@ -986,7 +1185,12 @@ function useUploads(asRoot: boolean, onDone: () => void) {
         <span className="flex items-center gap-2">
           <label className="flex items-center gap-1.5 text-xs text-muted">
             {t("files.upload.mode")}
-            <input className="input min-h-7 w-20 py-0.5 font-mono text-xs" value={modeText} onChange={(e) => setModeText(e.target.value)} aria-invalid={!/^[0-7]{3,4}$/.test(modeText)} />
+            <input
+              className="input min-h-7 w-20 py-0.5 font-mono text-xs"
+              value={modeText}
+              onChange={(e) => setModeText(e.target.value)}
+              aria-invalid={!/^[0-7]{3,4}$/.test(modeText)}
+            />
           </label>
           <button
             type="button"
@@ -1008,7 +1212,9 @@ function useUploads(asRoot: boolean, onDone: () => void) {
               <span className="text-xs text-muted">
                 {bytes(x.loaded, i18n.language)} / {bytes(x.file.size, i18n.language)}
               </span>
-              <span className={`text-xs ${x.state === "error" ? "text-bad" : x.state === "done" ? "text-ok" : "text-muted"}`}>{t(`files.upload.state.${x.state}`)}</span>
+              <span className={`text-xs ${x.state === "error" ? "text-bad" : x.state === "done" ? "text-ok" : "text-muted"}`}>
+                {t(`files.upload.state.${x.state}`)}
+              </span>
               {(x.state === "running" || x.state === "queued") && (
                 <button
                   type="button"
@@ -1059,4 +1265,3 @@ function useUploads(asRoot: boolean, onDone: () => void) {
   );
   return { add, view };
 }
-

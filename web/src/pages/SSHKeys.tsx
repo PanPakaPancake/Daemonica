@@ -7,6 +7,7 @@ import { Explain, Field, Notice, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { errorText } from "../lib/errors";
 import { useSession } from "../lib/session";
+import { DataTable } from "../components/DataTable";
 
 interface Key {
   type: string;
@@ -118,12 +119,7 @@ export function SSHKeys() {
               </li>
             ))}
           </ul>
-          <button
-            type="button"
-            className="btn btn-secondary mt-2 min-h-8"
-            disabled={busy}
-            onClick={() => void act("fix_permissions", {}, t("sshkeys.fixed"))}
-          >
+          <button type="button" className="btn btn-secondary mt-2 min-h-8" disabled={busy} onClick={() => void act("fix_permissions", {}, t("sshkeys.fixed"))}>
             {t("sshkeys.fix")}
           </button>
         </Notice>
@@ -165,7 +161,8 @@ export function SSHKeys() {
                   className="btn btn-danger min-h-8 px-2 text-xs"
                   disabled={busy}
                   onClick={() => {
-                    if (window.confirm(t("sshkeys.confirmRemove", { name: k.comment || k.fingerprint }))) void act("remove", { fingerprint: k.fingerprint }, t("sshkeys.removed"));
+                    if (window.confirm(t("sshkeys.confirmRemove", { name: k.comment || k.fingerprint })))
+                      void act("remove", { fingerprint: k.fingerprint }, t("sshkeys.removed"));
                   }}
                 >
                   {t("common.remove")}
@@ -194,18 +191,34 @@ export function SSHKeys() {
             }}
           >
             <Field label={t("sshkeys.publicKey")} help={t("sshkeys.publicKeyHelp")}>
-              {(p) => <textarea {...p} className="input" rows={3} value={line} onChange={(e) => setLine(e.target.value)} spellCheck={false} placeholder="ssh-ed25519 AAAA… user@laptop" />}
+              {(p) => (
+                <textarea
+                  {...p}
+                  className="input"
+                  rows={3}
+                  value={line}
+                  onChange={(e) => setLine(e.target.value)}
+                  spellCheck={false}
+                  placeholder="ssh-ed25519 AAAA… user@laptop"
+                />
+              )}
             </Field>
             <details className="rounded-[8px] border border-line px-4 py-2">
               <summary className="cursor-pointer font-medium">{t("sshkeys.restrict")}</summary>
               <div className="flex flex-col gap-3 pt-3">
                 <Field label={t("sshkeys.from")} help={t("sshkeys.fromHelp")}>
-                  {(p) => <input {...p} className="input font-mono" value={from} onChange={(e) => setFrom(e.target.value)} placeholder="203.0.113.7,10.0.0.0/8" />}
+                  {(p) => (
+                    <input {...p} className="input font-mono" value={from} onChange={(e) => setFrom(e.target.value)} placeholder="203.0.113.7,10.0.0.0/8" />
+                  )}
                 </Field>
                 <div className="flex flex-wrap gap-2">
                   {flagOpts.map((f) => (
                     <label key={f} className="flex items-center gap-1.5 rounded-full border border-line px-2 py-0.5 text-sm">
-                      <input type="checkbox" checked={flags.includes(f)} onChange={(e) => setFlags(e.target.checked ? [...flags, f] : flags.filter((x) => x !== f))} />
+                      <input
+                        type="checkbox"
+                        checked={flags.includes(f)}
+                        onChange={(e) => setFlags(e.target.checked ? [...flags, f] : flags.filter((x) => x !== f))}
+                      />
                       <span className="font-mono">{f}</span>
                     </label>
                   ))}
@@ -246,16 +259,31 @@ export function SSHKeys() {
           <summary className="cursor-pointer font-medium">{t("sshkeys.sshdConfig")}</summary>
           <p className="mt-2 text-sm text-muted">{t("sshkeys.sshdReadOnly")}</p>
           <div className="mt-2 max-h-80 overflow-auto rounded-[8px] border border-line">
-            <table className="w-full text-left font-mono text-xs">
-              <tbody>
-                {(srv.data?.sshd ?? []).map((s, i) => (
-                  <tr key={`${s.key}-${i}`} className="border-t border-line first:border-t-0">
-                    <td className="px-3 py-1 text-violet">{s.key}</td>
-                    <td className="break-all px-3 py-1">{s.value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable
+              rows={srv.data?.sshd}
+              rowKey={(s) => `${s.key}-${s.value}`}
+              className="font-mono text-xs"
+              stickyHeader
+              label={t("sshkeys.sshdConfig")}
+              columns={[
+                {
+                  key: "key",
+                  label: t("sshkeys.option"),
+                  tdClass: "text-violet",
+                  sortValue: (s) => s.key,
+                  filter: "text",
+                  cell: (s) => <>{s.key}</>,
+                },
+                {
+                  key: "value",
+                  label: t("sshkeys.value"),
+                  tdClass: "break-all",
+                  sortValue: (s) => s.value,
+                  filter: "text",
+                  cell: (s) => <>{s.value}</>,
+                },
+              ]}
+            />
           </div>
         </details>
       </Panel>

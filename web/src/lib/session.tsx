@@ -102,8 +102,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       {children}
       <Dialog.Root open={open} onOpenChange={(o) => !o && cancel()}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/60" />
-          <Dialog.Content className="panel panel-edge fixed left-1/2 top-1/2 w-[min(92vw,440px)] -translate-x-1/2 -translate-y-1/2 p-6">
+          {/* Above other dialogs (z-50): step-up is often requested from inside one. */}
+          <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/60" />
+          <Dialog.Content className="panel panel-edge fixed left-1/2 top-1/2 z-[60] w-[min(92vw,440px)] -translate-x-1/2 -translate-y-1/2 p-6">
             <Dialog.Title className="text-lg font-semibold">{t("stepup.title")}</Dialog.Title>
             <Dialog.Description className="mt-2 text-muted">{t("stepup.text")}</Dialog.Description>
             {err && (

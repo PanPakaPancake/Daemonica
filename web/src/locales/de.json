@@ -555,7 +555,9 @@
     "hostKeys": "Host-Schlüssel des Servers",
     "hostKeysHelp": "Vergleiche diese Fingerprints beim ersten Verbinden mit der Anzeige deines SSH-Clients.",
     "sshdConfig": "Effektive sshd-Konfiguration",
-    "sshdReadOnly": "Nur zur Ansicht (sshd -T). Änderungen folgen über die Sicherheits-Checkliste in Phase 2."
+    "sshdReadOnly": "Nur zur Ansicht (sshd -T). Änderungen folgen über die Sicherheits-Checkliste in Phase 2.",
+    "option": "Option",
+    "value": "Wert"
   },
   "files": {
     "title": "Dateien",
@@ -583,7 +585,8 @@
       "owner": "Besitzer",
       "mtime": "Geändert",
       "user": "Benutzer",
-      "group": "Gruppe"
+      "group": "Gruppe",
+      "type": "Typ"
     },
     "empty": "Dieser Ordner ist leer. Lege eine Datei an oder ziehe Dateien hierher, um sie hochzuladen.",
     "noMatch": "Keine Einträge passen zur Suche.",
@@ -755,6 +758,31 @@
       "versionLoad": "In den Editor laden",
       "versionLoaded": "Version vom {{time}} geladen. Speichere, um sie wiederherzustellen.",
       "savedPreexisting": "Gespeichert. Die Prüfung mit {{tool}} schlägt fehl, aber das tat sie schon vor dieser Änderung. Prüfe die Konfiguration, bevor du den Dienst neu lädst."
-    }
+    },
+    "kind": {
+      "dir": "Ordner",
+      "file": "Datei",
+      "symlink": "Verknüpfung",
+      "other": "Sonstiges"
+    },
+    "view": {
+      "label": "Ansicht",
+      "details": "Details",
+      "compact": "Kompakt",
+      "grid": "Kacheln"
+    },
+    "sortBy": "Sortieren nach",
+    "sortAsc": "Aufsteigend",
+    "sortDesc": "Absteigend"
+  },
+  "table": {
+    "sortBy": "Nach {{col}} sortieren",
+    "filters": "Filter ein-/ausblenden",
+    "filter": "Filter …",
+    "filterBy": "Nach {{col}} filtern",
+    "all": "Alle",
+    "reset": "Filter zurücksetzen",
+    "noMatch": "Kein Eintrag passt zu den Filtern.",
+    "empty": "Keine Einträge."
   }
 }

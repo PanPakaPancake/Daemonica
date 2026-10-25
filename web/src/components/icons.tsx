@@ -57,7 +57,11 @@ export type IconName =
   | "save"
   | "arrowUp"
   | "folderPlus"
-  | "filePlus";
+  | "filePlus"
+  | "filter"
+  | "viewList"
+  | "viewGrid"
+  | "viewCompact";
 
 const paths: Record<IconName, ReactNode> = {
   overview: (
@@ -308,6 +312,17 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   arrowUp: <path d="M12 19.5v-15M6.5 10 12 4.5l5.5 5.5" />,
+  filter: <path d="M3.5 5h17l-6.5 7.5v6l-4 2v-8z" />,
+  viewList: <path d="M8 6h12.5M8 12h12.5M8 18h12.5M3.5 6h.01M3.5 12h.01M3.5 18h.01" />,
+  viewGrid: (
+    <>
+      <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+      <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+      <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+      <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+    </>
+  ),
+  viewCompact: <path d="M3.5 5.5h7M3.5 10h7M3.5 14.5h7M3.5 19h7M13.5 5.5h7M13.5 10h7M13.5 14.5h7M13.5 19h7" />,
 };
 
 export function Icon({ name, className = "h-[18px] w-[18px]" }: { name: IconName; className?: string }) {

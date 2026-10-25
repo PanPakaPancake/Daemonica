@@ -86,6 +86,24 @@ func TestListSortFilterPage(t *testing.T) {
 	if r.Total != 2 || len(r.Entries) != 1 || r.Entries[0].Name != "b.txt" {
 		t.Fatalf("filter/page: %+v", r)
 	}
+	r, _ = List(ListArgs{Path: d, Kind: "symlink"})
+	if r.Total != 1 || r.Entries[0].Name != "link" {
+		t.Fatalf("kind filter: %+v", r)
+	}
+	r, _ = List(ListArgs{Path: d, Kind: "file", Owner: "no-such-owner"})
+	if r.Total != 0 {
+		t.Fatalf("owner filter: %+v", r)
+	}
+	me := ownerOf(Entry{UID: uint32(os.Getuid()), GID: uint32(os.Getgid())})
+	r, _ = List(ListArgs{Path: d, Kind: "file", Owner: strings.Split(me, ":")[0]})
+	if r.Total != 4 {
+		t.Fatalf("owner filter (own uid): %d", r.Total)
+	}
+	_ = os.Chmod(filepath.Join(d, "c.log"), 0o644)
+	r, _ = List(ListArgs{Path: d, Kind: "file", Sort: "mode", Desc: true})
+	if r.Entries[0].Name != "c.log" {
+		t.Fatalf("mode sort: %s", r.Entries[0].Name)
+	}
 	r, _ = List(ListArgs{Path: d, DirsOnly: true})
 	if r.Total != 2 {
 		t.Fatalf("dirs only: %d", r.Total)

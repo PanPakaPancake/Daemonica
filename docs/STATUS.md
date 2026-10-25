@@ -33,7 +33,7 @@ _Last updated: 2026-10-25_
 
 ### Test-VM operational notes
 
-- 2026-10-24: `/etc/ssh/sshd_config.d/90-daemonica-dev.conf` sets `PerSourcePenaltyExemptList 37.201.167.99` (owner's current IP) because sshd's per-source penalties locked out both the owner and the build connection. **Remove before the acceptance test.**
+- 2026-10-24: `/etc/ssh/sshd_config.d/90-daemonica-dev.conf` sets `PerSourcePenaltyExemptList 37.201.167.99` (owner's current IP) because sshd's per-source penalties locked out both the owner and the build connection. Removed 2026-10-25 after the M1.5 acceptance (owner OK).
 - 2026-10-24: Rename daemonia → daemonica applied on the VM via `/root/migrate.sh` (data directories moved, `daemonia-web` user replaced by `daemonica-web`, old package purged). Pre-migration backup: `/root/pre-rename-backup-20261024T2001.tgz`.
 
 ### Real-world setup on the VM (2026-10-24)

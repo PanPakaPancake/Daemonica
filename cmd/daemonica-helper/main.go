@@ -22,6 +22,7 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/files"
 	"github.com/PanPakaPancake/daemonica/internal/firewall"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
+	"github.com/PanPakaPancake/daemonica/internal/jobs"
 	"github.com/PanPakaPancake/daemonica/internal/netcfg"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
 	"github.com/PanPakaPancake/daemonica/internal/pty"
@@ -222,6 +223,13 @@ func main() {
 		return names, err
 	}}
 	capOps.Register(ops)
+
+	jobMgr := &jobs.Manager{Dir: filepath.Join(*stateDir, "jobs"), UnitDir: "/etc/systemd/system",
+		Systemd: helper.JobSystemd{C: sd}, Run: netcfg.ExecRunner, LookupUser: helper.LookupLinuxUser}
+	if err := jobMgr.Init(); err != nil {
+		log.Error("cannot create jobs dir", "err", err)
+	}
+	(&helper.JobOps{M: jobMgr, Timers: sd.Timers, TimerState: sd.TimerState, History: jobs.History}).Register(ops)
 	go capOps.Janitor(context.Background(), 10*time.Minute)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to

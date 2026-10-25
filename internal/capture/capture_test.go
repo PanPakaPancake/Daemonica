@@ -404,4 +404,23 @@ func TestUnitProperties(t *testing.T) {
 	if got["RuntimeMaxUSec"] != uint64(330_000_000) {
 		t.Fatal(got["RuntimeMaxUSec"])
 	}
+	// systemd rejects a whole StartTransientUnit call ("Unexpected message
+	// contents") when one property has the wrong D-Bus type; these are the
+	// types of org.freedesktop.systemd1(5).
+	sig := map[string]string{
+		"Description": "s", "ExecStart": "a(sasb)", "DynamicUser": "b", "AmbientCapabilities": "t", "CapabilityBoundingSet": "t",
+		"NoNewPrivileges": "b", "ProtectSystem": "s", "ProtectHome": "s", "PrivateTmp": "b", "PrivateDevices": "b",
+		"ProtectKernelTunables": "b", "ProtectKernelModules": "b", "ProtectControlGroups": "b", "RestrictNamespaces": "t",
+		"LockPersonality": "b", "MemoryDenyWriteExecute": "b", "RestrictAddressFamilies": "(bas)", "SystemCallFilter": "(bas)",
+		"SystemCallArchitectures": "as", "MemoryMax": "t", "TasksMax": "t", "RuntimeMaxUSec": "t", "StandardInput": "s",
+		"StandardOutputFileDescriptor": "h", "StandardError": "s", "KillMode": "s", "TimeoutStopUSec": "t", "CollectMode": "s",
+	}
+	for _, p := range props {
+		want, ok := sig[p.Name]
+		if !ok {
+			t.Errorf("no expected type for %s", p.Name)
+		} else if g := p.Value.Signature().String(); g != want {
+			t.Errorf("%s: D-Bus type %s, systemd expects %s", p.Name, g, want)
+		}
+	}
 }

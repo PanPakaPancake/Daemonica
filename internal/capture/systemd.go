@@ -63,7 +63,8 @@ func unitProperties(args []string, spec Spec, out int) []property {
 		prop("ProtectKernelTunables", true),
 		prop("ProtectKernelModules", true),
 		prop("ProtectControlGroups", true),
-		prop("RestrictNamespaces", true),
+		// The D-Bus property is the mask of allowed namespaces ("t"); 0 = none.
+		prop("RestrictNamespaces", uint64(0)),
 		prop("LockPersonality", true),
 		prop("MemoryDenyWriteExecute", true),
 		prop("RestrictAddressFamilies", boolList{Allow: true, List: []string{"AF_PACKET", "AF_UNIX"}}),

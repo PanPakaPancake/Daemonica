@@ -62,6 +62,8 @@ export function ChangeFlow({
   onChange,
   onDone,
   children,
+  planned,
+  applyDisabled = false,
 }: {
   change: Change;
   ns: string;
@@ -70,6 +72,9 @@ export function ChangeFlow({
   onDone: (msg: string, tone: "ok" | "warn") => void;
   /** Extra hints shown while the change waits for confirmation (e.g. a new URL). */
   children?: ReactNode;
+  /** Shown before the apply button (e.g. a mandatory acknowledgement). */
+  planned?: ReactNode;
+  applyDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   const { withStepUp } = useSession();
@@ -116,9 +121,15 @@ export function ChangeFlow({
       <DiffView diff={change.diff} />
       <p className={change.risk === "high" ? "font-semibold text-bad" : "text-warn"}>{t(`${ns}.risk.${change.risk}`)}</p>
       {err && <Notice tone="bad">{err}</Notice>}
+      {change.state === "planned" && planned}
       {change.state === "planned" && (
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={`btn ${change.risk === "high" ? "btn-danger" : "btn-primary"}`} disabled={busy} onClick={() => void apply()}>
+          <button
+            type="button"
+            className={`btn ${change.risk === "high" ? "btn-danger" : "btn-primary"}`}
+            disabled={busy || applyDisabled}
+            onClick={() => void apply()}
+          >
             {busy ? t("change.applying") : t("change.apply")}
           </button>
           <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => onChange(undefined)}>

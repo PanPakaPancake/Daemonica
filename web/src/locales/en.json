@@ -955,5 +955,205 @@
     },
     "rolledBackTimeout": "No confirmation received – the server restored the previous network configuration.",
     "newUrl": "Your address changes. Confirm at the new address:"
+  },
+  "firewall": {
+    "title": "Firewall",
+    "intro": "Status, rules and reachability of the host firewall. Changes go through preview, apply and confirm; without confirmation the server reverts after 90 seconds.",
+    "light": {
+      "green": "Green: firewall active, nothing to report",
+      "yellow": "Yellow: firewall active, with findings",
+      "red": "Red: the server is not protected"
+    },
+    "hint": {
+      "inactive": "The firewall is off. Every listening service is reachable from outside.",
+      "default_allow": "The default policy for incoming connections is “allow”: anything no rule forbids gets through.",
+      "not_persistent": "The firewall runs but will not start again after a reboot.",
+      "ipv6_off": "IPv6 is off in ufw, but the server has a public IPv6 address. IPv6 connections are not filtered.",
+      "logging_off": "Logging is off. Blocked connections do not show up in the firewall logs.",
+      "unused_allow": "A rule allows {{arg}}, but no service listens there (any more). The rule can probably go.",
+      "no_firewall": "No firewall is set up.",
+      "readonly": "The firewall ({{arg}}) is not managed by Daemonica and is read-only."
+    },
+    "allGood": "Incoming connections are blocked by default; only the rules below let traffic in.",
+    "backend": "Backend",
+    "backends": {
+      "ufw": "ufw (managed)",
+      "firewalld": "firewalld (read-only)",
+      "nftables": "nftables (read-only)",
+      "iptables": "iptables (read-only)",
+      "none": "none"
+    },
+    "status": "Status",
+    "active": "active",
+    "inactive": "inactive",
+    "onBoot": "starts at boot",
+    "notOnBoot": "does not start at boot",
+    "defaults": "Default policies",
+    "default": {
+      "incoming": "incoming",
+      "outgoing": "outgoing",
+      "routed": "routed"
+    },
+    "policy": {
+      "allow": "allow",
+      "deny": "deny",
+      "reject": "reject",
+      "disabled": "off (no routing)"
+    },
+    "policyLabel": "Policy",
+    "ruleCount": "Rules",
+    "ipv6On": "protected",
+    "ipv6Off": "not filtered",
+    "logging": "Logging",
+    "level": {
+      "off": "off",
+      "low": "low",
+      "medium": "medium",
+      "high": "high",
+      "full": "full"
+    },
+    "loggingHelp": "“Low” logs blocked packets (rate-limited). Higher levels also log allowed connections and produce a lot of log volume.",
+    "lastChange": "Last change",
+    "lastChangeText": "{{when}} by {{who}} ({{what}})",
+    "event": {
+      "applied": "applied",
+      "confirmed": "confirmed",
+      "rolled_back": "reverted",
+      "rolled_back_timeout": "reverted automatically",
+      "rolled_back_recovery": "reverted after restart",
+      "apply_failed": "failed"
+    },
+    "enable": "Enable",
+    "disable": "Disable",
+    "setLogging": "Logging",
+    "setDefault": "Default policy",
+    "reset": "Reset",
+    "tab": {
+      "rules": "Rules",
+      "reach": "Reachability",
+      "raw": "Raw view"
+    },
+    "rulesIntro": "ufw checks the rules top to bottom; the first matching rule decides.",
+    "addRule": "Add rule",
+    "noRules": "No rules yet.",
+    "noUfwRules": "No rule set Daemonica can manage. The raw view shows the active rules.",
+    "similar": "Create similar rule",
+    "copyCommand": "Copy as ufw command",
+    "actionsFor": "Actions for rule {{num}}",
+    "col": {
+      "action": "Action",
+      "direction": "Direction",
+      "explain": "Meaning",
+      "port": "Port / profile",
+      "src": "Source",
+      "dst": "Destination",
+      "iface": "Interface",
+      "comment": "Comment",
+      "packets": "Packets",
+      "bytes": "Bytes",
+      "effect": "Firewall effect"
+    },
+    "action": {
+      "allow": "Allow",
+      "limit": "Limit",
+      "deny": "Deny",
+      "reject": "Reject"
+    },
+    "actionHelp": {
+      "allow": "Lets matching connections through.",
+      "limit": "Allows, but blocks sources with more than 6 connections in 30 seconds (protects against password guessing).",
+      "deny": "Silently drops packets; the sender waits for a timeout.",
+      "reject": "Refuses at once; the sender learns that the port is closed."
+    },
+    "dir": {
+      "in": "incoming",
+      "out": "outgoing",
+      "route": "routed"
+    },
+    "any": "anywhere",
+    "explain": {
+      "action": {
+        "allow": "Allows",
+        "limit": "Allows (rate-limited)",
+        "deny": "Drops",
+        "reject": "Rejects"
+      },
+      "app": "profile {{app}} (port {{ports}})",
+      "allPorts": "all ports",
+      "port": "{{port}}",
+      "fromAny": "from anywhere",
+      "from": "from {{src}}",
+      "sport": "from source port {{port}}",
+      "to": "to {{dst}}",
+      "iface": "on {{iface}}",
+      "outIface": "out on {{iface}}",
+      "logged": "(logged)"
+    },
+    "noneInfo": "No firewall is active on this server. Daemonica manages ufw and can set it up.",
+    "readonlyInfo": "This firewall ({{backend}}) is not managed by Daemonica. Status and raw view are readable; make changes with this firewall's own tools.",
+    "installExplain": "Installs the ufw package with safe defaults (deny incoming, allow outgoing). The firewall stays off; when you enable it, Daemonica proposes rules for SSH and the dashboard.",
+    "install": "Set up firewall (install ufw)",
+    "installing": "Installing …",
+    "installed": "ufw is installed. Review the proposed rules, then enable the firewall.",
+    "reach": {
+      "local": "local only",
+      "open": "reachable",
+      "limited": "reachable (limited)",
+      "restricted": "specific sources only",
+      "blocked": "blocked",
+      "unprotected": "reachable, unprotected"
+    },
+    "byRule": "rule {{num}}",
+    "reachIntro": "Listening services and what the firewall does with a new connection from the internet. “Unprotected” means no rule covers the port and the connection still gets through.",
+    "rawSearch": "Search raw view",
+    "export": "Export as text file",
+    "rawSource": "Source: {{source}}",
+    "rawMatches_one": "{{count}} match",
+    "rawMatches_other": "{{count}} matches",
+    "lockout": {
+      "dashboard": "Your dashboard connection (TCP {{port}}) would be blocked.",
+      "ssh": "SSH (TCP {{port}}) would no longer be reachable from your IP.",
+      "ssh_closed": "SSH (TCP {{port}}) would no longer be reachable from the internet."
+    },
+    "lockoutTitle": "Warning, lockout risk:",
+    "lockoutAck": "I have a second way in (the provider's console) and know I can lock myself out from {{ip}}. Without confirmation the server reverts after 90 seconds.",
+    "op": {
+      "add": "Add rule",
+      "delete": "Delete rule",
+      "logging": "Set logging",
+      "default": "Change default policy",
+      "enable": "Enable firewall",
+      "disable": "Disable firewall",
+      "reset": "Reset firewall"
+    },
+    "enableExplain": "When enabling, Daemonica adds rules where needed that keep SSH (port {{ports}}) and the dashboard (port {{port}}, for the allowlist networks) reachable. You see them in the preview and must accept them.",
+    "disableWarn": "Without a firewall every listening service is reachable from the internet.",
+    "resetWarn": "Reset deletes all rules, restores the default policies and turns the firewall off. ufw keeps the previous files with a timestamp.",
+    "typeName": "Type the server name “{{name}}” to confirm",
+    "preview": "Preview",
+    "autoTitle": "These rules are added before enabling so you are not locked out:",
+    "autoSsh": "SSH: allow TCP {{port}} from {{from}}",
+    "autoDashboard": "Dashboard: allow TCP {{port}} from {{from}}",
+    "autoAck": "I reviewed the rules and accept them.",
+    "mode": {
+      "port": "Port and protocol",
+      "app": "Service template"
+    },
+    "ifaceHelp": "Empty = all interfaces.",
+    "app": "Service template",
+    "appHelp": "ufw application profile from /etc/ufw/applications.d.",
+    "noApps": "No profiles available",
+    "anyProto": "any",
+    "portHelp": "e.g. 22, 80,443 or 6000:6010 (lists and ranges need TCP or UDP).",
+    "addrHelp": "“any” or an IP address or network (CIDR).",
+    "commentHelp": "Optional, max. 80 characters. Comments starting with “daemonica:” mark rules Daemonica manages.",
+    "confirmPrompt": "The new firewall configuration is active. Confirm within {{seconds}} s that you still reach the dashboard; otherwise the server reverts automatically.",
+    "risk": {
+      "low": "Low risk.",
+      "medium": "Medium risk: check that the preview matches your intent.",
+      "high": "Red alert: this change can cut your own connection. Without confirmation the server reverts after 90 seconds."
+    },
+    "rolledBackTimeout": "No confirmation received – the server restored the previous firewall configuration.",
+    "managedHint": "Rule managed by Daemonica"
   }
 }

@@ -955,5 +955,205 @@
     },
     "rolledBackTimeout": "Keine Bestätigung erhalten – der Server hat die vorherige Netzwerkkonfiguration wiederhergestellt.",
     "newUrl": "Deine Adresse ändert sich. Bestätige über die neue Adresse:"
+  },
+  "firewall": {
+    "title": "Firewall",
+    "intro": "Status, Regelwerk und Erreichbarkeit der Host-Firewall. Änderungen laufen über Vorschau, Anwenden und Bestätigen; ohne Bestätigung setzt der Server nach 90 Sekunden zurück.",
+    "light": {
+      "green": "Grün: Firewall aktiv, keine Auffälligkeiten",
+      "yellow": "Gelb: Firewall aktiv, aber mit Hinweisen",
+      "red": "Rot: Der Server ist nicht geschützt"
+    },
+    "hint": {
+      "inactive": "Die Firewall ist ausgeschaltet. Alle lauschenden Dienste sind von außen erreichbar.",
+      "default_allow": "Die Standardrichtlinie für eingehende Verbindungen ist „erlauben“: Alles, was keine Regel verbietet, kommt durch.",
+      "not_persistent": "Die Firewall läuft, startet nach einem Neustart aber nicht automatisch.",
+      "ipv6_off": "IPv6 ist in ufw ausgeschaltet, der Server hat aber eine öffentliche IPv6-Adresse. IPv6-Verbindungen werden nicht gefiltert.",
+      "logging_off": "Das Logging ist aus. Blockierte Verbindungen erscheinen nicht in den Firewall-Logs.",
+      "unused_allow": "Eine Regel gibt {{arg}} frei, aber kein Dienst lauscht dort (mehr). Die Regel kann vermutlich weg.",
+      "no_firewall": "Es ist keine Firewall eingerichtet.",
+      "readonly": "Die Firewall ({{arg}}) wird nicht von Daemonica verwaltet und ist nur lesbar."
+    },
+    "allGood": "Eingehende Verbindungen werden standardmäßig blockiert, nur die Regeln unten lassen etwas durch.",
+    "backend": "Backend",
+    "backends": {
+      "ufw": "ufw (verwaltet)",
+      "firewalld": "firewalld (nur lesend)",
+      "nftables": "nftables (nur lesend)",
+      "iptables": "iptables (nur lesend)",
+      "none": "keine"
+    },
+    "status": "Status",
+    "active": "aktiv",
+    "inactive": "inaktiv",
+    "onBoot": "startet beim Booten",
+    "notOnBoot": "startet nicht beim Booten",
+    "defaults": "Standardrichtlinien",
+    "default": {
+      "incoming": "eingehend",
+      "outgoing": "ausgehend",
+      "routed": "weitergeleitet"
+    },
+    "policy": {
+      "allow": "erlauben",
+      "deny": "verwerfen",
+      "reject": "abweisen",
+      "disabled": "aus (kein Routing)"
+    },
+    "policyLabel": "Richtlinie",
+    "ruleCount": "Regeln",
+    "ipv6On": "geschützt",
+    "ipv6Off": "nicht gefiltert",
+    "logging": "Logging",
+    "level": {
+      "off": "aus",
+      "low": "niedrig",
+      "medium": "mittel",
+      "high": "hoch",
+      "full": "voll"
+    },
+    "loggingHelp": "„Niedrig“ protokolliert blockierte Pakete (begrenzt). Höhere Stufen protokollieren auch erlaubte Verbindungen und erzeugen viel Log-Volumen.",
+    "lastChange": "Letzte Änderung",
+    "lastChangeText": "{{when}} von {{who}} ({{what}})",
+    "event": {
+      "applied": "angewendet",
+      "confirmed": "bestätigt",
+      "rolled_back": "zurückgesetzt",
+      "rolled_back_timeout": "automatisch zurückgesetzt",
+      "rolled_back_recovery": "nach Neustart zurückgesetzt",
+      "apply_failed": "fehlgeschlagen"
+    },
+    "enable": "Aktivieren",
+    "disable": "Deaktivieren",
+    "setLogging": "Logging",
+    "setDefault": "Standardrichtlinie",
+    "reset": "Zurücksetzen",
+    "tab": {
+      "rules": "Regeln",
+      "reach": "Erreichbarkeit",
+      "raw": "Rohansicht"
+    },
+    "rulesIntro": "ufw prüft die Regeln von oben nach unten; die erste passende Regel entscheidet.",
+    "addRule": "Regel hinzufügen",
+    "noRules": "Noch keine Regeln.",
+    "noUfwRules": "Kein von Daemonica verwaltbares Regelwerk. Die Rohansicht zeigt die aktiven Regeln.",
+    "similar": "Ähnliche Regel anlegen",
+    "copyCommand": "Als ufw-Befehl kopieren",
+    "actionsFor": "Aktionen für Regel {{num}}",
+    "col": {
+      "action": "Aktion",
+      "direction": "Richtung",
+      "explain": "Bedeutung",
+      "port": "Port / Profil",
+      "src": "Quelle",
+      "dst": "Ziel",
+      "iface": "Interface",
+      "comment": "Kommentar",
+      "packets": "Pakete",
+      "bytes": "Bytes",
+      "effect": "Wirkung der Firewall"
+    },
+    "action": {
+      "allow": "Erlauben",
+      "limit": "Begrenzen",
+      "deny": "Verwerfen",
+      "reject": "Abweisen"
+    },
+    "actionHelp": {
+      "allow": "Lässt passende Verbindungen durch.",
+      "limit": "Erlaubt, sperrt aber Quellen mit mehr als 6 Verbindungen in 30 Sekunden (Schutz gegen Passwort-Raten).",
+      "deny": "Verwirft Pakete still; der Absender wartet bis zum Timeout.",
+      "reject": "Lehnt sofort ab; der Absender erfährt, dass der Port gesperrt ist."
+    },
+    "dir": {
+      "in": "eingehend",
+      "out": "ausgehend",
+      "route": "weitergeleitet"
+    },
+    "any": "überall",
+    "explain": {
+      "action": {
+        "allow": "Erlaubt",
+        "limit": "Erlaubt begrenzt",
+        "deny": "Verwirft",
+        "reject": "Weist ab"
+      },
+      "app": "Profil {{app}} (Port {{ports}})",
+      "allPorts": "alle Ports",
+      "port": "{{port}}",
+      "fromAny": "von überall",
+      "from": "von {{src}}",
+      "sport": "ab Quellport {{port}}",
+      "to": "an {{dst}}",
+      "iface": "über {{iface}}",
+      "outIface": "hinaus über {{iface}}",
+      "logged": "(protokolliert)"
+    },
+    "noneInfo": "Auf diesem Server ist keine Firewall aktiv. Daemonica verwaltet ufw und kann es einrichten.",
+    "readonlyInfo": "Diese Firewall ({{backend}}) wird nicht von Daemonica verwaltet. Status und Rohansicht sind lesbar, Änderungen bitte mit den Werkzeugen dieser Firewall vornehmen.",
+    "installExplain": "Installiert das Paket ufw mit sicheren Standardwerten (eingehend verwerfen, ausgehend erlauben). Die Firewall bleibt dabei ausgeschaltet; beim Aktivieren schlägt Daemonica Regeln für SSH und das Dashboard vor.",
+    "install": "Firewall einrichten (ufw installieren)",
+    "installing": "Wird installiert …",
+    "installed": "ufw ist installiert. Prüfe die vorgeschlagenen Regeln und aktiviere dann die Firewall.",
+    "reach": {
+      "local": "nur lokal",
+      "open": "erreichbar",
+      "limited": "erreichbar (begrenzt)",
+      "restricted": "nur bestimmte Quellen",
+      "blocked": "blockiert",
+      "unprotected": "ungeschützt erreichbar"
+    },
+    "byRule": "Regel {{num}}",
+    "reachIntro": "Lauschende Dienste und was die Firewall mit einer neuen Verbindung aus dem Internet macht. „Ungeschützt“ heißt: Keine Regel betrifft den Port und trotzdem kommt die Verbindung durch.",
+    "rawSearch": "Rohansicht durchsuchen",
+    "export": "Als Textdatei exportieren",
+    "rawSource": "Quelle: {{source}}",
+    "rawMatches_one": "{{count}} Treffer",
+    "rawMatches_other": "{{count}} Treffer",
+    "lockout": {
+      "dashboard": "Deine Verbindung zum Dashboard (TCP {{port}}) würde blockiert.",
+      "ssh": "SSH (TCP {{port}}) wäre von deiner IP aus nicht mehr erreichbar.",
+      "ssh_closed": "SSH (TCP {{port}}) wäre aus dem Internet nicht mehr erreichbar."
+    },
+    "lockoutTitle": "Achtung, Aussperr-Gefahr:",
+    "lockoutAck": "Ich habe einen zweiten Zugang (Konsole des Anbieters) und weiß, dass ich mich von {{ip}} aus aussperren kann. Ohne Bestätigung setzt der Server nach 90 Sekunden zurück.",
+    "op": {
+      "add": "Regel hinzufügen",
+      "delete": "Regel löschen",
+      "logging": "Logging einstellen",
+      "default": "Standardrichtlinie ändern",
+      "enable": "Firewall aktivieren",
+      "disable": "Firewall deaktivieren",
+      "reset": "Firewall zurücksetzen"
+    },
+    "enableExplain": "Beim Aktivieren legt Daemonica, falls nötig, Regeln an, die SSH (Port {{ports}}) und das Dashboard (Port {{port}}, für die Netze der Allowlist) erreichbar halten. Du siehst sie in der Vorschau und musst sie bestätigen.",
+    "disableWarn": "Ohne Firewall sind alle lauschenden Dienste aus dem Internet erreichbar.",
+    "resetWarn": "Zurücksetzen löscht alle Regeln, setzt die Standardrichtlinien zurück und schaltet die Firewall aus. Die bisherigen Dateien sichert ufw mit Zeitstempel.",
+    "typeName": "Zum Bestätigen den Servernamen „{{name}}“ eintippen",
+    "preview": "Vorschau",
+    "autoTitle": "Diese Regeln werden vor dem Aktivieren angelegt, damit du nicht ausgesperrt wirst:",
+    "autoSsh": "SSH: TCP {{port}} von {{from}} erlauben",
+    "autoDashboard": "Dashboard: TCP {{port}} von {{from}} erlauben",
+    "autoAck": "Ich habe die Regeln geprüft und übernehme sie.",
+    "mode": {
+      "port": "Port und Protokoll",
+      "app": "Dienstvorlage"
+    },
+    "ifaceHelp": "Leer = alle Interfaces.",
+    "app": "Dienstvorlage",
+    "appHelp": "ufw-Anwendungsprofil aus /etc/ufw/applications.d.",
+    "noApps": "Keine Profile vorhanden",
+    "anyProto": "alle",
+    "portHelp": "z. B. 22, 80,443 oder 6000:6010 (Listen und Bereiche brauchen TCP oder UDP).",
+    "addrHelp": "„any“ oder eine IP-Adresse bzw. ein Netz (CIDR).",
+    "commentHelp": "Optional, max. 80 Zeichen. Kommentare mit „daemonica:“ markieren von Daemonica verwaltete Regeln.",
+    "confirmPrompt": "Die neue Firewall-Konfiguration ist aktiv. Bestätige innerhalb von {{seconds}} s, dass du das Dashboard weiterhin erreichst; sonst setzt der Server automatisch zurück.",
+    "risk": {
+      "low": "Geringes Risiko.",
+      "medium": "Mittleres Risiko: Prüfe, ob die Vorschau deine Absicht trifft.",
+      "high": "Warnstufe Rot: Diese Änderung kann deine eigene Verbindung trennen. Ohne Bestätigung setzt der Server nach 90 Sekunden zurück."
+    },
+    "rolledBackTimeout": "Keine Bestätigung erhalten – der Server hat die vorherige Firewall-Konfiguration wiederhergestellt.",
+    "managedHint": "Von Daemonica verwaltete Regel"
   }
 }

@@ -81,7 +81,9 @@ type fwPlanParams struct {
 type FirewallPlanView struct {
 	planner.Change
 	Auto    []firewall.AddSpec `json:"auto"`    // rules added to keep access when enabling
-	Lockout []string           `json:"lockout"` // acknowledged lockout findings
+	Lockout []string           `json:"lockout"` // lockout findings (dashboard:8443, ssh:22, ssh_closed:22)
+	// Blocked: lockout findings need confirm_lockout; no change was planned.
+	Blocked bool `json:"blocked,omitempty"`
 }
 
 type fwEnv struct {
@@ -328,7 +330,8 @@ func (f *FirewallOps) plan(ctx context.Context, c Call, p fwPlanParams) (any, er
 	}
 	if len(lock) > 0 {
 		if !p.ConfirmLockout {
-			return nil, Errf(rpc.CodeLockout, "this change would block: %s", strings.Join(lock, ", "))
+			// The UI shows the findings and asks for the acknowledgement.
+			return FirewallPlanView{Auto: nonNil(auto), Lockout: lock, Blocked: true}, nil
 		}
 		risk = "high"
 	}
@@ -342,13 +345,14 @@ func (f *FirewallOps) plan(ctx context.Context, c Call, p fwPlanParams) (any, er
 	if err != nil {
 		return nil, mapPlannerErr(err)
 	}
-	if auto == nil {
-		auto = []firewall.AddSpec{}
+	return FirewallPlanView{Change: redact(ch), Auto: nonNil(auto), Lockout: nonNil(lock)}, nil
+}
+
+func nonNil[T any](s []T) []T {
+	if s == nil {
+		return []T{}
 	}
-	if lock == nil {
-		lock = []string{}
-	}
-	return FirewallPlanView{Change: redact(ch), Auto: auto, Lockout: lock}, nil
+	return s
 }
 
 // covered reports whether the rules already let the access rule's traffic in.

@@ -106,12 +106,16 @@ func TestFirewallPlanEnable(t *testing.T) {
 	g = stepUp(t, e, sa, g)
 	// The allowlist holds only loopback, so the dashboard port gets no rule and
 	// the caller (connected from outside) would be locked out.
-	if r := plan(firewall.Op{Kind: "enable"}, false, ""); code(r) != rpc.CodeLockout || !strings.Contains(r.Error.Message, "dashboard:8443") {
-		t.Fatalf("enable without ack: %+v", r)
+	r = plan(firewall.Op{Kind: "enable"}, false, "")
+	mustOK(t, r, "enable without ack")
+	var pv FirewallPlanView
+	_ = json.Unmarshal(r.Result, &pv)
+	if !pv.Blocked || pv.ID != "" || len(pv.Lockout) != 1 || pv.Lockout[0] != "dashboard:8443" {
+		t.Fatalf("enable without ack: %+v", pv)
 	}
 	r = plan(firewall.Op{Kind: "enable"}, true, "")
 	mustOK(t, r, "enable")
-	var pv FirewallPlanView
+	pv = FirewallPlanView{}
 	_ = json.Unmarshal(r.Result, &pv)
 	// 2222 is already allowed, so only 22 is added.
 	if pv.Risk != "high" || len(pv.Auto) != 1 || pv.Auto[0].Port != "22" || len(pv.Lockout) != 1 ||

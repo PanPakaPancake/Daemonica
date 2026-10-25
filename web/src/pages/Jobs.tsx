@@ -612,6 +612,7 @@ function useServerTz(): string | undefined {
 }
 
 const browserTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+const sameTz = (a: string, b: string) => a.replace(/^Etc\//, "") === b.replace(/^Etc\//, "");
 
 function NextRuns({ preview, error }: { preview?: { next: string[]; approx?: boolean }; error?: string }) {
   const { t, i18n } = useTranslation();
@@ -632,7 +633,9 @@ function NextRuns({ preview, error }: { preview?: { next: string[]; approx?: boo
         <p className="text-sm text-faint">–</p>
       )}
       {preview?.next.length ? (
-        <p className="mt-1 text-xs text-faint">{server && server !== local ? t("jobs.tzLocalServer", { local, server }) : t("jobs.tzLocal", { local })}</p>
+        <p className="mt-1 text-xs text-faint">
+          {server && !sameTz(server, local) ? t("jobs.tzLocalServer", { local, server }) : t("jobs.tzLocal", { local })}
+        </p>
       ) : null}
     </div>
   );

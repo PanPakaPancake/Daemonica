@@ -36,6 +36,9 @@ Daemonica manages exactly one Debian/Ubuntu host. It is split into three binarie
 | `internal/sysinfo`, `internal/services`, `internal/journal`, `internal/execx` | M1.1 data sources: `/proc` collector, systemd over D-Bus, `journalctl --output=json`, bounded argv execution. |
 | `internal/users`, `internal/sshkeys` | M1.2: shadow-utils via argv, `authorized_keys` parser and worker handlers. |
 | `internal/files` | M1.3 file manager worker operations (openat2-based path handling, rules on canonical paths, streams; DEC-019). |
+| `internal/netcfg` | M1.5a: live network state, open ports, netplan/ifupdown backends, unified diff (DEC-024). |
+| `internal/firewall` | M1.5b/c: ufw rules and counters, first-match evaluation, status light, plans and the planner handler, raw view, log parser (DEC-025, DEC-027). |
+| `internal/capture` | M1.5d: capture spec and filter builder, sandboxed tcpdump unit, pcap reader and packet summaries, limits and retention (DEC-028). |
 
 ## Request flow (authenticated operation)
 
@@ -82,6 +85,17 @@ so the worker can tell a completed upload from an aborted one.
 ## Web terminal (M1.4)
 
 Browser (xterm.js) ⇄ WebSocket `/api/v1/terminal/ws` (daemonica-web: ticket, exact origin, allowlist re-check) ⇄ duplex RPC stream `pty.open` (helper) ⇄ pty master. The helper allocates the pty and asks systemd over D-Bus to start the user's login shell as the transient unit `daemonica-term-<id>.service` on the pty slave (`User=`, `NoNewPrivileges=` per mode, `TasksMax`, `MemoryMax`, `KillSignal=SIGHUP`, SIGKILL after 5 s). The shell is therefore not a child of the sandboxed helper and does not inherit its seccomp filter or protections; stopping the unit ends every process of the session. See DEC-023.
+
+## Network, firewall and capture (M1.5)
+
+| Namespace | Operations | Policy action(s) |
+|---|---|---|
+| `net` | `net.get`, `net.ports`, `net.config`, `net.plan` | overview.read; net.write (admin + step-up) |
+| `firewall` | `firewall.get`, `firewall.raw`, `firewall.plan`, `firewall.install`, `firewall.logs` | overview.read; firewall.write (admin + step-up); firewall.logs (admin, operator) |
+| `settings.change_*` | `change_get`, `change_apply`, `change_confirm`, `change_rollback` for every planner change (allowlist, network, firewall) | settings.read / settings.write |
+| `capture` | `capture.status/stop/lines/delete/delete_all/settings`, `capture.start`, `capture.install`, `capture.download_token`; stream `capture.download` | capture.manage (admin); capture.start and capture.download (admin + step-up) |
+
+Live views use the generic follow WebSocket (`/api/v1/follow/ticket` + `/ws`, DEC-026): daemonica-web repeats an allowlisted query op (`journal.query`, `firewall.logs`, `capture.lines`) with the last cursor once per second and pushes new entries. Packet captures run tcpdump as `daemonica-capture-<id>.service` (DynamicUser, `CAP_NET_RAW` only) with its stdout passed as a pipe over D-Bus; the helper reads the pcap stream, enforces the limits and writes the file (DEC-028).
 
 ## Hardening exceptions (daemonica-helper.service)
 

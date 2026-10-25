@@ -45,6 +45,11 @@ func (s JobSystemd) Stop(ctx context.Context, unit string) error {
 	return s.C.Do(ctx, unit, services.ActStop)
 }
 
+// ResetFailed clears a unit's failed state.
+func (s JobSystemd) ResetFailed(ctx context.Context, unit string) error {
+	return s.C.ResetFailed(ctx, unit)
+}
+
 // LookupLinuxUser resolves a Linux user for jobs.Manager.
 func LookupLinuxUser(name string) (jobs.Account, error) {
 	u, err := user.Lookup(name)

@@ -163,6 +163,15 @@ func (c *Client) DaemonReload(ctx context.Context) error {
 	return c.mgr().CallWithContext(ctx, mgrIface+".Reload", 0).Err
 }
 
+// ResetFailed clears a unit's failed state, so a deleted unit does not
+// linger as "not-found failed".
+func (c *Client) ResetFailed(ctx context.Context, name string) error {
+	if checkName(name) != nil {
+		return errors.New("invalid unit name")
+	}
+	return c.mgr().CallWithContext(ctx, mgrIface+".ResetFailedUnit", 0, name).Err
+}
+
 // StartNoWait queues a start job and returns at once.
 func (c *Client) StartNoWait(ctx context.Context, name string) error {
 	if checkName(name) != nil {

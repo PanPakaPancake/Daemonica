@@ -39,6 +39,7 @@ Daemonica manages exactly one Debian/Ubuntu host. It is split into three binarie
 | `internal/netcfg` | M1.5a: live network state, open ports, netplan/ifupdown backends, unified diff (DEC-024). |
 | `internal/firewall` | M1.5b/c: ufw rules and counters, first-match evaluation, status light, plans and the planner handler, raw view, log parser (DEC-025, DEC-027). |
 | `internal/jobs` | M1.6: managed jobs (validation, unit rendering, trusted-path check, calendar preview, journal history), cron parser, user crontab edits (DEC-029). |
+| `internal/scripts` | M1.6: script library (local scripts, GitHub collections pinned to a commit, tarball reader, tree diff, atomic install under `/var/lib/daemonica-scripts`; DEC-030). |
 | `internal/capture` | M1.5d: capture spec and filter builder, sandboxed tcpdump unit, pcap reader and packet summaries, limits and retention (DEC-028). |
 
 ## Request flow (authenticated operation)
@@ -106,8 +107,11 @@ Live views use the generic follow WebSocket (`/api/v1/follow/ticket` + `/ws`, DE
 | `jobs` | `jobs.run`, `jobs.stop`, `jobs.enable` | jobs.run (admin, operator) |
 | `jobs` | `jobs.check`, `jobs.save`, `jobs.delete` | jobs.write (admin); jobs.write_root for root jobs (admin + step-up) |
 | `cron` | `cron.get`, `cron.preview`; `cron.save` | jobs.read; jobs.write (root's crontab: jobs.write_root) |
+| `scripts` | `scripts.list`, `scripts.read`; `scripts.preview`, `scripts.check`; `scripts.add`, `scripts.update`, `scripts.remove`, `scripts.save`, `scripts.delete` | jobs.read; jobs.write; jobs.write_root (admin + step-up) |
 
 Managed jobs are `daemonica-job-<id>.service` + `.timer` in `/etc/systemd/system`, rendered by `internal/jobs` from validated fields with every value quoted for systemd's parser; the helper reloads systemd and enables the timer over D-Bus. Run history comes from the journal, grouped by invocation id. See DEC-029.
+
+The script library (DEC-030) keeps files in `/var/lib/daemonica-scripts/<source>/` (root, 0755/0644) so that jobs of every user can run them and the trusted-path check accepts them for root jobs; source metadata and access tokens stay in the helper state (0600). The helper is the only process that contacts GitHub (`api.github.com`, HTTPS, proxy from the environment), and only when an admin previews, checks or installs a collection.
 
 ## Hardening exceptions (daemonica-helper.service)
 

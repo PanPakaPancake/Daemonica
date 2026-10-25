@@ -25,6 +25,8 @@ type Systemd interface {
 	// StartNoWait queues a start job without waiting for it.
 	StartNoWait(ctx context.Context, unit string) error
 	Stop(ctx context.Context, unit string) error
+	// ResetFailed clears a unit's failed state.
+	ResetFailed(ctx context.Context, unit string) error
 }
 
 // Account is the host view of a Linux user.
@@ -321,6 +323,9 @@ func (m *Manager) Delete(ctx context.Context, id string) error {
 	if err := m.Systemd.DaemonReload(ctx); err != nil {
 		return err
 	}
+	// A failed last run would otherwise stay listed as "not-found failed".
+	_ = m.Systemd.ResetFailed(ctx, j.Service())
+	_ = m.Systemd.ResetFailed(ctx, j.Timer())
 	return os.Remove(m.metaPath(id))
 }
 

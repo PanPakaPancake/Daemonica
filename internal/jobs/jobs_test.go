@@ -436,6 +436,7 @@ type fakeSD struct {
 	timers  map[string]bool
 	started []string
 	stopped []string
+	reset   []string
 }
 
 func (f *fakeSD) DaemonReload(context.Context) error { f.reloads++; return nil }
@@ -449,6 +450,10 @@ func (f *fakeSD) StartNoWait(_ context.Context, u string) error {
 }
 func (f *fakeSD) Stop(_ context.Context, u string) error {
 	f.stopped = append(f.stopped, u)
+	return nil
+}
+func (f *fakeSD) ResetFailed(_ context.Context, u string) error {
+	f.reset = append(f.reset, u)
 	return nil
 }
 
@@ -527,6 +532,9 @@ func TestManagerLifecycle(t *testing.T) {
 	}
 	if err := m.Delete(ctx, "backup"); err != nil {
 		t.Fatal(err)
+	}
+	if !slices.Equal(sd.reset, []string{j.Service(), j.Timer()}) {
+		t.Fatalf("reset-failed: %v", sd.reset)
 	}
 	if _, err := os.Stat(filepath.Join(m.UnitDir, j.Timer())); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("timer left")

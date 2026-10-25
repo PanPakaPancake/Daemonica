@@ -64,7 +64,11 @@ func TestJobsOnHost(t *testing.T) {
 		t.Fatal("the timer did not start the job")
 	}
 	r := runs[0]
-	t.Logf("run: %+v", r)
+	if r.ExitCode != nil {
+		t.Logf("run: %+v, exit code %d", r, *r.ExitCode)
+	} else {
+		t.Logf("run: %+v, no exit code", r)
+	}
 	want := make([]string, len(payload))
 	for i, p := range payload {
 		want[i] = "[" + p + "]"
@@ -118,6 +122,10 @@ func TestJobsOnHost(t *testing.T) {
 		if _, err := os.Stat("/etc/systemd/system/" + u); err == nil {
 			t.Errorf("%s left behind", u)
 		}
+	}
+	// The failed last run must not linger as "not-found failed".
+	if out, _ := exec.Command("systemctl", "list-units", "--all", "--no-legend", j.Service()).Output(); strings.TrimSpace(string(out)) != "" {
+		t.Errorf("unit still listed after delete: %s", out)
 	}
 }
 

@@ -23,7 +23,8 @@ func (f *jobSD) StartNoWait(_ context.Context, u string) error {
 	f.started = append(f.started, u)
 	return nil
 }
-func (*jobSD) Stop(context.Context, string) error { return nil }
+func (*jobSD) Stop(context.Context, string) error        { return nil }
+func (*jobSD) ResetFailed(context.Context, string) error { return nil }
 
 func TestJobOpsRoles(t *testing.T) {
 	e := newAuthEnv(t)

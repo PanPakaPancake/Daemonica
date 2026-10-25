@@ -36,9 +36,11 @@ import {
   type Timer,
 } from "../lib/jobs";
 import { useSession } from "../lib/session";
+import { interpreterFor } from "../lib/scripts";
+import { Scripts, useLibrary } from "./Scripts";
 
-type Tab = "managed" | "timers" | "cron";
-const tabs: Tab[] = ["managed", "timers", "cron"];
+type Tab = "managed" | "timers" | "cron" | "scripts";
+const tabs: Tab[] = ["managed", "timers", "cron", "scripts"];
 const isEmpty = (s?: string) => !s || s.startsWith("0001-");
 
 function resultTone(r?: string) {
@@ -62,6 +64,8 @@ export function Jobs() {
   const [tab, setTab] = useState<Tab>("managed");
   const [done, setDone] = useState<{ msg: string; tone: "ok" | "bad" }>();
   const q = useQuery({ queryKey: ["jobs"], queryFn: () => api<Overview>("GET", "/jobs"), refetchInterval: 15_000 });
+  const lib = useLibrary();
+  const [planned, setPlanned] = useState<Job>();
   const refresh = () => void qc.invalidateQueries({ queryKey: ["jobs"] });
   const isAdmin = me?.role === "admin";
   const canRun = me?.role === "admin" || me?.role === "operator";
@@ -93,16 +97,43 @@ export function Jobs() {
             {t(`jobs.tab.${x}`)}
             {q.data && (
               <span className="ml-2 text-sm text-faint">
-                {x === "managed" ? q.data.managed.length : x === "timers" ? q.data.timers.length : q.data.cron.entries.length}
+                {x === "managed"
+                  ? q.data.managed.length
+                  : x === "timers"
+                    ? q.data.timers.length
+                    : x === "cron"
+                      ? q.data.cron.entries.length
+                      : (lib.data?.files.length ?? "")}
               </span>
             )}
           </button>
         ))}
       </div>
       <div role="tabpanel" id={`jobs-panel-${tab}`} aria-labelledby={`jobs-tab-${tab}`}>
-        {tab === "managed" && <Managed data={q.data} loading={q.isLoading} isAdmin={isAdmin} canRun={canRun} onDone={setDone} refresh={refresh} />}
+        {tab === "managed" && (
+          <Managed
+            data={q.data}
+            loading={q.isLoading}
+            isAdmin={isAdmin}
+            canRun={canRun}
+            onDone={setDone}
+            refresh={refresh}
+            start={planned}
+            onStarted={() => setPlanned(undefined)}
+          />
+        )}
         {tab === "timers" && <Timers data={q.data} loading={q.isLoading} refresh={refresh} />}
         {tab === "cron" && <Cron data={q.data} loading={q.isLoading} isAdmin={isAdmin} onDone={setDone} refresh={refresh} />}
+        {tab === "scripts" && (
+          <Scripts
+            isAdmin={isAdmin}
+            onDone={setDone}
+            onSchedule={(j) => {
+              setPlanned(j);
+              setTab("managed");
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -128,6 +159,8 @@ function Managed({
   canRun,
   onDone,
   refresh,
+  start,
+  onStarted,
 }: {
   data?: Overview;
   loading: boolean;
@@ -135,13 +168,19 @@ function Managed({
   canRun: boolean;
   onDone: (d: { msg: string; tone: "ok" | "bad" } | undefined) => void;
   refresh: () => void;
+  /** A job to open in the wizard (from the script library). */
+  start?: Job;
+  onStarted: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const { withStepUp } = useSession();
-  const [edit, setEdit] = useState<{ job?: Job; create: boolean }>();
+  const [edit, setEdit] = useState<{ job?: Job; create: boolean } | undefined>(() => (start ? { job: start, create: true } : undefined));
   const [detail, setDetail] = useState<string>();
   const [del, setDel] = useState<JobView>();
   const jobs = data?.managed ?? [];
+  useEffect(() => {
+    if (start) onStarted();
+  }, [start, onStarted]);
 
   const act = async (fn: () => Promise<unknown>, ok: string) => {
     onDone(undefined);
@@ -763,6 +802,7 @@ function Wizard({
   const { me, withStepUp } = useSession();
   const [step, setStep] = useState(0);
   const [d, setD] = useState<Draft>(() => fromJob(initial, me?.linux_user || "root"));
+  const lib = useLibrary();
   const [check, setCheck] = useState<JobCheck>();
   const [serverErr, setServerErr] = useState<FieldError>();
   const [err, setErr] = useState<string>();
@@ -958,6 +998,28 @@ function Wizard({
                     spellCheck={false}
                     onChange={(e) => set({ program: e.target.value })}
                   />
+                )}
+              </Field>
+            )}
+            {d.mode === "script" && (lib.data?.files.length ?? 0) > 0 && (
+              <Field label={t("jobs.fromLibrary")} help={t("jobs.fromLibraryHelp")}>
+                {(p) => (
+                  <select
+                    {...p}
+                    className="input font-mono"
+                    value={lib.data?.files.find((f) => f.abs === d.script)?.abs ?? ""}
+                    onChange={(e) => {
+                      const f = lib.data?.files.find((x) => x.abs === e.target.value);
+                      if (f) set({ script: f.abs, interpreter: interpreterFor(f) });
+                    }}
+                  >
+                    <option value="">{t("jobs.fromLibraryPick")}</option>
+                    {lib.data?.files.map((f) => (
+                      <option key={f.abs} value={f.abs}>
+                        {f.source === "local" ? t("scripts.local") : f.source}: {f.path}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </Field>
             )}

@@ -348,8 +348,14 @@ func TestManagerLimits(t *testing.T) {
 	// Garbage instead of pcap fails.
 	fs.set([]byte("not a pcap stream at all!"), false)
 	m.Start(ctx, spec(t, nil), "acc") //nolint:errcheck // checked by wait
-	if end := wait(t, m); end.State != "failed" || end.Reason != "error" {
+	if end := wait(t, m); end.State != "failed" || end.Reason != "error" || end.Error == "" {
 		t.Fatalf("garbage: %+v", end)
+	}
+	// Text after a valid header (e.g. tcpdump's stderr mixed into the stream).
+	fs.set(append(pcapHeader(LinkEthernet), "tcpdump: listening on lo, link-type EN10MB\n"...), false)
+	m.Start(ctx, spec(t, nil), "acc") //nolint:errcheck // checked by wait
+	if end := wait(t, m); end.State != "failed" || !strings.Contains(end.Error, "record of") {
+		t.Fatalf("text in stream: %+v", end)
 	}
 
 	// Low disk refuses to start.
@@ -359,12 +365,12 @@ func TestManagerLimits(t *testing.T) {
 	}
 
 	list, _ := m.List()
-	if len(list) != 5 {
+	if len(list) != 6 {
 		t.Fatalf("list: %d", len(list))
 	}
 	// Retention: everything older than 1 h goes; the total limit removes the oldest.
 	m.Now = func() time.Time { return time.Now().Add(2 * time.Hour) }
-	if n := m.Prune(time.Hour, 1<<40); n != 5 {
+	if n := m.Prune(time.Hour, 1<<40); n != 6 {
 		t.Fatalf("pruned %d", n)
 	}
 	if list, _ := m.List(); len(list) != 0 {
@@ -390,7 +396,7 @@ func TestInitMarksRunningFailed(t *testing.T) {
 
 func TestUnitProperties(t *testing.T) {
 	s := spec(t, func(s *Spec) { s.Promisc = true })
-	props := unitProperties(s.Args(), s, 7)
+	props := unitProperties(s.Args(), s, 7, 8)
 	got := map[string]any{}
 	for _, p := range props {
 		got[p.Name] = p.Value.Value()
@@ -413,7 +419,7 @@ func TestUnitProperties(t *testing.T) {
 		"ProtectKernelTunables": "b", "ProtectKernelModules": "b", "ProtectControlGroups": "b", "RestrictNamespaces": "t",
 		"LockPersonality": "b", "MemoryDenyWriteExecute": "b", "RestrictAddressFamilies": "(bas)", "SystemCallFilter": "(bas)",
 		"SystemCallArchitectures": "as", "MemoryMax": "t", "TasksMax": "t", "RuntimeMaxUSec": "t", "StandardInput": "s",
-		"StandardOutputFileDescriptor": "h", "StandardError": "s", "KillMode": "s", "TimeoutStopUSec": "t", "CollectMode": "s",
+		"StandardOutputFileDescriptor": "h", "StandardErrorFileDescriptor": "h", "KillMode": "s", "TimeoutStopUSec": "t", "CollectMode": "s",
 	}
 	for _, p := range props {
 		want, ok := sig[p.Name]

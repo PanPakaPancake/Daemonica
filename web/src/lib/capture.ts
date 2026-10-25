@@ -38,6 +38,7 @@ export interface Meta {
   ended?: string;
   state: "running" | "done" | "failed";
   reason?: string;
+  error?: string;
   captured: number;
   bytes: number;
   account?: string;

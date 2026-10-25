@@ -1,11 +1,15 @@
 package capture
 
 import (
+	"bufio"
 	"context"
 	"io"
+	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/godbus/dbus/v5"
 )
@@ -43,8 +47,9 @@ type boolList struct {
 
 func prop(name string, v any) property { return property{Name: name, Value: dbus.MakeVariant(v)} }
 
-// unitProperties builds the sandboxed unit; out is the write end of the pipe.
-func unitProperties(args []string, spec Spec, out int) []property {
+// unitProperties builds the sandboxed unit; out and errOut are the write
+// ends of the stdout (pcap stream) and stderr (messages) pipes.
+func unitProperties(args []string, spec Spec, out, errOut int) []property {
 	caps := uint64(1) << capNetRaw
 	if spec.Promisc {
 		caps |= 1 << capNetAdmin
@@ -75,7 +80,9 @@ func unitProperties(args []string, spec Spec, out int) []property {
 		prop("RuntimeMaxUSec", uint64((time.Duration(spec.DurationSec)*time.Second+30*time.Second)/time.Microsecond)),
 		prop("StandardInput", "null"),
 		prop("StandardOutputFileDescriptor", dbus.UnixFD(out)), //nolint:gosec // fd fits
-		prop("StandardError", "journal"),
+		// stderr gets its own pipe: tcpdump's messages must never mix into the
+		// pcap stream, and the helper logs them with the capture.
+		prop("StandardErrorFileDescriptor", dbus.UnixFD(errOut)), //nolint:gosec // fd fits
 		prop("KillMode", "control-group"),
 		prop("TimeoutStopUSec", uint64(5*time.Second/time.Microsecond)),
 		prop("CollectMode", "inactive-or-failed"),
@@ -92,18 +99,27 @@ func (s *SystemdStarter) Start(ctx context.Context, unit string, args []string, 
 	if err != nil {
 		return nil, nil, err
 	}
+	er, ew, err := os.Pipe()
+	if err != nil {
+		_ = r.Close()
+		_ = w.Close()
+		return nil, nil, err
+	}
 	var job dbus.ObjectPath
 	err = s.mgr().CallWithContext(ctx, "org.freedesktop.systemd1.Manager.StartTransientUnit", 0, unit, "fail",
-		unitProperties(args, spec, int(w.Fd())), []struct { //nolint:gosec // fd fits
+		unitProperties(args, spec, int(w.Fd()), int(ew.Fd())), []struct { //nolint:gosec // fd fits
 			Name  string
 			Props []property
 		}{}).Store(&job)
-	// systemd holds its own copy of the write end now.
+	// systemd holds its own copies of the write ends now.
 	_ = w.Close()
+	_ = ew.Close()
 	if err != nil {
 		_ = r.Close()
+		_ = er.Close()
 		return nil, nil, err
 	}
+	go logStderr(unit, er)
 	var once sync.Once
 	stop := func() {
 		once.Do(func() {
@@ -113,6 +129,34 @@ func (s *SystemdStarter) Start(ctx context.Context, unit string, args []string, 
 		})
 	}
 	return r, stop, nil
+}
+
+// logStderr logs tcpdump's messages (untrusted: control characters removed,
+// lines and count bounded) until the unit closes its stderr.
+func logStderr(unit string, r io.ReadCloser) {
+	defer func() { _ = r.Close() }()
+	sc := bufio.NewScanner(r)
+	sc.Buffer(make([]byte, 4096), 4096)
+	for n := 0; sc.Scan(); n++ {
+		if n < 50 {
+			slog.Info("capture stderr", "unit", unit, "line", Clean(sc.Text(), 300))
+		}
+	}
+	_, _ = io.Copy(io.Discard, r)
+}
+
+// Clean makes untrusted text printable and at most max bytes long.
+func Clean(s string, max int) string {
+	s = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f || r == utf8.RuneError {
+			return -1
+		}
+		return r
+	}, s)
+	if len(s) > max {
+		s = strings.ToValidUTF8(s[:max], "")
+	}
+	return s
 }
 
 // Cleanup implements Starter.

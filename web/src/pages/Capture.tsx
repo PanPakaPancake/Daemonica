@@ -119,6 +119,7 @@ export function Capture() {
       label: t("capture.col.state"),
       sortValue: (m) => m.state,
       filter: { options: ["running", "done", "failed"].map((x) => ({ value: x, label: t(`capture.state.${x}`) })) },
+      tdTitle: (m) => m.error ?? "",
       cell: (m) => (
         <span className={stateTone[m.state] ?? ""}>
           {t(`capture.state.${m.state}`)}

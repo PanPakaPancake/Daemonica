@@ -56,6 +56,7 @@ type Meta struct {
 	Ended       *time.Time `json:"ended,omitempty"`
 	State       string     `json:"state"`            // running, done, failed
 	Reason      string     `json:"reason,omitempty"` // duration, packets, size, disk, stopped, ended, error
+	Error       string     `json:"error,omitempty"`  // what failed, for reason "error"
 	Captured    int        `json:"captured"`
 	Bytes       int64      `json:"bytes"`
 	Account     string     `json:"account,omitempty"`
@@ -262,13 +263,17 @@ func (m *Manager) loop(r *running, out io.ReadCloser, f *os.File, spec Spec) {
 	if err != nil {
 		failed = true
 	}
+	var cause error
+	if failed {
+		cause = err
+	}
 	var buf []byte
 	for !failed {
 		var rec Record
 		rec, buf, err = ReadRecord(br, hdr, buf)
 		if err != nil {
 			if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, os.ErrClosed) {
-				failed = true
+				failed, cause = true, err
 			}
 			break
 		}
@@ -277,7 +282,7 @@ func (m *Manager) loop(r *running, out io.ReadCloser, f *os.File, spec Spec) {
 			break
 		}
 		if _, err := w.Write(rec.Raw); err != nil {
-			failed = true
+			failed, cause = true, err
 			break
 		}
 		written += int64(len(rec.Raw))
@@ -314,6 +319,9 @@ func (m *Manager) loop(r *running, out io.ReadCloser, f *os.File, spec Spec) {
 	r.meta.Ended = &end
 	r.meta.Bytes = written
 	r.meta.State = "done"
+	if r.meta.Reason == "error" && cause != nil {
+		r.meta.Error = Clean(cause.Error(), 200)
+	}
 	if r.meta.Reason == "error" && r.meta.Captured == 0 {
 		r.meta.State = "failed"
 	}

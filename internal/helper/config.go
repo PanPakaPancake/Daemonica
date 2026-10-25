@@ -27,12 +27,14 @@ type Config struct {
 	Language    string   `json:"language"`
 	UploadMiB   int      `json:"upload_limit_mib"`
 	TLSSource   string   `json:"tls_source,omitempty"` // own | acme-staging | acme-production
+	// TerminalIdleMinutes ends web terminals without input (SPEC §7.5; 0 = default 15).
+	TerminalIdleMinutes int `json:"terminal_idle_minutes,omitempty"`
 }
 
 // DefaultConfig is the configuration of a fresh install: setup mode, loopback only.
 func DefaultConfig() Config {
 	return Config{Version: 1, Port: DefaultPort, Allowlist: []string{"127.0.0.0/8", "::1/128"},
-		IdleMinutes: 30, AbsHours: 12, Language: "de", UploadMiB: 1024}
+		IdleMinutes: 30, AbsHours: 12, Language: "de", UploadMiB: 1024, TerminalIdleMinutes: DefaultTerminalIdle}
 }
 
 // Validate checks all fields against their allowed ranges.
@@ -59,6 +61,9 @@ func (c Config) Validate() error {
 	}
 	if c.UploadMiB < 1 || c.UploadMiB > 16*1024 {
 		return errors.New("upload limit out of range")
+	}
+	if c.TerminalIdleMinutes < 0 || c.TerminalIdleMinutes > 24*60 {
+		return errors.New("terminal idle timeout out of range")
 	}
 	return nil
 }

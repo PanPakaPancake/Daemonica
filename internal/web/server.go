@@ -33,6 +33,8 @@ type Server struct {
 	Allow *netallow.Allowlist
 	// ReloadConfig asks the process to re-read the helper config now.
 	ReloadConfig func()
+
+	tickets terminalTickets
 }
 
 type connKey struct{}
@@ -71,6 +73,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/setup/token", LimitBody(4<<10, http.HandlerFunc(s.setupToken)))
 	s.registerAuthRoutes(mux)
 	s.registerFileRoutes(mux)
+	s.registerTerminalRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		// Unknown API routes: never reveal whether a route exists to anonymous clients.
 		Problem(w, r, http.StatusUnauthorized, "unauthorized")

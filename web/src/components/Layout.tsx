@@ -5,6 +5,8 @@ import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { setLanguage } from "../i18n";
 import { api } from "../lib/api";
 import { useSession } from "../lib/session";
+import { TerminalProvider, useTerminals } from "../lib/terminals";
+import { leftUntil, useNow } from "../pages/Terminal";
 import { useFsInfo } from "../lib/useFs";
 import { applyTheme, initialTheme, type Theme } from "../lib/theme";
 import { Icon, type IconName } from "./icons";
@@ -47,7 +49,7 @@ const groups: NavGroup[] = [
   {
     key: "nav.tools",
     items: [
-      { key: "nav.terminal", icon: "terminal" },
+      { to: "/terminal", key: "nav.terminal", icon: "terminal", hideReadOnly: true },
       { to: "/files", key: "nav.files", icon: "files", hideReadOnly: true },
       { to: "/logs", key: "nav.logs", icon: "logs", hideReadOnly: true },
       { to: "/processes", key: "nav.processes", icon: "process" },
@@ -67,6 +69,14 @@ const groups: NavGroup[] = [
 ];
 
 export function Layout() {
+  return (
+    <TerminalProvider>
+      <Shell />
+    </TerminalProvider>
+  );
+}
+
+function Shell() {
   const { t, i18n } = useTranslation();
   const { me, logout } = useSession();
   const [collapsed, setCollapsed] = useState(false);
@@ -108,12 +118,7 @@ export function Layout() {
       >
         <div className={`flex gap-2 px-3 py-4 ${narrow ? "flex-col items-center" : "flex-col items-stretch"}`}>
           {narrow ? <BrandIcon /> : <Wordmark />}
-          <button
-            type="button"
-            className="btn btn-secondary min-h-9 self-end px-2 md:hidden"
-            aria-label={t("nav.closeMenu")}
-            onClick={() => setDrawer(false)}
-          >
+          <button type="button" className="btn btn-secondary min-h-9 self-end px-2 md:hidden" aria-label={t("nav.closeMenu")} onClick={() => setDrawer(false)}>
             <Icon name="close" />
           </button>
           <button
@@ -136,48 +141,45 @@ export function Layout() {
                 <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-faint">{t(g.key)}</p>
               )}
               <ul className="flex flex-col gap-0.5">
-                {g.items.filter((it) => (!it.adminOnly || me?.role === "admin") && (!it.hideReadOnly || me?.role !== "readonly")).map((it) =>
-                  it.to ? (
-                    <li key={it.key}>
-                      <NavLink
-                        to={it.to}
-                        end
-                        title={narrow ? t(it.key) : undefined}
-                        aria-label={narrow ? t(it.key) : undefined}
-                        className={({ isActive }) =>
-                          `${itemBase} relative ${isActive ? "bg-bg-2 font-semibold text-fg" : "text-muted hover:bg-bg-2 hover:text-fg"}`
-                        }
-                      >
-                        {({ isActive }) => (
+                {g.items
+                  .filter((it) => (!it.adminOnly || me?.role === "admin") && (!it.hideReadOnly || me?.role !== "readonly"))
+                  .map((it) =>
+                    it.to ? (
+                      <li key={it.key}>
+                        <NavLink
+                          to={it.to}
+                          end
+                          title={narrow ? t(it.key) : undefined}
+                          aria-label={narrow ? t(it.key) : undefined}
+                          className={({ isActive }) =>
+                            `${itemBase} relative ${isActive ? "bg-bg-2 font-semibold text-fg" : "text-muted hover:bg-bg-2 hover:text-fg"}`
+                          }
+                        >
+                          {({ isActive }) => (
+                            <>
+                              {isActive && <span aria-hidden="true" className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded grad-bar" />}
+                              <span className={isActive ? "text-cyan" : ""}>
+                                <Icon name={it.icon} />
+                              </span>
+                              {!narrow && <span className="truncate">{t(it.key)}</span>}
+                            </>
+                          )}
+                        </NavLink>
+                      </li>
+                    ) : (
+                      <li key={it.key} className={`${itemBase} text-faint opacity-70`} aria-disabled="true" title={`${t(it.key)} – ${t("common.comingSoon")}`}>
+                        <Icon name={it.icon} />
+                        {narrow ? (
+                          <span className="sr-only">{t(it.key)}</span>
+                        ) : (
                           <>
-                            {isActive && <span aria-hidden="true" className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded grad-bar" />}
-                            <span className={isActive ? "text-cyan" : ""}>
-                              <Icon name={it.icon} />
-                            </span>
-                            {!narrow && <span className="truncate">{t(it.key)}</span>}
+                            <span className="truncate">{t(it.key)}</span>
+                            <span className="ml-auto rounded-full border border-line px-1.5 text-[10px] uppercase tracking-wide">{t("nav.soon")}</span>
                           </>
                         )}
-                      </NavLink>
-                    </li>
-                  ) : (
-                    <li
-                      key={it.key}
-                      className={`${itemBase} text-faint opacity-70`}
-                      aria-disabled="true"
-                      title={`${t(it.key)} – ${t("common.comingSoon")}`}
-                    >
-                      <Icon name={it.icon} />
-                      {narrow ? (
-                        <span className="sr-only">{t(it.key)}</span>
-                      ) : (
-                        <>
-                          <span className="truncate">{t(it.key)}</span>
-                          <span className="ml-auto rounded-full border border-line px-1.5 text-[10px] uppercase tracking-wide">{t("nav.soon")}</span>
-                        </>
-                      )}
-                    </li>
-                  ),
-                )}
+                      </li>
+                    ),
+                  )}
               </ul>
             </div>
           ))}
@@ -186,6 +188,7 @@ export function Layout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {me?.role === "admin" && <RootBar />}
+        {me?.role === "admin" && <ElevatedTerminalBar />}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-bg-1 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <button
@@ -202,9 +205,7 @@ export function Layout() {
               <Icon name="services" className="h-4 w-4 text-cyan" />
               {window.location.hostname}
             </span>
-            {me && (
-              <span className="rounded-full border border-line-strong px-2 py-0.5 text-xs font-semibold">{t(`header.role.${me.role}`)}</span>
-            )}
+            {me && <span className="rounded-full border border-line-strong px-2 py-0.5 text-xs font-semibold">{t(`header.role.${me.role}`)}</span>}
             {me?.step_up && (
               <span className="flex items-center gap-1 rounded-full border border-cyan px-2 py-0.5 text-xs text-cyan">
                 <Icon name="check" className="h-3.5 w-3.5" />
@@ -236,12 +237,7 @@ export function Layout() {
               <Icon name={theme === "dark" ? "sun" : "moon"} />
             </button>
             {me && (
-              <button
-                type="button"
-                className="btn btn-secondary min-h-9 gap-2 whitespace-nowrap"
-                onClick={() => void logout()}
-                title={t("header.logout")}
-              >
+              <button type="button" className="btn btn-secondary min-h-9 gap-2 whitespace-nowrap" onClick={() => void logout()} title={t("header.logout")}>
                 <span className="font-mono text-sm">{me.linux_user}</span>
                 <Icon name="logout" />
                 <span className="sr-only">{t("header.logout")}</span>
@@ -289,13 +285,32 @@ function RootBar() {
         <button
           type="button"
           className="rounded border border-white/70 px-2 py-0.5 text-xs hover:bg-white/10"
-          onClick={() =>
-            void api("POST", "/files/root/disable").finally(() => void qc.invalidateQueries({ queryKey: ["fs-info"] }))
-          }
+          onClick={() => void api("POST", "/files/root/disable").finally(() => void qc.invalidateQueries({ queryKey: ["fs-info"] }))}
         >
           {t("files.root.disable")}
         </button>
       </span>
+    </div>
+  );
+}
+
+/** Red, non-dismissable bar while an elevated terminal is open (SPEC §7.5, D-09). */
+function ElevatedTerminalBar() {
+  const { t } = useTranslation();
+  const { tabs } = useTerminals();
+  const open = tabs.filter((x) => x.mode !== "standard" && x.status !== "ended");
+  const now = useNow(open.length > 0);
+  if (open.length === 0) return null;
+  const until = Math.min(...open.map((x) => x.until ?? Infinity));
+  return (
+    <div className="elevated-bar flex flex-wrap items-center justify-between gap-2 px-4 py-1.5 text-sm font-semibold" role="status">
+      <span className="flex items-center gap-2">
+        <Icon name="shield" className="h-4 w-4" />
+        {t("terminal.bar", { count: open.length, time: Number.isFinite(until) ? leftUntil(until, now) : "–" })}
+      </span>
+      <Link to="/terminal" className="underline">
+        {t("nav.terminal")}
+      </Link>
     </div>
   );
 }

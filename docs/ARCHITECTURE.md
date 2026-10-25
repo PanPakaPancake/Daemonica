@@ -79,11 +79,15 @@ idle deadline, so long transfers work while stalled peers are dropped. In the
 helper, stream data is piped to/from the worker's fd 3 using the same framing,
 so the worker can tell a completed upload from an aborted one.
 
+## Web terminal (M1.4)
+
+Browser (xterm.js) ⇄ WebSocket `/api/v1/terminal/ws` (daemonica-web: ticket, exact origin, allowlist re-check) ⇄ duplex RPC stream `pty.open` (helper) ⇄ pty master. The helper allocates the pty and asks systemd over D-Bus to start the user's login shell as the transient unit `daemonica-term-<id>.service` on the pty slave (`User=`, `NoNewPrivileges=` per mode, `TasksMax`, `MemoryMax`, `KillSignal=SIGHUP`, SIGKILL after 5 s). The shell is therefore not a child of the sandboxed helper and does not inherit its seccomp filter or protections; stopping the unit ends every process of the session. See DEC-023.
+
 ## Hardening exceptions (daemonica-helper.service)
 
 | Directive not set | Reason |
 |---|---|
-| `NoNewPrivileges=yes` | The elevated terminal must run `sudo` (SPEC §3.9); standard workers set `no_new_privs` themselves. |
+| `NoNewPrivileges=yes` | Originally for `sudo` in the elevated terminal. Since M1.4 terminals run as their own transient units (DEC-023), so this is no longer needed for them; it stays unset until the package management of M1.6 (dpkg maintainer scripts) is measured, then it is to be enabled. Standard workers set `no_new_privs` themselves. |
 | `ProtectSystem=strict` / `ProtectHome=yes` | The helper edits system configuration (users, network, fstab, apt) and home directories (`authorized_keys`, file manager). |
 | `PrivateDevices=yes` | Mount/unmount and disk inventory need block devices. |
 | `ProtectKernelTunables=yes` | Network configuration and later checklist fixes write sysctls. |
@@ -91,8 +95,8 @@ so the worker can tell a completed upload from an aborted one.
 | `CapabilityBoundingSet=` restriction | Root operations across many subsystems; to be narrowed per milestone with measured needs. |
 | `RestrictNamespaces=yes` (fully) | Transient units / container management (Phase 3) need namespaces; only user namespaces are denied. |
 | `MemoryDenyWriteExecute=yes` | Child programs (apt, dpkg maintainer scripts) may need W+X mappings. |
-| `RestrictSUIDSGID=yes` | `sudo`/setuid programs in the elevated terminal. |
+| `RestrictSUIDSGID=yes` | The file manager's root mode may set setuid/setgid bits (chmod per Linux rules). |
 | `ProtectProc=invisible` | Process management needs all processes. |
-| `PrivateTmp=yes` | File manager workers (and later terminals) inherit the helper's mount namespace and must see the real `/tmp` (DEC-019). |
+| `PrivateTmp=yes` | File manager workers inherit the helper's mount namespace and must see the real `/tmp` (DEC-019). Terminals run in their own units and are not affected. |
 
 Actual `systemd-analyze security` scores will be recorded in the phase audit report.

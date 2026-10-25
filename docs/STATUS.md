@@ -57,7 +57,8 @@ _Last updated: 2026-10-25_
 | M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Open: last logins, log follow via WebSocket (DEC-017), allowlisted log files (SOLL), owner acceptance check against `top`/`free`/`df`. |
 | M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Open: last login per user (wtmpdb), owner acceptance. |
 | M1.3 | ✓ accepted by owner 2026-10-25 | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021); lists with sort/filter on every column and right-click menus (DEC-022). Open: folder download as archive (KANN). |
-| M1.4 – M1.8 | ✖ open | |
+| M1.4 | ⚠ implemented, in owner test | Web terminal (table below, DEC-023). Open: owner acceptance; KANN items (keep background processes, reconnect after short drops) not implemented. |
+| M1.5 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status
 
@@ -142,6 +143,21 @@ _Last updated: 2026-10-25_
 | Upload: drag & drop, multiple, progress, cancel, streaming, limit (default 1 GiB), space check, mode 0640 (changeable), owner = user, overwrite only after confirmation, SHA-256 in audit | ✓ | `files.Upload`, `useUploads`; `TestUpload`, `TestLargeUploadStreams` (512 MiB, heap < 64 MiB) |
 | Download: streaming with Range, `attachment` + `nosniff`, one-time token (60 s) | ✓ | `fileDownload`, `fs.download_token`; integration test (reuse/other session refused) |
 | Roles: read-only ✖; operator/admin within Linux permissions | ✓ | policy `files` (read-only deny), UI hides navigation |
+
+### M1.4 requirement status
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| xterm.js, PTY, WebSocket with ticket and origin check | ✓ | `pty.open` duplex stream, `/api/v1/terminal/ticket` + `/ws`; `TestTerminalSocket*` |
+| Tabs (max. 5 per account), resize, copy/paste (bracketed paste), scrollback search, UTF-8, `TERM=xterm-256color`, login shell | ✓ | `Terminal.tsx`, `terminals.tsx`; `TestTerminalLimitPerAccount`, `TestTerminalStandardShell` |
+| Standard shell with `no_new_privs` (sudo/su/setuid without effect) | ✓ | `NoNewPrivileges=yes` on the unit; `TestExecShellNoNewPrivs`, integration `TestTerminalOnHost` |
+| Elevated mode (admin, step-up on every opening): root shell or user shell with sudo; red "ERHÖHT" bar; 30 min maximum | ✓ | `TestTerminalElevatedNeedsFreshStepUp`, `TestTerminalReadOnlyDenied`; UI bars |
+| Idle timeout 15 min (configurable); end on logout, role change, lock, allowlist change | ✓ | `TestTerminalEndsWithSessionAndIdle`, `TestTerminalCutWhenAllowlistChanges`; web re-check of the allowlist |
+| Transient unit with `TasksMax`/`MemoryMax`; session end kills the process tree (SIGHUP, SIGKILL after 5 s) (SOLL) | ✓ | `SystemdLauncher`; `TestStopKillsProcessTree`, `TestSystemdLauncherLifecycle`, `TestTerminalOnHost` |
+| Throughput limit | ✓ | output 4 MiB/s, input 256 KiB/s, 64 KiB per message |
+| Audit start/end, mode, duration, source IP (no input) | ✓ | `pty.start`, `pty.open` (`end`, `duration_s`); `TestTerminalStandardShell` |
+| No file transfer; read-only ✖ | ✓ | no transfer protocol; policy `terminal` denies read-only |
+| Keep background processes, reconnect after short drops (KANN) | ✖ | not implemented |
 
 ### Test results
 

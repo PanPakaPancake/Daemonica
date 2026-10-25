@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -304,3 +305,53 @@ func (c *Client) Download(ctx context.Context, op, grant, sourceIP string, param
 	}
 	return &DownloadStream{conn: conn, id: id, r: &ChunkReader{R: rw}, wait: c.timeout()}, nil
 }
+
+// Duplex is a stream on which both sides send chunks at the same time and
+// may pause for long (terminal): after the ready frame the client sends
+// chunks with Send and reads the helper's chunks with Read; there is no idle
+// deadline. The helper ends with the end marker and a final response.
+type Duplex struct {
+	conn net.Conn
+	id   uint64
+	r    *ChunkReader
+	wmu  sync.Mutex
+	wait time.Duration
+}
+
+// OpenDuplex starts a duplex stream. meta receives the ready metadata.
+func (c *Client) OpenDuplex(ctx context.Context, op, grant, sourceIP string, params, meta any) (*Duplex, error) {
+	conn, _, id, resp, err := c.openStream(ctx, op, grant, sourceIP, params)
+	if err != nil {
+		return nil, err
+	}
+	_ = conn.SetDeadline(time.Time{})
+	if meta != nil && len(resp.Result) > 0 {
+		if err := json.Unmarshal(resp.Result, meta); err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+	}
+	return &Duplex{conn: conn, id: id, r: &ChunkReader{R: conn}, wait: 15 * time.Second}, nil
+}
+
+// Read reads the helper's data; io.EOF after the end marker.
+func (d *Duplex) Read(p []byte) (int, error) { return d.r.Read(p) }
+
+// Send writes one chunk (safe for concurrent use).
+func (d *Duplex) Send(p []byte) error {
+	d.wmu.Lock()
+	defer d.wmu.Unlock()
+	_ = d.conn.SetWriteDeadline(time.Now().Add(StreamIdle))
+	return WriteChunk(d.conn, p)
+}
+
+// Finish reads the final response after Read returned io.EOF.
+func (d *Duplex) Finish(out any) error {
+	if !d.r.Done() {
+		return &Error{Code: CodeInternal}
+	}
+	return finalResponse(d.conn, d.id, d.wait, out)
+}
+
+// Close ends the stream (the helper sees the connection close).
+func (d *Duplex) Close() error { return d.conn.Close() }

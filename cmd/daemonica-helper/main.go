@@ -19,11 +19,13 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/files"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
+	"github.com/PanPakaPancake/daemonica/internal/pty"
 	"github.com/PanPakaPancake/daemonica/internal/services"
 	"github.com/PanPakaPancake/daemonica/internal/sshkeys"
 	"github.com/PanPakaPancake/daemonica/internal/sysinfo"
 	"github.com/PanPakaPancake/daemonica/internal/users"
 	"github.com/PanPakaPancake/daemonica/internal/worker"
+	"golang.org/x/sys/unix"
 )
 
 var version = "0.1.0-dev"
@@ -37,6 +39,10 @@ func main() {
 			handlers[k] = v
 		}
 		worker.Main(handlers)
+	}
+	// Terminal child mode (pty.ExecLauncher fallback): becomes the login shell.
+	if len(os.Args) > 1 && os.Args[1] == pty.ChildArg {
+		pty.ChildMain(os.Args[2:])
 	}
 	stateDir := flag.String("state-dir", "/var/lib/daemonica-helper", "helper state directory (root 0700)")
 	runDir := flag.String("run-dir", "/run/daemonica", "runtime directory for sockets")
@@ -153,6 +159,15 @@ func main() {
 	(&helper.FileOps{Worker: &worker.Runner{Timeout: 15 * time.Minute}, Lookup: worker.Lookup,
 		UploadMiB: func() int { return cfg.Get().UploadMiB },
 		Versions:  &helper.VersionStore{Dir: filepath.Join(*stateDir, "versions")}, StateDir: *stateDir}).Register(ops)
+	// M1.4: web terminal; each shell is a transient systemd unit.
+	launcher, err := pty.ConnectSystemd()
+	if err != nil {
+		log.Error("cannot connect to systemd for terminals", "err", err)
+		os.Exit(1)
+	}
+	defer func() { _ = launcher.Conn.Close() }()
+	(&helper.TermOps{Launcher: launcher, Grants: grants, Config: cfg, Audit: al, Lookup: worker.Lookup, Shell: pty.LoginShell,
+		TasksMax: 1024, MemoryMax: terminalMemoryMax()}).Register(ops)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to
 	// traverse it to reach helper.sock (admin.sock stays 0600 root).
@@ -188,4 +203,13 @@ func main() {
 		}
 	}
 	_, _ = al.Append(audit.Event{Action: "helper.stop", Result: audit.ResultOK})
+}
+
+// terminalMemoryMax limits one terminal session to half of the RAM.
+func terminalMemoryMax() uint64 {
+	var si unix.Sysinfo_t
+	if unix.Sysinfo(&si) != nil || si.Totalram == 0 {
+		return 0
+	}
+	return si.Totalram * uint64(si.Unit) / 2
 }

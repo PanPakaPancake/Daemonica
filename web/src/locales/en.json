@@ -732,7 +732,28 @@
       "leaveTitle": "Unsaved changes",
       "leaveText": "Your changes are not saved yet. Leave anyway?",
       "stay": "Keep editing",
-      "discard": "Discard and leave"
+      "discard": "Discard and leave",
+      "checkPassed": "Check with {{tool}} passed.",
+      "versionKept": "The previous version was kept.",
+      "savedDespite": "Saved although the check with {{tool}} failed. The service may not accept the faulty settings.",
+      "checkFailedTitle": "Check failed",
+      "checkBlocked": "{{tool}} found errors. The file was not saved, because a broken sudo configuration can lock out all root access.",
+      "checkRolledBack": "{{tool}} found errors. The change was undone right away; the file has its previous content again. Your changes are still in the editor.",
+      "checkNotSaved": "{{tool}} found errors. The file was not saved.",
+      "keepEditing": "Keep editing",
+      "saveAnyway": "Save anyway",
+      "versions": "Versions",
+      "versionsTitle": "Previous versions",
+      "versionsText": "Before a file below /etc is saved, its old content is kept (30 days, at most 20 versions).",
+      "versionsOff": "No versions are kept for this file.",
+      "versionsEmpty": "No previous versions yet.",
+      "versionShow": "Show",
+      "versionOf": "Version from {{time}} compared with the editor.",
+      "versionLegend": "Red: only in the editor · Green: only in the version",
+      "versionSame": "The version is identical to the editor content.",
+      "versionBack": "Back to the list",
+      "versionLoad": "Load into the editor",
+      "versionLoaded": "Version from {{time}} loaded. Save to restore it."
     }
   }
 }

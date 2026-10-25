@@ -8,7 +8,19 @@ import { Modal } from "../components/Modal";
 import { Notice } from "../components/ui";
 import { ApiError } from "../lib/api";
 import { errorText } from "../lib/errors";
-import { downloadFile, modeString, octal, readFile, writeFile, type FileContent, type Target } from "../lib/files";
+import {
+  downloadFile,
+  listVersions,
+  modeString,
+  octal,
+  readFile,
+  readVersion,
+  writeFile,
+  type FileContent,
+  type FileVersion,
+  type Target,
+  type Validation,
+} from "../lib/files";
 import { bytes, dateTime } from "../lib/format";
 import { useSession } from "../lib/session";
 import { useFsRunner } from "../lib/useFs";
@@ -60,12 +72,14 @@ export function FileEditor() {
   const [eol, setEol] = useState<Eol>("\n");
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<{ tone: "ok" | "bad" | "warn"; text: string }>();
+  const [msg, setMsg] = useState<{ tone: "ok" | "bad" | "warn" | "info"; text: string }>();
   const [wrap, setWrap] = useState(false);
   const [tabSize, setTabSize] = useState(4);
   const [cursor, setCursor] = useState({ line: 1, col: 1 });
   const [conflict, setConflict] = useState<{ server: FileContent; mine: string } | null>(null);
   const [leave, setLeave] = useState<string | null>(null);
+  const [failed, setFailed] = useState<Validation | null>(null);
+  const [versionsFor, setVersionsFor] = useState<string | null>(null); // editor text when opened
   const [gen, setGen] = useState(0); // remounts the editor with new content
   const loadedFor = useRef("");
   const key = `${target.dir}|${target.name ?? ""}|${target.raw ?? ""}|${asRoot}`;
@@ -115,16 +129,26 @@ export function FileEditor() {
   const saveTarget = (f: FileContent): Target => (target.raw ? target : { dir: f.dir, name: f.name });
   const text = (doc: string) => (eol === "\r\n" ? doc.replace(/\r?\n/g, "\r\n") : doc);
 
-  const save = async (expected?: string) => {
+  const save = async (expected?: string, force = false) => {
     if (!file || saving || !editor.current) return;
     setSaving(true);
     setMsg(undefined);
     const mine = editor.current.getText();
     try {
-      const res = await run((fl) => writeFile(saveTarget(file), text(mine), expected ?? file.hash, fl), file.path);
+      const res = await run((fl) => writeFile(saveTarget(file), text(mine), expected ?? file.hash, fl, force), file.path);
+      if (!res.saved) {
+        // The check blocked the save or undid it; the file keeps its previous content.
+        if (res.validation?.rolled_back) setFile({ ...file, hash: res.hash, size: res.size, mtime: res.mtime });
+        setFailed(res.validation ?? { tool: "", ok: false });
+        return;
+      }
       setFile({ ...file, hash: res.hash, size: res.size, mtime: res.mtime });
       setDirty(false);
-      setMsg({ tone: "ok", text: t(res.atomic ? "files.editor.saved" : "files.editor.savedInPlace") });
+      const v = res.validation;
+      const parts = [t(res.atomic ? "files.editor.saved" : "files.editor.savedInPlace")];
+      if (v?.ok) parts.push(t("files.editor.checkPassed", { tool: v.tool }));
+      if (res.version) parts.push(t("files.editor.versionKept"));
+      setMsg(v && !v.ok ? { tone: "warn", text: t("files.editor.savedDespite", { tool: v.tool }) } : { tone: "ok", text: parts.join(" ") });
       void qc.invalidateQueries({ queryKey: ["fs-list"] });
     } catch (e) {
       if (e instanceof ApiError && e.code === "conflict") {
@@ -140,8 +164,20 @@ export function FileEditor() {
     }
   };
 
+  /** Loads a previous version into the editor; saving it restores it. */
+  const loadVersion = (v: FileVersion, content: string) => {
+    if (!file) return;
+    setFile({ ...file, content });
+    setEol(content.includes("\r\n") ? "\r\n" : "\n");
+    setGen((g) => g + 1);
+    setDirty(true);
+    setVersionsFor(null);
+    setMsg({ tone: "info", text: t("files.editor.versionLoaded", { time: dateTime(v.time, lang) }) });
+  };
+
   const back = `/files?path=${encodeURIComponent(file?.dir ?? target.dir)}`;
   const readOnly = !file?.writable;
+  const versioned = !!file && file.content !== undefined && file.path.startsWith("/etc/");
 
   return (
     <div className="flex h-[calc(100vh-8.5rem)] min-h-[480px] flex-col gap-3">
@@ -192,6 +228,12 @@ export function FileEditor() {
               <option value="lf">LF</option>
               <option value="crlf">CRLF</option>
             </select>
+            {versioned && (
+              <button type="button" className="btn btn-secondary min-h-9 px-3" onClick={() => setVersionsFor(editor.current?.getText() ?? file.content ?? "")}>
+                <Icon name="clock" className="h-4 w-4" />
+                {t("files.editor.versions")}
+              </button>
+            )}
             <button type="button" className="btn btn-primary min-h-9 px-3" disabled={readOnly || saving || !dirty} onClick={() => void save()}>
               <Icon name="save" className="h-4 w-4" />
               {t("common.save")}
@@ -271,6 +313,25 @@ export function FileEditor() {
           }}
         />
       )}
+      {failed && file && (
+        <ValidationDialog
+          v={failed}
+          onClose={() => setFailed(null)}
+          onForce={() => {
+            setFailed(null);
+            void save(file.hash, true);
+          }}
+        />
+      )}
+      {versionsFor !== null && file && (
+        <VersionsDialog
+          target={saveTarget(file)}
+          current={versionsFor}
+          run={run}
+          onClose={() => setVersionsFor(null)}
+          onLoad={loadVersion}
+        />
+      )}
       {leave && (
         <Modal title={t("files.editor.leaveTitle")} onClose={() => setLeave(null)}>
           <p>{t("files.editor.leaveText")}</p>
@@ -294,6 +355,144 @@ export function FileEditor() {
         </Modal>
       )}
     </div>
+  );
+}
+
+function ValidationDialog({ v, onClose, onForce }: { v: Validation; onClose: () => void; onForce: () => void }) {
+  const { t } = useTranslation();
+  const text = v.blocking ? "files.editor.checkBlocked" : v.rolled_back ? "files.editor.checkRolledBack" : "files.editor.checkNotSaved";
+  return (
+    <Modal title={t("files.editor.checkFailedTitle")} onClose={onClose} wide>
+      <Notice tone="bad">{t(text, { tool: v.tool })}</Notice>
+      {v.output && (
+        <pre className="mt-3 max-h-[40vh] overflow-auto whitespace-pre-wrap break-all rounded-[8px] border border-line bg-bg-0 p-3 font-mono text-xs">{v.output}</pre>
+      )}
+      <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <button type="button" className="btn btn-primary" onClick={onClose}>
+          {t("files.editor.keepEditing")}
+        </button>
+        {!v.blocking && (
+          <button type="button" className="btn btn-danger" onClick={onForce}>
+            {t("files.editor.saveAnyway")}
+          </button>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+type Runner = ReturnType<typeof useFsRunner>["run"];
+
+function VersionsDialog({
+  target,
+  current,
+  run,
+  onClose,
+  onLoad,
+}: {
+  target: Target;
+  current: string;
+  run: Runner;
+  onClose: () => void;
+  onLoad: (v: FileVersion, content: string) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const shown = `${target.dir}/${target.name ?? ""}`;
+  const [list, setList] = useState<FileVersion[]>();
+  const [versioned, setVersioned] = useState(true);
+  const [err, setErr] = useState<string>();
+  const [picked, setPicked] = useState<{ v: FileVersion; content: string }>();
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    run((fl) => listVersions(target, fl), shown)
+      .then((r) => {
+        if (!live) return;
+        setList(r.versions);
+        setVersioned(r.versioned);
+      })
+      .catch((e: unknown) => {
+        if (live) setErr(errorText(t, e));
+      });
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const pick = async (v: FileVersion) => {
+    setBusy(true);
+    setErr(undefined);
+    try {
+      const r = await run((fl) => readVersion(target, v.id, fl), shown);
+      setPicked({ v, content: r.content ?? "" });
+    } catch (e) {
+      setErr(errorText(t, e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const diff = picked ? lineDiff(current, picked.content.replace(/\r\n/g, "\n")) : null;
+  return (
+    <Modal title={t("files.editor.versionsTitle")} onClose={onClose} wide>
+      <p className="text-sm text-muted">{t("files.editor.versionsText")}</p>
+      {err && (
+        <div className="mt-3">
+          <Notice tone="bad">{err}</Notice>
+        </div>
+      )}
+      {!list && !err && <p className="mt-3 text-muted">{t("common.loading")}</p>}
+      {list && !versioned && <p className="mt-3 text-muted">{t("files.editor.versionsOff")}</p>}
+      {list && versioned && list.length === 0 && <p className="mt-3 text-muted">{t("files.editor.versionsEmpty")}</p>}
+      {list && list.length > 0 && !picked && (
+        <ul className="mt-3 divide-y divide-line rounded-[8px] border border-line">
+          {list.map((v) => (
+            <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+              <span>
+                {dateTime(v.time, lang)} <span className="text-xs text-faint">· {bytes(v.size, lang)}</span>
+              </span>
+              <button type="button" className="btn btn-secondary min-h-8 px-3" disabled={busy} onClick={() => void pick(v)}>
+                {t("files.editor.versionShow")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {picked && (
+        <>
+          <p className="mt-3 text-sm">
+            {t("files.editor.versionOf", { time: dateTime(picked.v.time, lang) })} <span className="text-muted">{t("files.editor.versionLegend")}</span>
+          </p>
+          <div className="mt-2 max-h-[45vh] overflow-auto rounded-[8px] border border-line bg-bg-0 p-2 font-mono text-xs">
+            {diff === null ? (
+              <p className="text-muted">{t("files.editor.diffTooLarge")}</p>
+            ) : diff.every((d) => d.op === " ") ? (
+              <p className="text-muted">{t("files.editor.versionSame")}</p>
+            ) : (
+              diff
+                .filter((d, i, all) => d.op !== " " || all.slice(Math.max(0, i - 2), i + 3).some((x) => x.op !== " "))
+                .map((d, i) => (
+                  <div key={i} className={`whitespace-pre-wrap break-all ${d.op === "-" ? "text-bad" : d.op === "+" ? "text-ok" : "text-faint"}`}>
+                    <span aria-hidden="true">{d.op} </span>
+                    {d.text}
+                  </div>
+                ))
+            )}
+          </div>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" className="btn btn-secondary" onClick={() => setPicked(undefined)}>
+              {t("files.editor.versionBack")}
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => onLoad(picked.v, picked.content)}>
+              {t("files.editor.versionLoad")}
+            </button>
+          </div>
+        </>
+      )}
+    </Modal>
   );
 }
 

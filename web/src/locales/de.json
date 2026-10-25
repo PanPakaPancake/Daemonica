@@ -732,7 +732,28 @@
       "leaveTitle": "Ungespeicherte Änderungen",
       "leaveText": "Deine Änderungen sind noch nicht gespeichert. Wirklich verlassen?",
       "stay": "Weiter bearbeiten",
-      "discard": "Verwerfen und verlassen"
+      "discard": "Verwerfen und verlassen",
+      "checkPassed": "Prüfung mit {{tool}} bestanden.",
+      "versionKept": "Die vorherige Version wurde gesichert.",
+      "savedDespite": "Gespeichert, obwohl die Prüfung mit {{tool}} fehlgeschlagen ist. Der Dienst übernimmt fehlerhafte Einstellungen eventuell nicht.",
+      "checkFailedTitle": "Prüfung fehlgeschlagen",
+      "checkBlocked": "{{tool}} hat Fehler gefunden. Die Datei wurde nicht gespeichert, denn eine fehlerhafte sudo-Konfiguration kann jeden Root-Zugang sperren.",
+      "checkRolledBack": "{{tool}} hat Fehler gefunden. Die Änderung wurde sofort zurückgenommen, die Datei hat wieder ihren vorherigen Inhalt. Deine Änderungen sind noch im Editor.",
+      "checkNotSaved": "{{tool}} hat Fehler gefunden. Die Datei wurde nicht gespeichert.",
+      "keepEditing": "Weiter bearbeiten",
+      "saveAnyway": "Trotzdem speichern",
+      "versions": "Versionen",
+      "versionsTitle": "Vorherige Versionen",
+      "versionsText": "Vor jedem Speichern einer Datei unter /etc wird der alte Inhalt gesichert (30 Tage, höchstens 20 Versionen).",
+      "versionsOff": "Für diese Datei werden keine Versionen gesichert.",
+      "versionsEmpty": "Noch keine vorherigen Versionen.",
+      "versionShow": "Ansehen",
+      "versionOf": "Version vom {{time}} im Vergleich zum Editor.",
+      "versionLegend": "Rot: nur im Editor · Grün: nur in der Version",
+      "versionSame": "Die Version ist identisch mit dem Inhalt im Editor.",
+      "versionBack": "Zurück zur Liste",
+      "versionLoad": "In den Editor laden",
+      "versionLoaded": "Version vom {{time}} geladen. Speichere, um sie wiederherzustellen."
     }
   }
 }

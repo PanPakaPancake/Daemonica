@@ -43,6 +43,12 @@ type FileOps struct {
 	Lookup    func(name string) (worker.Identity, error)
 	UploadMiB func() int
 	Now       func() time.Time
+	// Versions keeps previous versions of files below /etc (nil: off).
+	Versions *VersionStore
+	// StateDir holds private copies for pre-save validation.
+	StateDir string
+	// Validate overrides ValidatorFor (tests).
+	Validate func(p string) *Validator
 
 	mu     sync.Mutex
 	root   map[string]time.Time // session key → end of root mode
@@ -192,7 +198,7 @@ func (f *FileOps) relayOut(ctx context.Context, st *Stream, id worker.Identity, 
 }
 
 // relayIn feeds the client's chunked upload (at most max bytes) into a worker.
-func (f *FileOps) relayIn(ctx context.Context, st *Stream, id worker.Identity, elevated bool, op string, args any, max int64, out any) error {
+func (f *FileOps) relayIn(ctx context.Context, src io.Reader, id worker.Identity, elevated bool, op string, args any, max int64, out any) error {
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		return err
@@ -200,7 +206,7 @@ func (f *FileOps) relayIn(ctx context.Context, st *Stream, id worker.Identity, e
 	errc := make(chan error, 1)
 	go func() { errc <- f.Worker.RunStream(ctx, id, elevated, op, args, out, pr) }()
 	cw := rpc.ChunkWriter{W: pw}
-	n, cerr := io.Copy(cw, io.LimitReader(st.Reader(), max+1))
+	n, cerr := io.Copy(cw, io.LimitReader(src, max+1))
 	if cerr == nil && n > max {
 		cerr = Errf(files.CodeTooLarge, "")
 	}
@@ -480,6 +486,8 @@ func (f *FileOps) Register(ops map[string]*Op) {
 
 	type writeParams struct {
 		files.WriteArgs
+		// Force keeps a save whose post-save validation failed.
+		Force bool `json:"force,omitempty"`
 		fsFlags
 	}
 	Register(ops, &Op{Name: "fs.write", Action: policy.ActFiles, AuditTarget: auditTarget, Timeout: 2 * time.Minute,
@@ -497,13 +505,72 @@ func (f *FileOps) Register(ops map[string]*Op) {
 			if err := st.Ready(nil); err != nil {
 				return nil, err
 			}
-			var res files.WriteResult
-			err = f.relayIn(ctx, st, id, el, "fs.write", p.WriteArgs, files.MaxEditBytes, &res)
-			if err == nil {
-				c.AuditKV["size"] = strconv.FormatInt(res.Size, 10)
-				c.AuditKV["sha256"] = res.Hash
+			data, err := io.ReadAll(io.LimitReader(st.Reader(), files.MaxEditBytes+1))
+			if err != nil {
+				return nil, Errf(files.CodeAborted, "")
 			}
+			if len(data) > files.MaxEditBytes {
+				return nil, Errf(files.CodeTooLarge, "")
+			}
+			res, err := f.save(ctx, c, id, el, p.WriteArgs, p.Force, data)
 			return res, workerErr(c, p.fsFlags, err)
+		}})
+
+	type versionsParams struct {
+		files.Target
+		fsFlags
+	}
+	Register(ops, &Op{Name: "fs.versions", Action: policy.ActFiles, NoAudit: true, AuditTarget: auditTarget,
+		Handle: func(ctx context.Context, c Call) (any, error) {
+			var p versionsParams
+			if err := decodeFS(c, &p); err != nil {
+				return nil, err
+			}
+			c.AuditKV["path"] = p.Path()
+			canon, err := f.versionAccess(ctx, c, p.Target, p.fsFlags)
+			if err != nil {
+				return nil, err
+			}
+			vs := []Version{}
+			if f.Versions.Covers(canon) {
+				if vs, err = f.Versions.List(canon); err != nil {
+					return nil, Errf(rpc.CodeInternal, "")
+				}
+			}
+			return map[string]any{"path": canon, "versioned": f.Versions.Covers(canon), "versions": vs}, nil
+		}})
+
+	type versionReadParams struct {
+		files.Target
+		ID string `json:"id"`
+		fsFlags
+	}
+	Register(ops, &Op{Name: "fs.version_read", Action: policy.ActFiles, NoAudit: true, AuditTarget: auditTarget,
+		Stream: func(ctx context.Context, c Call, st *Stream) (any, error) {
+			var p versionReadParams
+			if err := decodeFS(c, &p); err != nil {
+				return nil, err
+			}
+			c.AuditKV["path"] = p.Path()
+			canon, err := f.versionAccess(ctx, c, p.Target, p.fsFlags)
+			if err != nil {
+				return nil, err
+			}
+			if !f.Versions.Covers(canon) {
+				return nil, Errf(rpc.CodeNotFound, "")
+			}
+			v, data, err := f.Versions.Read(canon, p.ID)
+			if err != nil {
+				return nil, Errf(rpc.CodeNotFound, "")
+			}
+			if err := st.Ready(map[string]any{"path": canon, "version": v}); err != nil {
+				return nil, err
+			}
+			w := st.Writer()
+			if _, err := w.Write(data); err != nil {
+				return nil, Errf(files.CodeAborted, "")
+			}
+			return map[string]any{"bytes": len(data)}, w.Close()
 		}})
 
 	// --- upload ---
@@ -536,7 +603,7 @@ func (f *FileOps) Register(ops map[string]*Op) {
 				return nil, err
 			}
 			var res files.UploadResult
-			err = f.relayIn(ctx, st, id, el, "fs.upload", p.UploadArgs, p.Max, &res)
+			err = f.relayIn(ctx, st.Reader(), id, el, "fs.upload", p.UploadArgs, p.Max, &res)
 			if err == nil {
 				c.AuditKV["size"] = strconv.FormatInt(res.Size, 10)
 				c.AuditKV["sha256"] = res.SHA256

@@ -151,7 +151,8 @@ func main() {
 	(&helper.UserOps{DB: users.DB{Root: "/"}, Accts: db, KeyCount: keyOps.Count}).Register(ops)
 	// M1.3: file manager (workers under the mapped user; timeouts come from the ops).
 	(&helper.FileOps{Worker: &worker.Runner{Timeout: 15 * time.Minute}, Lookup: worker.Lookup,
-		UploadMiB: func() int { return cfg.Get().UploadMiB }}).Register(ops)
+		UploadMiB: func() int { return cfg.Get().UploadMiB },
+		Versions:  &helper.VersionStore{Dir: filepath.Join(*stateDir, "versions")}, StateDir: *stateDir}).Register(ops)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to
 	// traverse it to reach helper.sock (admin.sock stays 0600 root).

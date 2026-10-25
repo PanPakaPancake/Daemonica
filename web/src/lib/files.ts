@@ -144,15 +144,32 @@ export async function readFile(t: Target, flags: Flags): Promise<FileContent> {
   return api<FileContent>("POST", "/files/content/read", { ...t, ...clean(flags) });
 }
 
+/** Check of a known configuration file (sshd -t, visudo -c, nginx -t, …). */
+export interface Validation {
+  tool: string;
+  ok: boolean;
+  skipped?: boolean;
+  output?: string;
+  /** No "save anyway" (sudoers). */
+  blocking?: boolean;
+  /** The save was undone because the check failed. */
+  rolled_back?: boolean;
+}
+
 export interface WriteResult {
   path: string;
   hash: string;
   size: number;
   mtime: string;
   atomic: boolean;
+  /** false when the check blocked or undid the save. */
+  saved: boolean;
+  validation?: Validation;
+  /** Id of the stored previous version (files below /etc). */
+  version?: string;
 }
 
-export async function writeFile(t: Target, content: string, expectedHash: string | undefined, flags: Flags): Promise<WriteResult> {
+export async function writeFile(t: Target, content: string, expectedHash: string | undefined, flags: Flags, force = false): Promise<WriteResult> {
   const res = await fetch("/api/v1/files/content", {
     method: "PUT",
     credentials: "same-origin",
@@ -160,12 +177,34 @@ export async function writeFile(t: Target, content: string, expectedHash: string
     headers: {
       "X-Daemonica-CSRF": "1",
       "Content-Type": "application/octet-stream",
-      "X-Daemonica-Params": headerJSON({ ...t, expected_hash: expectedHash ?? "", ...clean(flags) }),
+      "X-Daemonica-Params": headerJSON({ ...t, expected_hash: expectedHash ?? "", ...(force ? { force: true } : {}), ...clean(flags) }),
     },
     body: new TextEncoder().encode(content),
   });
   if (!res.ok) throw await problem(res);
   return (await res.json()) as WriteResult;
+}
+
+export interface FileVersion {
+  id: string;
+  time: string;
+  size: number;
+  hash: string;
+  account?: string;
+}
+
+export interface FileVersions {
+  path: string;
+  versioned: boolean;
+  versions: FileVersion[];
+}
+
+export function listVersions(t: Target, flags: Flags): Promise<FileVersions> {
+  return fsCall<FileVersions>("versions", { ...t }, flags);
+}
+
+export function readVersion(t: Target, id: string, flags: Flags): Promise<{ path: string; version: FileVersion; content?: string }> {
+  return api("POST", "/files/versions/read", { ...t, id, ...clean(flags) });
 }
 
 export interface UploadResult {

@@ -26,13 +26,14 @@ var tokenRE = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 // registerFileRoutes installs the file manager API (SPEC §7.4).
 func (s *Server) registerFileRoutes(mux *http.ServeMux) {
 	sess := func(op string) http.Handler { return s.forward(endpoint{op: op, session: true}) }
-	for _, op := range []string{"list", "stat", "create", "rename", "transfer", "delete", "chmod", "chown", "download_token"} {
+	for _, op := range []string{"list", "stat", "create", "rename", "transfer", "delete", "chmod", "chown", "download_token", "versions"} {
 		mux.Handle("POST /api/v1/files/"+op, sess("fs."+op))
 	}
 	mux.Handle("GET /api/v1/files/info", sess("fs.info"))
 	mux.Handle("POST /api/v1/files/root/enable", sess("fs.root_enable"))
 	mux.Handle("POST /api/v1/files/root/disable", sess("fs.root_disable"))
-	mux.Handle("POST /api/v1/files/content/read", LimitBody(16<<10, http.HandlerFunc(s.fileRead)))
+	mux.Handle("POST /api/v1/files/content/read", LimitBody(16<<10, s.fileRead("fs.read")))
+	mux.Handle("POST /api/v1/files/versions/read", LimitBody(16<<10, s.fileRead("fs.version_read")))
 	mux.Handle("PUT /api/v1/files/content", http.HandlerFunc(s.fileWrite))
 	mux.Handle("PUT /api/v1/files/upload", http.HandlerFunc(s.fileUpload))
 	mux.Handle("GET /api/v1/files/download/{token}", http.HandlerFunc(s.fileDownload))
@@ -59,8 +60,13 @@ func headerParams(r *http.Request) (json.RawMessage, bool) {
 	return json.RawMessage(v), true
 }
 
-// fileRead returns a text file for the editor as JSON (metadata + content).
-func (s *Server) fileRead(w http.ResponseWriter, r *http.Request) {
+// fileRead returns a text file (or a stored previous version) for the editor
+// as JSON (metadata + content).
+func (s *Server) fileRead(op string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { s.fileReadOp(w, r, op) })
+}
+
+func (s *Server) fileReadOp(w http.ResponseWriter, r *http.Request, op string) {
 	grant := s.Sessions.Grant(r)
 	if grant == "" {
 		Problem(w, r, http.StatusUnauthorized, "unauthorized")
@@ -72,7 +78,7 @@ func (s *Server) fileRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	meta := map[string]any{}
-	ds, err := s.Helper.Download(r.Context(), "fs.read", grant, clientIP(r).String(), params, &meta)
+	ds, err := s.Helper.Download(r.Context(), op, grant, clientIP(r).String(), params, &meta)
 	if err != nil {
 		s.rpcFail(w, r, err)
 		return

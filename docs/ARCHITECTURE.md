@@ -67,7 +67,7 @@ Daemonica manages exactly one Debian/Ubuntu host. It is split into three binarie
 | `journal` | `journal.query` | logs.read |
 | `users` / `groups` | `users.list/create/update/set_locked/set_sudo/set_password/delete`, `groups.create/set_members/delete` | users.read, users.write |
 | `sshkeys` | `sshkeys.list/add/remove/set_options/fix_permissions/server` | sshkeys.own, sshkeys.others |
-| `fs` | `fs.info`, `fs.list`, `fs.stat`, `fs.create`, `fs.rename`, `fs.transfer`, `fs.delete`, `fs.chmod`, `fs.chown` (root mode only), `fs.download_token`, `fs.root_enable` (step-up), `fs.root_disable`; streams: `fs.read`, `fs.write`, `fs.upload`, `fs.download` | files, files.root |
+| `fs` | `fs.info`, `fs.list`, `fs.stat`, `fs.create`, `fs.rename`, `fs.transfer`, `fs.delete`, `fs.chmod`, `fs.chown` (root mode only), `fs.download_token`, `fs.root_enable` (step-up), `fs.root_disable`, `fs.versions`; streams: `fs.read`, `fs.write` (previous version + validation, DEC-021), `fs.upload`, `fs.download`, `fs.version_read` | files, files.root |
 
 ### Streams
 

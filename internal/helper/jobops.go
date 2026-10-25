@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"os/user"
 	"strconv"
 	"strings"
@@ -105,6 +106,20 @@ type JobsOverview struct {
 	Managed []JobView        `json:"managed"`
 	Timers  []services.Timer `json:"timers"`
 	Cron    jobs.CronStatus  `json:"cron"`
+	// ServerTZ is the host's time zone (cron and timers without a zone use it).
+	ServerTZ string `json:"server_tz"`
+}
+
+// serverTZ names the host's time zone from /etc/localtime.
+func serverTZ() string {
+	p, err := os.Readlink("/etc/localtime")
+	if err != nil {
+		return "UTC"
+	}
+	if _, name, ok := strings.Cut(p, "zoneinfo/"); ok && name != "" {
+		return name
+	}
+	return "UTC"
 }
 
 // FieldError is a validation finding returned as data: the web layer only
@@ -261,7 +276,7 @@ func (o *JobOps) Register(ops map[string]*Op) {
 			if err != nil {
 				return nil, err
 			}
-			res := JobsOverview{Managed: []JobView{}, Timers: []services.Timer{}, Cron: o.cron(o.now())}
+			res := JobsOverview{Managed: []JobView{}, Timers: []services.Timer{}, Cron: o.cron(o.now()), ServerTZ: serverTZ()}
 			for _, j := range list {
 				res.Managed = append(res.Managed, o.view(ctx, c.Subject, j))
 			}

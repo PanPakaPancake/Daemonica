@@ -605,8 +605,18 @@ function Detail({
   );
 }
 
+/** The overview (cached) for the server's time zone. */
+function useServerTz(): string | undefined {
+  const q = useQuery({ queryKey: ["jobs"], queryFn: () => api<Overview>("GET", "/jobs"), staleTime: 60_000 });
+  return q.data?.server_tz;
+}
+
+const browserTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 function NextRuns({ preview, error }: { preview?: { next: string[]; approx?: boolean }; error?: string }) {
   const { t, i18n } = useTranslation();
+  const server = useServerTz();
+  const local = browserTz();
   return (
     <div className="rounded-[8px] border border-line bg-bg-2 px-4 py-2">
       <p className="text-sm text-muted">{preview?.approx ? t("jobs.nextApprox") : t("jobs.next5")}</p>
@@ -621,6 +631,9 @@ function NextRuns({ preview, error }: { preview?: { next: string[]; approx?: boo
       ) : (
         <p className="text-sm text-faint">–</p>
       )}
+      {preview?.next.length ? (
+        <p className="mt-1 text-xs text-faint">{server && server !== local ? t("jobs.tzLocalServer", { local, server }) : t("jobs.tzLocal", { local })}</p>
+      ) : null}
     </div>
   );
 }
@@ -1642,6 +1655,7 @@ function CronScheduleBuilder({
   exprError: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const server = useServerTz();
   const err = (k?: string) => (k ? t(`jobs.err.${k}`) : undefined);
   const number = (label: string, v: number, on: (n: number) => void, min: number, max: number, error?: string) => (
     <Field label={label} error={error}>
@@ -1738,7 +1752,7 @@ function CronScheduleBuilder({
       <p className="font-medium">
         {plain} <span className="ml-2 font-mono text-sm text-faint">{toCron(d)}</span>
       </p>
-      {d.kind !== "custom" && d.kind !== "reboot" && <p className="text-sm text-muted">{t("jobs.cronServerTime")}</p>}
+      {d.kind !== "custom" && d.kind !== "reboot" && <p className="text-sm text-muted">{t("jobs.cronServerTime", { tz: server ?? "UTC" })}</p>}
     </>
   );
 }

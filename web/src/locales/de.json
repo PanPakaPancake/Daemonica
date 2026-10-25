@@ -1646,7 +1646,9 @@
       "custom": "Eigener cron-Ausdruck"
     },
     "atMinute": "zur Minute {{minute}}",
-    "cronServerTime": "cron rechnet in der Zeitzone des Servers. Verpasste Läufe holt cron nicht nach."
+    "cronServerTime": "Die Uhrzeit gilt in der Zeitzone des Servers ({{tz}}). Verpasste Läufe holt cron nicht nach.",
+    "tzLocal": "Zeiten in deiner Ortszeit ({{local}}).",
+    "tzLocalServer": "Zeiten in deiner Ortszeit ({{local}}). Der Server läuft auf {{server}}."
   },
   "scripts": {
     "local": "Lokal",

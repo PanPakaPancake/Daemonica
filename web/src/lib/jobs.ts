@@ -131,6 +131,7 @@ export interface Overview {
   managed: JobView[];
   timers: Timer[];
   cron: { installed: boolean; entries: CronEntry[]; users: string[] };
+  server_tz: string;
 }
 
 export interface CalendarResult {

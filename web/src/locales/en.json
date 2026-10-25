@@ -1646,7 +1646,9 @@
       "custom": "Own cron expression"
     },
     "atMinute": "at minute {{minute}}",
-    "cronServerTime": "cron uses the server's time zone. It does not catch up on missed runs."
+    "cronServerTime": "The time applies in the server's time zone ({{tz}}). cron does not catch up on missed runs.",
+    "tzLocal": "Times in your local time ({{local}}).",
+    "tzLocalServer": "Times in your local time ({{local}}). The server runs on {{server}}."
   },
   "scripts": {
     "local": "Local",

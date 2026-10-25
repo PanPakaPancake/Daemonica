@@ -163,9 +163,16 @@ func TestTerminalOnHost(t *testing.T) {
 	if sleeping() {
 		t.Fatal("background job survived the end of the session")
 	}
-	out2, _ := exec.Command("systemctl", "list-units", "--all", "--no-legend", pty.UnitPrefix+info.ID+".service").CombinedOutput()
-	if strings.Contains(string(out2), "active") && !strings.Contains(string(out2), "inactive") {
-		t.Fatalf("unit still active: %s", out2)
+	// The unit ends as failed (SIGKILL after the grace time) and the
+	// launcher must unload it, so nothing stays listed.
+	unit := pty.UnitPrefix + info.ID + ".service"
+	deadline = time.Now().Add(10 * time.Second)
+	for listed(unit) && time.Now().Before(deadline) {
+		time.Sleep(200 * time.Millisecond)
+	}
+	if listed(unit) {
+		out2, _ := exec.Command("systemctl", "status", "--no-pager", unit).CombinedOutput()
+		t.Fatalf("unit still loaded:\n%s", out2)
 	}
 }
 
@@ -208,6 +215,11 @@ func waitPrompt(t *testing.T, out *termOutput, done <-chan struct{}) {
 		}
 	}
 	t.Fatalf("no prompt; output:\n%s", out.String())
+}
+
+func listed(unit string) bool {
+	out, _ := exec.Command("systemctl", "list-units", "--all", "--no-legend", unit).CombinedOutput()
+	return strings.Contains(string(out), unit)
 }
 
 func sleeping() bool {

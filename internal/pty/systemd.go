@@ -41,6 +41,8 @@ type unitBus interface {
 	State(ctx context.Context, unit string) (string, int32, error)
 	// Reset unloads a failed unit.
 	Reset(ctx context.Context, unit string) error
+	// List names the loaded terminal units.
+	List(ctx context.Context) ([]string, error)
 }
 
 type dbusUnits struct{ conn *dbus.Conn }
@@ -62,6 +64,22 @@ func (d dbusUnits) Stop(ctx context.Context, unit string) error {
 
 func (d dbusUnits) Reset(ctx context.Context, unit string) error {
 	return d.mgr().CallWithContext(ctx, sdManager+".ResetFailedUnit", 0, unit).Err
+}
+
+func (d dbusUnits) List(ctx context.Context) ([]string, error) {
+	var units []struct {
+		Name, Description, LoadState, ActiveState, SubState, Following string
+		Path                                                           dbus.ObjectPath
+		JobID                                                          uint32
+		JobType                                                        string
+		JobPath                                                        dbus.ObjectPath
+	}
+	err := d.mgr().CallWithContext(ctx, sdManager+".ListUnitsByPatterns", 0, []string{}, []string{UnitPrefix + "*.service"}).Store(&units)
+	names := make([]string, 0, len(units))
+	for _, u := range units {
+		names = append(names, u.Name)
+	}
+	return names, err
 }
 
 func (d dbusUnits) State(ctx context.Context, unit string) (string, int32, error) {
@@ -87,6 +105,40 @@ func (l *SystemdLauncher) units() unitBus {
 		return l.bus
 	}
 	return dbusUnits{conn: l.Conn}
+}
+
+// Cleanup ends the terminal units left from an earlier helper run (no
+// client can reach them any more) and unloads failed ones, so none stays
+// listed as failed. Call it once at start, before terminals are opened.
+func (l *SystemdLauncher) Cleanup(ctx context.Context) {
+	names, err := l.units().List(ctx)
+	if err != nil {
+		return
+	}
+	for _, u := range names {
+		_ = l.units().Stop(ctx, u)
+	}
+	poll := l.Poll
+	if poll == 0 {
+		poll = 500 * time.Millisecond
+	}
+	for _, u := range names {
+		for {
+			state, _, err := l.units().State(ctx, u)
+			if err != nil || state == "inactive" {
+				break // unloaded or ended
+			}
+			if state == "failed" {
+				_ = l.units().Reset(ctx, u)
+				break
+			}
+			select {
+			case <-time.After(poll):
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
 }
 
 // ConnectSystemd opens a private system bus connection for the launcher.

@@ -171,6 +171,16 @@ func (f *fakeUnits) StartTransient(_ context.Context, unit string, _ []property)
 	return nil
 }
 
+func (f *fakeUnits) List(context.Context) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []string
+	for u := range f.units {
+		out = append(out, u)
+	}
+	return out, nil
+}
+
 func (f *fakeUnits) exit(unit string, code int32) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -185,6 +195,9 @@ func (f *fakeUnits) exit(unit string, code int32) {
 func (f *fakeUnits) Stop(_ context.Context, unit string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.units[unit] == "failed" {
+		return nil // as systemd: a failed unit stays until reset
+	}
 	delete(f.units, unit)
 	return nil
 }
@@ -249,6 +262,17 @@ func TestSystemdLauncherLifecycle(t *testing.T) {
 	f.failErr = errors.New("denied")
 	if _, err := Open(context.Background(), l, Spec{Name: "a4"}, 80, 24); err == nil {
 		t.Fatal("launch error not returned")
+	}
+}
+
+func TestSystemdCleanup(t *testing.T) {
+	f := &fakeUnits{units: map[string]string{UnitPrefix + "old.service": "active", UnitPrefix + "dead.service": "failed"}, code: 1}
+	l := &SystemdLauncher{bus: f, Poll: 10 * time.Millisecond}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	l.Cleanup(ctx)
+	if len(f.units) != 0 || f.resets != 1 {
+		t.Fatalf("left: %v, resets %d", f.units, f.resets)
 	}
 }
 

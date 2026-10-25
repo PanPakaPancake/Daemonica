@@ -19,8 +19,10 @@ import (
 
 type fakeNet struct{ st netcfg.State }
 
-func (f fakeNet) Read() (netcfg.State, error)    { return f.st, nil }
-func (f fakeNet) Ports() ([]netcfg.Port, error) { return []netcfg.Port{{Proto: "tcp", Address: "0.0.0.0", Port: 22}}, nil }
+func (f fakeNet) Read() (netcfg.State, error) { return f.st, nil }
+func (f fakeNet) Ports() ([]netcfg.Port, error) {
+	return []netcfg.Port{{Proto: "tcp", Address: "0.0.0.0", Port: 22}}, nil
+}
 
 type netRuns struct {
 	mu    sync.Mutex

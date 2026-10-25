@@ -12,6 +12,7 @@ import { errorText } from "../lib/errors";
 import { bytes, dateTime, saveText } from "../lib/format";
 import { explainRule, type Rule } from "../lib/firewall";
 import { useSession } from "../lib/session";
+import { FirewallLogs } from "./FirewallLogs";
 
 interface Config {
   enabled: boolean;
@@ -69,6 +70,7 @@ interface AddSpec {
   from: string;
   to: string;
   comment?: string;
+  prepend?: boolean;
 }
 export interface Op {
   kind: "add" | "delete" | "logging" | "default" | "enable" | "disable" | "reset";
@@ -105,7 +107,7 @@ export function Firewall() {
   const { t, i18n } = useTranslation();
   const { me } = useSession();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"rules" | "reach" | "raw">("rules");
+  const [tab, setTab] = useState<"rules" | "reach" | "logs" | "raw">("rules");
   const [op, setOp] = useState<Op>();
   const [adding, setAdding] = useState<AddSpec>();
   const [done, setDone] = useState<{ msg: string; tone: "ok" | "warn" }>();
@@ -355,18 +357,20 @@ export function Firewall() {
       {f && (
         <>
           <div role="tablist" className="flex gap-1 border-b border-line">
-            {(["rules", "reach", "raw"] as const).map((x) => (
-              <button
-                key={x}
-                role="tab"
-                type="button"
-                aria-selected={tab === x}
-                className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === x ? "border-cyan text-fg" : "border-transparent text-muted hover:text-fg"}`}
-                onClick={() => setTab(x)}
-              >
-                {t(`firewall.tab.${x}`)}
-              </button>
-            ))}
+            {(["rules", "reach", "logs", "raw"] as const)
+              .filter((x) => x !== "logs" || me?.role !== "readonly")
+              .map((x) => (
+                <button
+                  key={x}
+                  role="tab"
+                  type="button"
+                  aria-selected={tab === x}
+                  className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === x ? "border-cyan text-fg" : "border-transparent text-muted hover:text-fg"}`}
+                  onClick={() => setTab(x)}
+                >
+                  {t(`firewall.tab.${x}`)}
+                </button>
+              ))}
           </div>
 
           {tab === "rules" && c && (
@@ -401,6 +405,17 @@ export function Firewall() {
           )}
           {tab === "rules" && !c && <p className="text-muted">{t("firewall.noUfwRules")}</p>}
           {tab === "reach" && <Reach view={f} />}
+          {tab === "logs" && (
+            <FirewallLogs
+              logging={c?.logging}
+              isAdmin={canWrite}
+              onLogging={(level) => start({ kind: "logging", level })}
+              onBlock={(src) => {
+                setDone(undefined);
+                setAdding({ action: "deny", direction: "in", proto: "any", from: src, to: "any", prepend: true, comment: t("firewall.logs.blockComment") });
+              }}
+            />
+          )}
           {tab === "raw" && <Raw />}
         </>
       )}
@@ -828,6 +843,13 @@ function AddForm({ spec, apps, onChange }: { spec: AddSpec; apps: string[]; onCh
           {(p) => <input {...p} className="input font-mono" value={spec.to} onChange={(e) => onChange({ to: e.target.value })} />}
         </Field>
       </div>
+      <label className="flex items-start gap-2">
+        <input type="checkbox" className="mt-1" checked={!!spec.prepend} onChange={(e) => onChange({ prepend: e.target.checked || undefined })} />
+        <span>
+          {t("firewall.prepend")}
+          <span className="block text-sm text-faint">{t("firewall.prependHelp")}</span>
+        </span>
+      </label>
       <Field label={t("firewall.col.comment")} help={t("firewall.commentHelp")}>
         {(p) => <input {...p} className="input" maxLength={80} value={spec.comment ?? ""} onChange={(e) => onChange({ comment: e.target.value })} />}
       </Field>

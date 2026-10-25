@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "../components/icons";
 import { Notice, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { errorText } from "../lib/errors";
+import { useFollow, followEndText } from "../lib/follow";
 import { saveText } from "../lib/format";
 
 interface Entry {
@@ -41,7 +42,7 @@ export function Logs() {
   const [follow, setFollow] = useState(false);
   const [extra, setExtra] = useState<Entry[]>([]);
   const [err, setErr] = useState<string>();
-  const cursor = useRef<string | undefined>(undefined);
+  const [skipped, setSkipped] = useState(0);
   const bottom = useRef<HTMLDivElement>(null);
 
   // Filter fields shared by the initial query and follow polling.
@@ -57,37 +58,30 @@ export function Logs() {
     queryKey: ["journal", filter],
     queryFn: async () => {
       const r = await api<Result>("POST", "/journal/query", { ...where(filter), lines: filter.lines });
-      cursor.current = r.cursor;
       setExtra([]);
+      setSkipped(0);
       return r;
     },
   });
 
-  // Follow: poll for entries after the last cursor (DEC-017; WebSocket in M1.4).
-  useEffect(() => {
-    if (!follow) return;
-    let stop = false;
-    const tick = async () => {
-      if (stop || !cursor.current) return;
-      try {
-        const r = await api<Result>("POST", "/journal/query", { ...where(filter), after: cursor.current });
-        if (r.cursor) cursor.current = r.cursor;
-        if (r.entries.length) {
-          setExtra((x) => [...x, ...r.entries].slice(-MAX_BUFFER));
-          window.requestAnimationFrame(() => bottom.current?.scrollIntoView({ block: "end" }));
-        }
-      } catch (e) {
-        setErr(errorText(t, e));
-        setFollow(false);
-      }
-    };
-    const id = window.setInterval(() => void tick(), 1500);
-    return () => {
-      stop = true;
-      window.clearInterval(id);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [follow, filter]);
+  // Follow: the server pushes entries after the last cursor over WebSocket (DEC-017, DEC-026).
+  const followParams = useMemo(
+    () => (follow && q.data?.cursor ? { ...where(filter), after: q.data.cursor } : undefined),
+    [follow, filter, q.data?.cursor],
+  );
+  useFollow<Entry>(
+    "journal.query",
+    followParams,
+    (es, sk) => {
+      setExtra((x) => [...x, ...es].slice(-MAX_BUFFER));
+      if (sk) setSkipped((n) => n + sk);
+      window.requestAnimationFrame(() => bottom.current?.scrollIntoView({ block: "end" }));
+    },
+    (reason) => {
+      setErr(followEndText(t, reason));
+      setFollow(false);
+    },
+  );
 
   const entries = [...(q.data?.entries ?? []), ...extra];
   const fmtTime = (s: string) => new Date(s).toLocaleString(lang);
@@ -179,6 +173,7 @@ export function Logs() {
           <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} />
           <span>{t("logs.follow")}</span>
           {follow && <span className="h-2 w-2 animate-pulse rounded-full bg-ok" aria-hidden="true" />}
+          {skipped > 0 && <span className="text-sm text-warn">{t("common.skipped", { count: skipped })}</span>}
         </label>
         <div className="flex gap-2">
           <button type="button" className="btn btn-secondary min-h-9" onClick={() => exportAs("txt")} disabled={!entries.length}>

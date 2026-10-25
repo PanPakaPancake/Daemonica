@@ -20,7 +20,10 @@
     "delete": "Delete",
     "refresh": "Refresh",
     "actions": "Actions",
-    "previous": "Previous"
+    "previous": "Previous",
+    "followEnded": "Live view ended.",
+    "skipped_one": "{{count}} entries skipped (live view rate limit).",
+    "skipped_other": "{{count}} entries skipped (live view rate limit)."
   },
   "errors": {
     "unauthorized": "Not signed in or session expired.",
@@ -1031,7 +1034,8 @@
     "tab": {
       "rules": "Rules",
       "reach": "Reachability",
-      "raw": "Raw view"
+      "raw": "Raw view",
+      "logs": "Logs"
     },
     "rulesIntro": "ufw checks the rules top to bottom; the first matching rule decides.",
     "addRule": "Add rule",
@@ -1154,6 +1158,61 @@
       "high": "Red alert: this change can cut your own connection. Without confirmation the server reverts after 90 seconds."
     },
     "rolledBackTimeout": "No confirmation received – the server restored the previous firewall configuration.",
-    "managedHint": "Rule managed by Daemonica"
+    "managedHint": "Rule managed by Daemonica",
+    "logs": {
+      "intro": "Firewall events logged by the kernel, read from journald. All fields are validated on the server; there are no external lookups (GeoIP, reverse DNS).",
+      "off": "Firewall logging is off, so no entries appear here. The recommended level is “low”: it logs blocked connections with rate limiting. Note: IP addresses are personal data.",
+      "enable": "Enable logging (low)",
+      "highWarn": "Logging is set to “high” or “full”: allowed connections are logged as well. This produces a lot of journal volume and stores more personal data.",
+      "range": "Time range",
+      "ranges": {
+        "15m": "Last 15 minutes",
+        "1h": "Last hour",
+        "24h": "Last 24 hours",
+        "7d": "Last 7 days"
+      },
+      "search": "Free text (IP, port, interface, flags …)",
+      "lines": "Maximum rows",
+      "linesN": "max. {{n}}",
+      "live": "Live",
+      "stats": "Statistics",
+      "exportCsv": "Export as CSV",
+      "exportJson": "Export as JSON",
+      "summary_one": "{{count}} entry ({{scanned}} kernel lines checked)",
+      "summary_other": "{{count}} entries ({{scanned}} kernel lines checked)",
+      "truncated": "result truncated, narrow the time range or filters",
+      "empty": "No firewall entries in this time range.",
+      "col": {
+        "time": "Time",
+        "spt": "Source port",
+        "dpt": "Destination port",
+        "flags": "Flags",
+        "len": "Length"
+      },
+      "action": {
+        "block": "Blocked",
+        "allow": "Allowed",
+        "audit": "Audit",
+        "log": "Logged"
+      },
+      "dir": {
+        "in": "incoming",
+        "out": "outgoing",
+        "forward": "forwarded"
+      },
+      "filterSrc": "Filter by this source",
+      "filterDpt": "Filter by this destination port",
+      "copy": "Copy entry",
+      "block": "Block source …",
+      "actionsFor": "Actions for {{src}}",
+      "blockComment": "blocked from firewall logs",
+      "perAction": "Count per action",
+      "topSources": "Top blocked sources",
+      "topPorts": "Top blocked destination ports",
+      "timeline": "Timeline",
+      "timelineLabel": "Entries from {{from}} to {{to}}, red = blocked"
+    },
+    "prepend": "Place before all other rules",
+    "prependHelp": "Needed so a block also hits ports that a later rule allows (ufw prepend)."
   }
 }

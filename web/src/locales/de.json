@@ -20,7 +20,10 @@
     "delete": "Löschen",
     "refresh": "Aktualisieren",
     "actions": "Aktionen",
-    "previous": "Zurück"
+    "previous": "Zurück",
+    "followEnded": "Die Live-Ansicht wurde beendet.",
+    "skipped_one": "{{count}} Einträge übersprungen (Ratenbegrenzung der Live-Ansicht).",
+    "skipped_other": "{{count}} Einträge übersprungen (Ratenbegrenzung der Live-Ansicht)."
   },
   "errors": {
     "unauthorized": "Nicht angemeldet oder Sitzung abgelaufen.",
@@ -1031,7 +1034,8 @@
     "tab": {
       "rules": "Regeln",
       "reach": "Erreichbarkeit",
-      "raw": "Rohansicht"
+      "raw": "Rohansicht",
+      "logs": "Logs"
     },
     "rulesIntro": "ufw prüft die Regeln von oben nach unten; die erste passende Regel entscheidet.",
     "addRule": "Regel hinzufügen",
@@ -1154,6 +1158,61 @@
       "high": "Warnstufe Rot: Diese Änderung kann deine eigene Verbindung trennen. Ohne Bestätigung setzt der Server nach 90 Sekunden zurück."
     },
     "rolledBackTimeout": "Keine Bestätigung erhalten – der Server hat die vorherige Firewall-Konfiguration wiederhergestellt.",
-    "managedHint": "Von Daemonica verwaltete Regel"
+    "managedHint": "Von Daemonica verwaltete Regel",
+    "logs": {
+      "intro": "Vom Kernel protokollierte Firewall-Ereignisse aus journald. Alle Felder werden auf dem Server geprüft; es finden keine externen Abfragen (GeoIP, Reverse-DNS) statt.",
+      "off": "Das Firewall-Logging ist aus, deshalb erscheinen hier keine Einträge. Empfohlen ist die Stufe „niedrig“: Sie protokolliert blockierte Verbindungen mit Ratenbegrenzung. Beachte: IP-Adressen sind personenbezogene Daten.",
+      "enable": "Logging aktivieren (niedrig)",
+      "highWarn": "Logging steht auf „hoch“ oder „voll“: Es werden auch erlaubte Verbindungen protokolliert. Das erzeugt viel Datenvolumen im Journal und speichert mehr personenbezogene Daten.",
+      "range": "Zeitraum",
+      "ranges": {
+        "15m": "Letzte 15 Minuten",
+        "1h": "Letzte Stunde",
+        "24h": "Letzte 24 Stunden",
+        "7d": "Letzte 7 Tage"
+      },
+      "search": "Freitext (IP, Port, Interface, Flags …)",
+      "lines": "Maximale Anzahl",
+      "linesN": "max. {{n}}",
+      "live": "Live",
+      "stats": "Auswertung",
+      "exportCsv": "Als CSV exportieren",
+      "exportJson": "Als JSON exportieren",
+      "summary_one": "{{count}} Eintrag ({{scanned}} Kernel-Zeilen geprüft)",
+      "summary_other": "{{count}} Einträge ({{scanned}} Kernel-Zeilen geprüft)",
+      "truncated": "Ergebnis gekürzt, Zeitraum oder Filter eingrenzen",
+      "empty": "Keine Firewall-Einträge im Zeitraum.",
+      "col": {
+        "time": "Zeit",
+        "spt": "Quellport",
+        "dpt": "Zielport",
+        "flags": "Flags",
+        "len": "Länge"
+      },
+      "action": {
+        "block": "Blockiert",
+        "allow": "Erlaubt",
+        "audit": "Audit",
+        "log": "Protokolliert"
+      },
+      "dir": {
+        "in": "eingehend",
+        "out": "ausgehend",
+        "forward": "weitergeleitet"
+      },
+      "filterSrc": "Nach dieser Quelle filtern",
+      "filterDpt": "Nach diesem Zielport filtern",
+      "copy": "Eintrag kopieren",
+      "block": "Quelle blockieren …",
+      "actionsFor": "Aktionen für {{src}}",
+      "blockComment": "blockiert aus Firewall-Logs",
+      "perAction": "Anzahl je Aktion",
+      "topSources": "Top blockierte Quellen",
+      "topPorts": "Top blockierte Zielports",
+      "timeline": "Verlauf",
+      "timelineLabel": "Verlauf der Einträge von {{from}} bis {{to}}, rot = blockiert"
+    },
+    "prepend": "Vor alle anderen Regeln setzen",
+    "prependHelp": "Nötig, damit eine Sperre auch Ports trifft, die eine spätere Regel erlaubt (ufw prepend)."
   }
 }

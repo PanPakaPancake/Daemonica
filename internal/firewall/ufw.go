@@ -384,6 +384,9 @@ type AddSpec struct {
 	From      string `json:"from"` // any or IP/CIDR
 	To        string `json:"to"`
 	Comment   string `json:"comment,omitempty"`
+	// Prepend puts the rule before all others of its IP version (ufw prepend),
+	// so a block takes effect even when a later rule allows the port.
+	Prepend bool `json:"prepend,omitempty"`
 	// AppPorts are filled by the planner for app rules (lockout evaluation).
 	AppPorts []string `json:"app_ports,omitempty"`
 }
@@ -465,6 +468,9 @@ func (s AddSpec) Normalize() (AddSpec, error) {
 // Args builds the ufw command line (argv, never a shell).
 func (s AddSpec) Args() []string {
 	a := []string{s.Action, s.Direction}
+	if s.Prepend {
+		a = append([]string{"prepend"}, a...)
+	}
 	if s.Iface != "" {
 		a = append(a, "on", s.Iface)
 	}

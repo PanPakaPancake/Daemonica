@@ -14,6 +14,7 @@ import (
 
 	"github.com/PanPakaPancake/daemonica/internal/audit"
 	"github.com/PanPakaPancake/daemonica/internal/firewall"
+	"github.com/PanPakaPancake/daemonica/internal/journal"
 	"github.com/PanPakaPancake/daemonica/internal/netallow"
 	"github.com/PanPakaPancake/daemonica/internal/netcfg"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
@@ -32,6 +33,8 @@ type FirewallOps struct {
 	// AuditPath is read for the last firewall change; AccountName resolves its actor.
 	AuditPath   string
 	AccountName func(ctx context.Context, id string) string
+	// Journal runs journal queries (journal.Run; fakes in tests).
+	Journal func(ctx context.Context, q journal.Query) (journal.Result, error)
 }
 
 // ReachRow is a listening socket and how the firewall treats it.
@@ -299,6 +302,9 @@ func (f *FirewallOps) plan(ctx context.Context, c Call, p fwPlanParams) (any, er
 	if op.Kind == "reset" && !strings.EqualFold(strings.TrimSpace(p.ConfirmName), e.view.Hostname) {
 		return nil, Errf(rpc.CodeValidation, "type the server name to confirm the reset")
 	}
+	if err := f.protectSources(c, op); err != nil {
+		return nil, err
+	}
 	ops := []firewall.Op{op}
 	var auto []firewall.AddSpec
 	if op.Kind == "add" && op.Add.App != "" {
@@ -355,6 +361,87 @@ func nonNil[T any](s []T) []T {
 	return s
 }
 
+// protectSources refuses deny/reject rules for sources that include the
+// caller's address or an allowlist network (SPEC §7.6 M1.5c "Quelle blockieren").
+func (f *FirewallOps) protectSources(c Call, op firewall.Op) error {
+	if op.Kind != "add" || (op.Add.Action != "deny" && op.Add.Action != "reject") || op.Add.Direction != "in" || op.Add.From == "any" {
+		return nil
+	}
+	from, err := netip.ParsePrefix(op.Add.From)
+	if err != nil {
+		a, aerr := netip.ParseAddr(op.Add.From)
+		if aerr != nil {
+			return Errf(rpc.CodeValidation, "invalid source")
+		}
+		from = netip.PrefixFrom(a, a.BitLen())
+	}
+	if client, err := netip.ParseAddr(c.SourceIP); err == nil && from.Contains(client.Unmap()) {
+		return Errf(rpc.CodeLockout, "the source contains your own address")
+	}
+	allow, _ := netallow.ParseList(f.Config.Get().Allowlist)
+	for _, p := range allow {
+		if !p.Addr().IsLoopback() && p.Bits() > 0 && p.Overlaps(from) {
+			return Errf(rpc.CodeLockout, "the source overlaps the dashboard allowlist (%s)", p)
+		}
+	}
+	return nil
+}
+
+type fwLogParams struct {
+	Since  time.Time          `json:"since,omitempty"`
+	Until  time.Time          `json:"until,omitempty"`
+	After  string             `json:"after,omitempty"`
+	Lines  int                `json:"lines,omitempty"`
+	Filter firewall.LogFilter `json:"filter"`
+}
+
+// FirewallLogs is the firewall.logs result.
+type FirewallLogs struct {
+	Entries   []firewall.LogEntry `json:"entries"`
+	Cursor    string              `json:"cursor,omitempty"`
+	Truncated bool                `json:"truncated"`
+	Scanned   int                 `json:"scanned"`
+}
+
+// MaxFirewallLogLines bounds one firewall log answer (RPC frame limit); the
+// UI pages backwards with "until" for exports of up to 10,000 rows.
+const MaxFirewallLogLines = 2000
+
+func (f *FirewallOps) logs(ctx context.Context, p fwLogParams) (FirewallLogs, error) {
+	if err := p.Filter.Validate(); err != nil {
+		return FirewallLogs{}, fwErr(err)
+	}
+	if p.Lines <= 0 {
+		p.Lines = 500
+	}
+	p.Lines = min(p.Lines, MaxFirewallLogLines)
+	// Netfilter LOG lines come from the kernel and always carry SRC=.
+	q := journal.Query{Identifier: "kernel", Grep: "SRC=", Since: p.Since, Until: p.Until, After: p.After, Lines: journal.MaxLines, NoBudget: true}
+	if _, err := q.Args(); err != nil {
+		return FirewallLogs{}, Errf(rpc.CodeValidation, "%s", err.Error())
+	}
+	run := f.Journal
+	if run == nil {
+		run = journal.Run
+	}
+	res, err := run(ctx, q)
+	if err != nil {
+		return FirewallLogs{}, Errf(rpc.CodeUnavailable, "journal query failed")
+	}
+	out := FirewallLogs{Entries: []firewall.LogEntry{}, Cursor: res.Cursor, Truncated: res.Truncated, Scanned: len(res.Entries)}
+	for _, je := range res.Entries {
+		e, ok := firewall.ParseLog(je.Message, je.Time)
+		if ok && p.Filter.Match(e) {
+			out.Entries = append(out.Entries, e)
+		}
+	}
+	if n := len(out.Entries); n > p.Lines {
+		out.Entries = out.Entries[n-p.Lines:] // the newest
+		out.Truncated = true
+	}
+	return out, nil
+}
+
 // covered reports whether the rules already let the access rule's traffic in.
 func covered(c firewall.Config, a firewall.AddSpec, host []netip.Addr) bool {
 	port, _ := strconv.Atoi(a.Port)
@@ -390,6 +477,15 @@ func (f *FirewallOps) Register(ops map[string]*Op) {
 				return nil, err
 			}
 			return f.plan(ctx, c, p)
+		}})
+
+	Register(ops, &Op{Name: "firewall.logs", Action: policy.ActFirewallLogs, NoAudit: true, Timeout: 30 * time.Second,
+		Handle: func(ctx context.Context, c Call) (any, error) {
+			var p fwLogParams
+			if err := decode(c, &p); err != nil {
+				return nil, err
+			}
+			return f.logs(ctx, p)
 		}})
 
 	Register(ops, &Op{Name: "firewall.install", Action: policy.ActFirewallWrite, Timeout: 115 * time.Second, // below the web write timeout

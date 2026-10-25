@@ -35,6 +35,7 @@ type Server struct {
 	ReloadConfig func()
 
 	tickets terminalTickets
+	follows terminalTickets
 }
 
 type connKey struct{}
@@ -74,6 +75,7 @@ func (s *Server) Handler() http.Handler {
 	s.registerAuthRoutes(mux)
 	s.registerFileRoutes(mux)
 	s.registerTerminalRoutes(mux)
+	s.registerFollowRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		// Unknown API routes: never reveal whether a route exists to anonymous clients.
 		Problem(w, r, http.StatusUnauthorized, "unauthorized")

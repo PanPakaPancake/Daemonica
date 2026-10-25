@@ -44,6 +44,9 @@ type Query struct {
 	Lines    int       `json:"lines,omitempty"`
 	// Identifier filters by SYSLOG_IDENTIFIER (e.g. kernel, sshd).
 	Identifier string `json:"identifier,omitempty"`
+	// NoBudget lifts the result byte budget for callers that reduce the
+	// entries before answering (never set from request JSON).
+	NoBudget bool `json:"-"`
 }
 
 // Entry is one sanitised journal entry.
@@ -145,7 +148,11 @@ func Run(ctx context.Context, q Query) (Result, error) {
 	if err != nil && !errors.Is(err, execx.ErrTruncated) {
 		return Result{}, err
 	}
-	out := Parse(res.Stdout, n)
+	budget := MaxResultBytes
+	if q.NoBudget {
+		budget = 64 << 20
+	}
+	out := parse(res.Stdout, n, budget)
 	if errors.Is(err, execx.ErrTruncated) {
 		out.Truncated = true
 	}
@@ -179,9 +186,10 @@ func field(r rawEntry, k string) string {
 }
 
 // Parse converts journalctl JSON lines into sanitised entries (at most max).
-func Parse(data []byte, max int) Result {
+func Parse(data []byte, max int) Result { return parse(data, max, MaxResultBytes) }
+
+func parse(data []byte, max, budget int) Result {
 	var res Result
-	budget := MaxResultBytes
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	sc.Buffer(make([]byte, 64<<10), 4<<20)
 	for sc.Scan() {

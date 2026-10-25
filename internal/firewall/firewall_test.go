@@ -392,3 +392,53 @@ func TestDetect(t *testing.T) {
 		t.Fatal(src, text, err)
 	}
 }
+
+func TestParseLog(t *testing.T) {
+	at := time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC)
+	e, ok := ParseLog("[UFW BLOCK] IN=eth0 OUT= MAC=52:54:00:12:34:56:00:00:5e:00:01:01:08:00 SRC=203.0.113.9 DST=148.230.104.4 LEN=60 TOS=0x00 PREC=0x00 TTL=50 ID=4242 DF PROTO=TCP SPT=51515 DPT=5432 WINDOW=64240 RES=0x00 SYN URGP=0", at)
+	if !ok || e.Action != "block" || e.Prefix != "UFW BLOCK" || e.Direction != "in" || e.In != "eth0" || e.Src != "203.0.113.9" || e.Dst != "148.230.104.4" ||
+		e.Proto != "tcp" || e.SPort != 51515 || e.DPort != 5432 || e.Len != 60 || e.TTL != 50 || !slices.Equal(e.Flags, []string{"SYN"}) || !e.Time.Equal(at) {
+		t.Fatalf("%+v", e)
+	}
+	e, ok = ParseLog("[UFW ALLOW] IN= OUT=eth0 SRC=2a02:4780::1 DST=2001:db8::53 LEN=72 TC=0 HOPLIMIT=64 FLOWLBL=1 PROTO=UDP SPT=40000 DPT=53 LEN=32", at)
+	if !ok || e.Action != "allow" || e.Direction != "out" || !e.V6 || e.Len != 72 || e.TTL != 64 || e.DPort != 53 {
+		t.Fatalf("v6: %+v", e)
+	}
+	if e, ok := ParseLog("[UFW LIMIT BLOCK] IN=eth0 OUT= SRC=1.2.3.4 DST=5.6.7.8 PROTO=TCP SPT=1 DPT=22 SYN", at); !ok || e.Action != "block" || !e.Limit {
+		t.Fatalf("limit: %+v", e)
+	}
+	if e, ok := ParseLog("nft-drop: IN=eth0 OUT=eth1 SRC=10.0.0.2 DST=10.0.1.2 PROTO=ICMP TYPE=8", at); !ok || e.Action != "block" || e.Direction != "forward" {
+		t.Fatalf("nft: %+v", e)
+	}
+	// Injection: forged fields are not interpreted and invalid values are dropped.
+	for _, m := range []string{
+		"martian source 1.2.3.4 from 5.6.7.8",
+		"[UFW BLOCK] IN=eth0 SRC=<script>alert(1)</script> DST=1.2.3.4",
+		"[UFW BLOCK] IN=eth0 SRC=1.2.3.4",
+	} {
+		if _, ok := ParseLog(m, at); ok {
+			t.Errorf("accepted %q", m)
+		}
+	}
+	e, ok = ParseLog("[<b>evil</b>\x1b[31m] IN=eth0;rm OUT= SRC=1.2.3.4 DST=5.6.7.8 PROTO=T<CP SPT=99999 DPT=-1", at)
+	if !ok || e.Prefix != "?" || e.Action != "log" || e.In != "" || e.Proto != "" || e.SPort != 0 || e.DPort != 0 {
+		t.Fatalf("sanitised: %+v", e)
+	}
+
+	f := LogFilter{Action: "block", Src: "203.0.113.0/24", DPort: "5000:6000", Proto: "TCP", Iface: "eth"}
+	blk, _ := ParseLog("[UFW BLOCK] IN=eth0 OUT= SRC=203.0.113.9 DST=148.230.104.4 PROTO=TCP SPT=51515 DPT=5432 SYN", at)
+	if !f.Match(blk) {
+		t.Fatal("filter should match")
+	}
+	for _, g := range []LogFilter{{Action: "allow"}, {Src: "10.0.0.0/8"}, {DPort: "22"}, {Text: "udp"}, {Dir: "out"}, {Dst: "148.230.104.5"}} {
+		if g.Match(blk) {
+			t.Errorf("filter %+v should not match", g)
+		}
+	}
+	if !(LogFilter{Text: "SYN"}).Match(blk) || !(LogFilter{Src: "203.0.113"}).Match(blk) {
+		t.Fatal("text/substring filters")
+	}
+	if (LogFilter{Text: strings.Repeat("x", 101)}).Validate() == nil {
+		t.Fatal("long filter accepted")
+	}
+}

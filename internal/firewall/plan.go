@@ -78,7 +78,11 @@ func Simulate(c Config, active bool, ops []Op) (Config, bool) {
 	for _, o := range ops {
 		switch o.Kind {
 		case "add":
-			n.Rules = append(n.Rules, o.Add.Rules(n.IPv6)...)
+			if o.Add.Prepend {
+				n.Rules = append(o.Add.Rules(n.IPv6), n.Rules...)
+			} else {
+				n.Rules = append(n.Rules, o.Add.Rules(n.IPv6)...)
+			}
 		case "delete":
 			n.Rules = slices.DeleteFunc(n.Rules, func(r Rule) bool { return slices.Contains(o.Nums, r.Num) })
 		case "logging":

@@ -301,6 +301,7 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/firewall/raw", sess("firewall.raw"))
 	mux.Handle("POST /api/v1/firewall/plan", sess("firewall.plan"))
 	mux.Handle("POST /api/v1/firewall/install", sess("firewall.install"))
+	mux.Handle("POST /api/v1/firewall/logs", sess("firewall.logs"))
 
 	mux.Handle("GET /api/v1/settings", sess("settings.get"))
 	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))

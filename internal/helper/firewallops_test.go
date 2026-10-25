@@ -12,6 +12,7 @@ import (
 
 	"github.com/PanPakaPancake/daemonica/internal/execx"
 	"github.com/PanPakaPancake/daemonica/internal/firewall"
+	"github.com/PanPakaPancake/daemonica/internal/journal"
 	"github.com/PanPakaPancake/daemonica/internal/netcfg"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
 	"github.com/PanPakaPancake/daemonica/internal/policy"
@@ -151,4 +152,73 @@ func TestFirewallPlanEnable(t *testing.T) {
 		t.Fatalf("operator: %+v", r)
 	}
 	mustOK(t, e.callFrom(me, "firewall.get", op, nil), "operator reads")
+}
+
+func TestFirewallLogsAndBlockSource(t *testing.T) {
+	e := newAuthEnv(t)
+	g, sa, _ := setupAdmin(t, e)
+	g = stepUp(t, e, sa, g)
+	root := t.TempDir()
+	open := "*filter\n### RULES ###\n### tuple ### allow tcp 22,2222,8443 0.0.0.0/0 any 0.0.0.0/0 in\n-A ufw-user-input -p tcp -m multiport --dports 22,2222,8443 -j ACCEPT\n### END RULES ###\n"
+	for p, s := range map[string]string{"/usr/sbin/ufw": "", "/etc/ufw/user.rules": open, "/etc/default/ufw": "IPV6=yes\nDEFAULT_INPUT_POLICY=\"DROP\"\n"} {
+		full := filepath.Join(root, p)
+		_ = os.MkdirAll(filepath.Dir(full), 0o755)
+		_ = os.WriteFile(full, []byte(s), 0o640)
+	}
+	fu := &fakeUfw{active: true}
+	pm, _ := planner.New(filepath.Join(e.dir, "journal"), time.Minute)
+	ufw := &firewall.Ufw{Root: root, Run: fu.run}
+	pm.Register(&firewall.Handler{Ufw: ufw})
+	var lastQuery journal.Query
+	now := time.Now().UTC()
+	jr := func(_ context.Context, q journal.Query) (journal.Result, error) {
+		lastQuery = q
+		return journal.Result{Cursor: "cur9", Entries: []journal.Entry{
+			{Time: now, Message: "[UFW BLOCK] IN=eth0 OUT= SRC=203.0.113.9 DST=203.0.113.10 PROTO=TCP SPT=40000 DPT=5432 SYN"},
+			{Time: now, Message: "eth0: link up, SRC=bogus"},
+			{Time: now, Message: "[UFW ALLOW] IN=eth0 OUT= SRC=198.51.100.7 DST=203.0.113.10 PROTO=TCP SPT=40001 DPT=8443 SYN"},
+			{Time: now, Message: "[UFW BLOCK] IN=eth0 OUT= SRC=192.0.2.44 DST=203.0.113.10 PROTO=UDP SPT=5353 DPT=161"},
+		}}, nil
+	}
+	st := netcfg.State{Hostname: "daemonica", Interfaces: []netcfg.Interface{{Name: "eth0", Kind: "ethernet", Addresses: []string{"203.0.113.10/24"}}},
+		Routes: []netcfg.Route{{Family: 4, To: "default", Via: "203.0.113.1", Dev: "eth0"}}}
+	if _, err := e.cfg.Update(func(c *Config) error { c.Allowlist = []string{"127.0.0.0/8", "198.51.100.0/24"}; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	(&FirewallOps{Ufw: ufw, Detector: &firewall.Detector{Root: root, Run: fu.run}, Net: fakeNet{st}, Config: e.cfg, Planner: pm, Run: fu.run, Journal: jr}).Register(e.web.Ops)
+	const me = "198.51.100.7"
+
+	r := e.callFrom(me, "firewall.logs", g, map[string]any{"filter": map[string]string{"action": "block"}, "lines": 1})
+	mustOK(t, r, "logs")
+	var lv FirewallLogs
+	_ = json.Unmarshal(r.Result, &lv)
+	if lv.Scanned != 4 || len(lv.Entries) != 1 || lv.Entries[0].Src != "192.0.2.44" || !lv.Truncated || lv.Cursor != "cur9" {
+		t.Fatalf("logs: %+v", lv)
+	}
+	if lastQuery.Identifier != "kernel" || lastQuery.Grep != "SRC=" || !lastQuery.NoBudget {
+		t.Fatalf("query: %+v", lastQuery)
+	}
+	if r := e.callFrom(me, "firewall.logs", g, map[string]any{"filter": map[string]string{"src": strings.Repeat("1", 200)}}); code(r) != rpc.CodeValidation {
+		t.Fatalf("long filter: %+v", r)
+	}
+	ro, _ := e.web.Grants.Issue(policy.Subject{AccountID: "ro", Role: policy.RoleReadOnly, LinuxUser: "carl", LinuxUID: 1002}, time.Now())
+	if r := e.callFrom(me, "firewall.logs", ro, map[string]any{}); code(r) != rpc.CodeForbidden {
+		t.Fatalf("read-only: %+v", r)
+	}
+
+	block := func(src string) *rpc.Response {
+		return e.callFrom(me, "firewall.plan", g, map[string]any{"op": firewall.Op{Kind: "add", Add: &firewall.AddSpec{Action: "deny", From: src, Prepend: true, Comment: "blocked from logs"}}})
+	}
+	for _, src := range []string{me, "198.51.0.0/16", "198.51.100.200"} {
+		if r := block(src); code(r) != rpc.CodeLockout {
+			t.Fatalf("block %s: %+v", src, r)
+		}
+	}
+	r = block("192.0.2.44")
+	mustOK(t, r, "block source")
+	var pv FirewallPlanView
+	_ = json.Unmarshal(r.Result, &pv)
+	if !strings.Contains(pv.Diff, "+[ 1] deny in any any from 192.0.2.44 to any # blocked from logs") {
+		t.Fatalf("diff: %s", pv.Diff)
+	}
 }

@@ -59,7 +59,8 @@ _Last updated: 2026-10-25_
 | M1.3 | ✓ accepted by owner 2026-10-25 | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021); lists with sort/filter on every column and right-click menus (DEC-022). Open: folder download as archive (KANN). |
 | M1.4 | ✓ accepted by owner 2026-10-25 | Web terminal (table below, DEC-023). KANN items (keep background processes, reconnect after short drops) not implemented. |
 | M1.5 | ✓ accepted by owner 2026-10-25 | Network, firewall, firewall logs, packet capture (tables below, DEC-024–DEC-028). Browser acceptance 1–4 passed on the VM 2026-10-25. |
-| M1.6 – M1.8 | ✖ open | |
+| M1.6 | ⚠ implemented, VM acceptance pending | Tasks and jobs on branch `wip/m16` (table below, DEC-029). |
+| M1.7 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status
 
@@ -192,6 +193,25 @@ _Last updated: 2026-10-25_
 | Live view over WebSocket (500 lines/s, "N packets not shown"), pause, view filter, client buffer 10,000; statistics (SOLL) | ✓ | `Capture.tsx`, DEC-026 |
 | Storage 0600, retention 24 h (1–168 h), total limit 1 GiB, delete all; download as attachment via 60 s one-time token with step-up | ✓ | `TestCaptureOps`, manager prune test; metadata as JSON sidecars (DEC-028) |
 | Install tcpdump when missing (admin, step-up) | ✓ | `capture.install` |
+
+### M1.6 requirement status
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| Overview: systemd timers (unit, next/last run, result) | ✓ | `services.Timers`; Jobs page tab "systemd timers" |
+| Overview: cron (`/etc/crontab`, `/etc/cron.d`, `cron.{hourly,daily,weekly,monthly}`, user crontabs) | ✓ | `jobs.Cron`; `TestCronFiles` |
+| `at` jobs (KANN) | ✖ | not implemented |
+| Managed jobs as service + timer `daemonica-job-*` in `/etc/systemd/system`, metadata in the helper | ✓ | `jobs.Manager`; `TestManagerLifecycle` |
+| Wizard: name/description, command as program + arguments or script, shell only under "advanced" with warning | ✓ | `Jobs.tsx`; `TestNormalize` |
+| User: default the mapped user, others admin only, root admin + step-up | ✓ | `TestJobOpsRoles` |
+| Schedule builder (hourly/daily/weekly/monthly/interval/calendar), plain-language preview, next 5 runs via `systemd-analyze calendar`, time zone, `Persistent`, `RandomizedDelaySec` | ✓ | `TestOnCalendar`, `TestParseAnalyze`, `TestNextRunsRealSystemd` |
+| Timeout (default 1 h), environment, working directory, "standard secure" hardening with writable paths, resource limits | ✓ | `TestUnitModesAndTimer`, `TestUnitInjection` |
+| Output to journald; actions run now, enable/disable, edit, duplicate, delete; history of the last 20 runs (start, duration, exit code, journal excerpt) | ✓ | `TestParseHistory`, `Jobs.tsx` |
+| Cron (SOLL): create/edit/delete user crontab entries with syntax check and next runs | ✓ | `TestCronExpr`, `TestCronFiles`, `cron.save` |
+| "Convert to systemd timer" (KANN) | ✖ | not implemented |
+| Security: commands never in the web process; unit names allowlisted; unit-file injection (line breaks, `%` specifiers) masked; arguments not interpreted by a shell | ✓ | DEC-029; `TestUnitInjection`; programs must be trusted files (`TestTrusted`) |
+| Roles: operator runs and enables/disables; admin everything; read-only views | ✓ | policy table; `TestJobOpsRoles` |
+| Acceptance: job runs at the scheduled time, history shows exit code and log; injection payloads without effect; hardening visible in `systemctl show` | ⏳ VM | integration `TestJobsOnHost`; scheduled run in the browser acceptance |
 
 ### Test results
 

@@ -29,6 +29,7 @@ import { Files } from "./pages/Files";
 import { FileEditor } from "./pages/FileEditor";
 import { Firewall } from "./pages/Firewall";
 import { Capture } from "./pages/Capture";
+import { Jobs } from "./pages/Jobs";
 import { Network } from "./pages/Network";
 import { TerminalPage } from "./pages/Terminal";
 
@@ -107,6 +108,7 @@ if (root) {
                 <Route path="network" element={<Network />} />
                 <Route path="firewall" element={<Firewall />} />
                 <Route path="capture" element={<Capture />} />
+                <Route path="jobs" element={<Jobs />} />
                 <Route path="security/passkeys" element={<Passkeys />} />
                 <Route path="security/sessions" element={<Sessions />} />
                 <Route path="security/accounts" element={<Accounts />} />

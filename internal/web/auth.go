@@ -317,6 +317,7 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	}
 	mux.Handle("POST /api/v1/cron/get", sess("cron.get"))
 	mux.Handle("POST /api/v1/cron/save", sess("cron.save"))
+	mux.Handle("POST /api/v1/cron/preview", sess("cron.preview"))
 
 	mux.Handle("GET /api/v1/settings", sess("settings.get"))
 	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))

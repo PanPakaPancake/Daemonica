@@ -113,13 +113,29 @@ type Job struct {
 	CreatedBy    string    `json:"created_by,omitempty"`
 }
 
-// ErrValidation carries a message for the user.
-type ErrValidation struct{ Field, Msg string }
+// ErrValidation names the field and a stable reason code (translated by
+// the UI) plus an English message for logs and tests.
+type ErrValidation struct{ Field, Code, Msg string }
 
 func (e *ErrValidation) Error() string { return e.Field + ": " + e.Msg }
 
+// Reason codes besides the generic "invalid".
+const (
+	CodeInvalid       = "invalid"
+	CodeUnknownUser   = "unknown_user"
+	CodeMissing       = "missing"
+	CodeNotExecutable = "not_executable"
+	CodeUntrusted     = "untrusted"
+	CodeRejected      = "rejected" // systemd does not accept the schedule
+	CodeNever         = "never"    // the schedule never elapses
+)
+
 func invalid(field, format string, a ...any) error {
-	return &ErrValidation{Field: field, Msg: fmt.Sprintf(format, a...)}
+	return &ErrValidation{Field: field, Code: CodeInvalid, Msg: fmt.Sprintf(format, a...)}
+}
+
+func invalidCode(field, code, format string, a ...any) error {
+	return &ErrValidation{Field: field, Code: code, Msg: fmt.Sprintf(format, a...)}
 }
 
 var (

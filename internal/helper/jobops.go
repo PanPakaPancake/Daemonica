@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os/user"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/PanPakaPancake/daemonica/internal/jobs"
@@ -101,8 +102,30 @@ type JobsOverview struct {
 	Cron    jobs.CronStatus  `json:"cron"`
 }
 
+// FieldError is a validation finding returned as data: the web layer only
+// passes error codes, the wizard needs the field and the reason.
+type FieldError struct {
+	Field string `json:"field"`
+	Code  string `json:"code"`
+}
+
+func fieldError(err error) (*FieldError, error) {
+	var ve *jobs.ErrValidation
+	if errors.As(err, &ve) {
+		return &FieldError{Field: ve.Field, Code: ve.Code}, nil
+	}
+	return nil, err
+}
+
+// CalendarResult is the jobs.calendar and cron.preview result.
+type CalendarResult struct {
+	Preview jobs.Preview `json:"preview"`
+	Error   *FieldError  `json:"error,omitempty"`
+}
+
 // JobCheck is the jobs.check result.
 type JobCheck struct {
+	Error       *FieldError  `json:"error,omitempty"`
 	Job         jobs.Job     `json:"job"`
 	Preview     jobs.Preview `json:"preview"`
 	Warnings    []string     `json:"warnings"`
@@ -275,11 +298,33 @@ func (o *JobOps) Register(ops map[string]*Op) {
 				return nil, err
 			}
 			s, err := p.Schedule.Normalize()
-			if err != nil {
-				return nil, jobErr(err)
+			if err == nil {
+				var pv jobs.Preview
+				if pv, err = jobs.NextRuns(ctx, o.M.Run, s, 5, o.now()); err == nil {
+					return CalendarResult{Preview: pv}, nil
+				}
 			}
-			pv, err := jobs.NextRuns(ctx, o.M.Run, s, 5, o.now())
-			return pv, jobErr(err)
+			fe, err := fieldError(err)
+			return CalendarResult{Error: fe}, err
+		}})
+
+	Register(ops, &Op{Name: "cron.preview", Action: policy.ActJobsRead, NoAudit: true,
+		Handle: func(_ context.Context, c Call) (any, error) {
+			var p struct {
+				Schedule string `json:"schedule"`
+			}
+			if err := decode(c, &p); err != nil {
+				return nil, err
+			}
+			e, err := jobs.ParseCron(p.Schedule)
+			if err != nil || len(p.Schedule) > 200 {
+				return CalendarResult{Error: &FieldError{Field: "schedule", Code: jobs.CodeInvalid}}, nil
+			}
+			pv := jobs.Preview{Normalized: strings.Join(strings.Fields(p.Schedule), " "), Next: e.Next(o.now(), 5)}
+			if pv.Next == nil {
+				pv.Next = []time.Time{}
+			}
+			return CalendarResult{Preview: pv}, nil
 		}})
 
 	Register(ops, &Op{Name: "jobs.check", Action: policy.ActJobsWrite, NoAudit: true, Timeout: 15 * time.Second,
@@ -290,7 +335,8 @@ func (o *JobOps) Register(ops map[string]*Op) {
 			}
 			j, pv, warn, err := o.M.Check(ctx, p.Job)
 			if err != nil {
-				return nil, jobErr(err)
+				fe, err := fieldError(err)
+				return JobCheck{Error: fe}, err
 			}
 			if warn == nil {
 				warn = []string{}

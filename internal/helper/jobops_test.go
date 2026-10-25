@@ -76,6 +76,25 @@ func TestJobOpsRoles(t *testing.T) {
 	if len(chk.Preview.Next) != 1 || !strings.Contains(chk.ServiceUnit, `"%%n"`) {
 		t.Fatalf("check: %+v", chk)
 	}
+	// Findings come back as data with field and code.
+	bad := map[string]any{}
+	for k, v := range job {
+		bad[k] = v
+	}
+	bad["user"] = "ghost"
+	r = e.callFrom(ip, "jobs.check", g, map[string]any{"job": bad})
+	mustOK(t, r, "check finding")
+	chk = JobCheck{}
+	_ = json.Unmarshal(r.Result, &chk)
+	if chk.Error == nil || chk.Error.Field != "user" || chk.Error.Code != jobs.CodeUnknownUser {
+		t.Fatalf("finding: %+v", chk.Error)
+	}
+	r = e.callFrom(ip, "cron.preview", g, map[string]any{"schedule": "61 * * * *"})
+	var cr CalendarResult
+	_ = json.Unmarshal(r.Result, &cr)
+	if cr.Error == nil {
+		t.Fatalf("cron preview accepted 61: %+v", cr)
+	}
 	mustOK(t, e.callFrom(ip, "jobs.save", g, map[string]any{"job": job, "create": true}), "save")
 	if c := code(e.callFrom(ip, "jobs.save", g, map[string]any{"job": job, "create": true})); c != rpc.CodeConflict {
 		t.Fatalf("duplicate: %s", c)

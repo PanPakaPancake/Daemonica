@@ -78,14 +78,14 @@ func NextRuns(ctx context.Context, run Runner, s Schedule, n int, now time.Time)
 	expr := s.OnCalendar()
 	res, err := run(ctx, 10*time.Second, SystemdAnalyze, "calendar", "--iterations="+itoa(n), "--", expr)
 	if err != nil || res.ExitCode != 0 {
-		return Preview{}, invalid("calendar", "systemd does not accept this schedule")
+		return Preview{}, invalidCode("calendar", CodeRejected, "systemd does not accept this schedule")
 	}
 	p, err := parseAnalyze(string(res.Stdout))
 	if err != nil {
 		return Preview{}, err
 	}
 	if len(p.Next) == 0 {
-		return p, invalid("calendar", "this schedule never elapses")
+		return p, invalidCode("calendar", CodeNever, "this schedule never elapses")
 	}
 	return p, nil
 }

@@ -166,39 +166,39 @@ func (m *Manager) Check(ctx context.Context, j Job) (Job, Preview, []string, err
 	var warnings []string
 	acct, err := m.LookupUser(j.User)
 	if err != nil {
-		return j, Preview{}, nil, invalid("user", "unknown user")
+		return j, Preview{}, nil, invalidCode("user", CodeUnknownUser, "unknown user")
 	}
-	file := j.Program
+	field, file := "program", j.Program
 	switch j.Mode {
 	case ModeScript:
-		file = j.Script
+		field, file = "script", j.Script
 		if j.Interpreter != "" {
 			if err := Trusted(j.Interpreter, 0); err != nil {
-				return j, Preview{}, nil, invalid("interpreter", "%s", err.Error())
+				return j, Preview{}, nil, invalidCode("interpreter", CodeUntrusted, "%s", err.Error())
 			}
 		}
 	case ModeShell:
-		file = "/bin/sh"
+		field, file = "shell", "/bin/sh"
 		warnings = append(warnings, "shell")
 	}
-	if err := Trusted(file, acct.UID); err != nil {
-		return j, Preview{}, nil, invalid(map[string]string{ModeExec: "program", ModeScript: "script", ModeShell: "shell"}[j.Mode], "%s", err.Error())
-	}
 	fi, err := os.Stat(file)
-	switch {
-	case err != nil || !fi.Mode().IsRegular():
-		return j, Preview{}, nil, invalid("program", "not a regular file")
-	case (j.Mode == ModeExec || j.Interpreter == "") && fi.Mode()&0o111 == 0:
-		return j, Preview{}, nil, invalid("program", "not executable")
+	if err != nil || !fi.Mode().IsRegular() {
+		return j, Preview{}, nil, invalidCode(field, CodeMissing, "not a regular file")
+	}
+	if err := Trusted(file, acct.UID); err != nil {
+		return j, Preview{}, nil, invalidCode(field, CodeUntrusted, "%s", err.Error())
+	}
+	if (j.Mode == ModeExec || (j.Mode == ModeScript && j.Interpreter == "")) && fi.Mode()&0o111 == 0 {
+		return j, Preview{}, nil, invalidCode(field, CodeNotExecutable, "not executable")
 	}
 	if j.WorkDir != "" {
 		if fi, err := os.Stat(j.WorkDir); err != nil || !fi.IsDir() {
-			return j, Preview{}, nil, invalid("workdir", "directory does not exist")
+			return j, Preview{}, nil, invalidCode("workdir", CodeMissing, "directory does not exist")
 		}
 	}
 	for _, p := range j.WritePaths {
 		if _, err := os.Stat(p); err != nil {
-			return j, Preview{}, nil, invalid("write_paths", "%s does not exist", p)
+			return j, Preview{}, nil, invalidCode("write_paths", CodeMissing, "%s does not exist", p)
 		}
 	}
 	if j.User == "root" {

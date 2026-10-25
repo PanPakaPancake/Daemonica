@@ -65,10 +65,7 @@ export function Logs() {
   });
 
   // Follow: the server pushes entries after the last cursor over WebSocket (DEC-017, DEC-026).
-  const followParams = useMemo(
-    () => (follow && q.data?.cursor ? { ...where(filter), after: q.data.cursor } : undefined),
-    [follow, filter, q.data?.cursor],
-  );
+  const followParams = useMemo(() => (follow && q.data?.cursor ? { ...where(filter), after: q.data.cursor } : undefined), [follow, filter, q.data?.cursor]);
   useFollow<Entry>(
     "journal.query",
     followParams,

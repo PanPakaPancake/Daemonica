@@ -7,7 +7,7 @@ import { api } from "./api";
  * skipped counts entries dropped by its rate limit. Pass params = undefined
  * to stop following. params.after continues from a known cursor. */
 export function useFollow<T>(
-  op: "journal.query" | "firewall.logs",
+  op: "journal.query" | "firewall.logs" | "capture.lines",
   params: Record<string, unknown> | undefined,
   onData: (entries: T[], skipped: number) => void,
   onEnd: (reason: string) => void,

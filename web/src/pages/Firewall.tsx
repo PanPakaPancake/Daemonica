@@ -320,7 +320,7 @@ export function Firewall() {
           </div>
 
           {canWrite && c && (
-            <div className="mt-4 flex flex-nowrap gap-2 overflow-x-auto border-t border-line pt-4">
+            <div className="relative mt-4 flex flex-nowrap gap-2 overflow-x-auto border-t border-line pt-4">
               {f.active ? (
                 <button type="button" className="btn btn-secondary shrink-0" onClick={() => start({ kind: "disable" })}>
                   <Icon name="stop" className="h-4 w-4" />

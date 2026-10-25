@@ -224,7 +224,7 @@ export function FirewallLogs({
       {(logging === "high" || logging === "full") && <Notice tone="warn">{t("firewall.logs.highWarn")}</Notice>}
       <p className="text-sm text-muted">{t("firewall.logs.intro")}</p>
 
-      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
+      <div className="relative flex flex-nowrap items-center gap-2 overflow-x-auto">
         <label className="shrink-0">
           <span className="sr-only">{t("firewall.logs.range")}</span>
           <select className="input min-h-9 py-1" value={range} onChange={(e) => setRange(e.target.value as Range)}>

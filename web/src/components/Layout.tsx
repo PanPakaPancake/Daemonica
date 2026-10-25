@@ -53,7 +53,7 @@ const groups: NavGroup[] = [
       { to: "/files", key: "nav.files", icon: "files", hideReadOnly: true },
       { to: "/logs", key: "nav.logs", icon: "logs", hideReadOnly: true },
       { to: "/processes", key: "nav.processes", icon: "process" },
-      { key: "nav.capture", icon: "capture" },
+      { to: "/capture", key: "nav.capture", icon: "capture", adminOnly: true },
     ],
   },
   {

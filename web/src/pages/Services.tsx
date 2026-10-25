@@ -155,7 +155,7 @@ export function Services() {
       {q.isError && <Notice tone="bad">{errorText(t, q.error)}</Notice>}
 
       <Panel className="p-0">
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <DataTable
             rows={q.data ? rows : undefined}
             rowKey={(u) => u.name}

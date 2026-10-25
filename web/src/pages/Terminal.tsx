@@ -94,7 +94,7 @@ export function TerminalPage() {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-line bg-[#0d0a14]">
-          <div className="flex items-center gap-1 overflow-x-auto border-b border-line bg-bg-1 px-1" role="tablist" aria-label={t("terminal.tabs")}>
+          <div className="relative flex items-center gap-1 overflow-x-auto border-b border-line bg-bg-1 px-1" role="tablist" aria-label={t("terminal.tabs")}>
             {tabs.map((x) => (
               <div key={x.id} className={`flex shrink-0 items-center rounded-t-[8px] ${x.id === active ? "bg-[#0d0a14] text-fg" : "text-muted hover:text-fg"}`}>
                 <button

@@ -65,13 +65,16 @@ export function Sessions() {
         {q.isLoading ? (
           <p className="text-muted">{t("common.loading")}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <DataTable
               rows={q.data}
               rowKey={(s) => s.id}
               label={t("sessions.title")}
               defaultSort={{ key: "last", desc: true }}
-              rowMenu={(s) => ({ label: s.account_name ?? "", items: [{ label: t("sessions.end"), icon: "logout", danger: true, onSelect: () => void revoke(s) }] })}
+              rowMenu={(s) => ({
+                label: s.account_name ?? "",
+                items: [{ label: t("sessions.end"), icon: "logout", danger: true, onSelect: () => void revoke(s) }],
+              })}
               columns={(
                 [
                   {

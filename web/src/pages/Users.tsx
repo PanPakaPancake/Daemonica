@@ -159,7 +159,7 @@ export function Users() {
 
       {tab === "users" && (
         <Panel className="p-0">
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <DataTable
               rows={q.data ? users : undefined}
               rowKey={(u) => u.name}

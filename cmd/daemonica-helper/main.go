@@ -17,6 +17,7 @@ import (
 
 	"github.com/PanPakaPancake/daemonica/internal/audit"
 	"github.com/PanPakaPancake/daemonica/internal/files"
+	"github.com/PanPakaPancake/daemonica/internal/firewall"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
 	"github.com/PanPakaPancake/daemonica/internal/netcfg"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
@@ -97,6 +98,8 @@ func main() {
 	// Plan→Apply→Confirm handlers (network/firewall follow with their modules).
 	pm.Register(&helper.AllowlistHandler{Config: cfg})
 	pm.Register(&helper.NetworkHandler{Run: netcfg.ExecRunner})
+	ufw := &firewall.Ufw{Run: netcfg.ExecRunner}
+	pm.Register(&firewall.Handler{Ufw: ufw})
 	pm.OnEvent = func(ch planner.Change, event string, err error) {
 		ev := audit.Event{Action: "change." + event, Target: "change:" + ch.ID, Result: audit.ResultOK,
 			Actor: audit.Actor{AccountID: ch.Owner}, Params: map[string]string{"kind": ch.Kind, "risk": ch.Risk}}
@@ -176,12 +179,22 @@ func main() {
 	(&helper.TermOps{Launcher: launcher, Grants: grants, Config: cfg, Audit: al, Lookup: worker.Lookup, Shell: pty.LoginShell,
 		TasksMax: 1024, MemoryMax: terminalMemoryMax()}).Register(ops)
 	// M1.5a: network view and configuration (Plan → Apply → Confirm).
-	(&helper.NetOps{Reader: &netcfg.Reader{}, Run: netcfg.ExecRunner, Planner: pm, Detector: &netcfg.Detector{Active: func(unit string) bool {
+	unitActive := func(unit string) bool {
 		actx, acancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer acancel()
 		d, err := sd.Get(actx, unit)
 		return err == nil && d.Active == "active"
-	}}}).Register(ops)
+	}
+	(&helper.NetOps{Reader: &netcfg.Reader{}, Run: netcfg.ExecRunner, Planner: pm, Detector: &netcfg.Detector{Active: unitActive}}).Register(ops)
+	// M1.5b: firewall (ufw managed, others read-only).
+	(&helper.FirewallOps{Ufw: ufw, Detector: &firewall.Detector{Run: netcfg.ExecRunner, Active: unitActive}, Net: &netcfg.Reader{}, Config: cfg, Planner: pm,
+		Run: netcfg.ExecRunner, AuditPath: *auditPath, AccountName: func(ctx context.Context, id string) string {
+			a, err := db.AccountByID(ctx, id)
+			if err != nil {
+				return ""
+			}
+			return a.Name
+		}}).Register(ops)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to
 	// traverse it to reach helper.sock (admin.sock stays 0600 root).

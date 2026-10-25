@@ -270,9 +270,9 @@ func TestSystemdCleanup(t *testing.T) {
 	l := &SystemdLauncher{bus: f, Poll: 10 * time.Millisecond}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	l.Cleanup(ctx)
-	if len(f.units) != 0 || f.resets != 1 {
-		t.Fatalf("left: %v, resets %d", f.units, f.resets)
+	n := l.Cleanup(ctx)
+	if n != 2 || len(f.units) != 0 || f.resets != 1 {
+		t.Fatalf("found %d, left: %v, resets %d", n, f.units, f.resets)
 	}
 }
 

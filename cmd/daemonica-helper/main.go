@@ -167,7 +167,9 @@ func main() {
 	}
 	defer func() { _ = launcher.Conn.Close() }()
 	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	launcher.Cleanup(cleanupCtx)
+	if n := launcher.Cleanup(cleanupCtx); n > 0 {
+		log.Info("stale terminal units cleaned up", "units", n)
+	}
 	cleanupCancel()
 	(&helper.TermOps{Launcher: launcher, Grants: grants, Config: cfg, Audit: al, Lookup: worker.Lookup, Shell: pty.LoginShell,
 		TasksMax: 1024, MemoryMax: terminalMemoryMax()}).Register(ops)

@@ -110,10 +110,11 @@ func (l *SystemdLauncher) units() unitBus {
 // Cleanup ends the terminal units left from an earlier helper run (no
 // client can reach them any more) and unloads failed ones, so none stays
 // listed as failed. Call it once at start, before terminals are opened.
-func (l *SystemdLauncher) Cleanup(ctx context.Context) {
+// It returns the number of units it found.
+func (l *SystemdLauncher) Cleanup(ctx context.Context) int {
 	names, err := l.units().List(ctx)
 	if err != nil {
-		return
+		return 0
 	}
 	for _, u := range names {
 		_ = l.units().Stop(ctx, u)
@@ -135,10 +136,11 @@ func (l *SystemdLauncher) Cleanup(ctx context.Context) {
 			select {
 			case <-time.After(poll):
 			case <-ctx.Done():
-				return
+				return len(names)
 			}
 		}
 	}
+	return len(names)
 }
 
 // ConnectSystemd opens a private system bus connection for the launcher.

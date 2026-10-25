@@ -9,3 +9,19 @@ if (missingEn.length || missingDe.length) {
   process.exit(1);
 }
 console.log(`i18n ok (${de.size} keys)`);
+
+// Every literal key used in the code must exist (plural keys via _one/_other).
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+const srcDir = new URL("../src/", import.meta.url).pathname;
+const walk = (d) => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : /\.tsx?$/.test(f) ? [join(d, f)] : []));
+const used = new Set();
+for (const f of walk(srcDir)) {
+  for (const m of readFileSync(f, "utf8").matchAll(/\bt\(\s*"([a-zA-Z][\w-]*(?:\.[\w-]+)+)"/g)) used.add(m[1]);
+}
+const missing = [...used].filter((k) => !de.has(k) && !de.has(`${k}_one`));
+if (missing.length) {
+  console.error("keys used in code but missing in locales:", missing);
+  process.exit(1);
+}
+console.log(`i18n usage ok (${used.size} literal keys)`);

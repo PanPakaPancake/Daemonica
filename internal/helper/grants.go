@@ -3,6 +3,7 @@ package helper
 import (
 	"errors"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -191,6 +192,18 @@ func (g *GrantStore) RotateWithStepUp(tok string, now time.Time) (string, error)
 	g.mu.Unlock()
 	rec.LastUsed, rec.StepUpUntil = now, now.Add(auth.StepUpTTL)
 	return g.insert(rec)
+}
+
+// SessionKey returns an identifier of the login session behind tok that,
+// unlike the grant hash, survives the token rotation on step-up ("" if invalid).
+func (g *GrantStore) SessionKey(tok string) string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	gr, ok := g.grants[auth.Hash(tok)]
+	if !ok {
+		return ""
+	}
+	return gr.rec.Subject.AccountID + "/" + strconv.FormatInt(gr.rec.Created.UnixNano(), 36)
 }
 
 // MarkStepUp records a fresh step-up on an existing grant without rotation (tests, internal use).

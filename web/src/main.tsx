@@ -25,6 +25,8 @@ import { Logs } from "./pages/Logs";
 import { Processes } from "./pages/Processes";
 import { Users } from "./pages/Users";
 import { SSHKeys } from "./pages/SSHKeys";
+import { Files } from "./pages/Files";
+import { FileEditor } from "./pages/FileEditor";
 
 // Per-response style nonce from the server (DEC-018): lets Radix's scroll lock
 // insert its <style> element under the strict CSP.
@@ -85,6 +87,8 @@ if (root) {
                 <Route path="processes" element={<Processes />} />
                 <Route path="users" element={<Users />} />
                 <Route path="ssh-keys" element={<SSHKeys />} />
+                <Route path="files" element={<Files />} />
+                <Route path="files/edit" element={<FileEditor />} />
                 <Route path="security/passkeys" element={<Passkeys />} />
                 <Route path="security/sessions" element={<Sessions />} />
                 <Route path="security/accounts" element={<Accounts />} />

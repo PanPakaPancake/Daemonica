@@ -6,6 +6,7 @@ import { Meter, Notice, Panel, Stat } from "../components/ui";
 import { api, type Passkey } from "../lib/api";
 import { errorText } from "../lib/errors";
 import { bytes, duration, num, pct, rate } from "../lib/format";
+import { DataTable } from "../components/DataTable";
 
 export interface ProcessInfo {
   pid: number;
@@ -124,11 +125,7 @@ export function OverviewPage() {
             <Stat title={t("overview.cpu")} value={pct(o.cpu_pct, lang)} sub={t("overview.cores", { count: o.cpus })}>
               <Meter value={o.cpu_pct} label={t("overview.cpu")} />
             </Stat>
-            <Stat
-              title={t("overview.load")}
-              value={num(o.load[0], lang)}
-              sub={`${num(o.load[1], lang)} · ${num(o.load[2], lang)} (5 / 15 min)`}
-            >
+            <Stat title={t("overview.load")} value={num(o.load[0], lang)} sub={`${num(o.load[1], lang)} · ${num(o.load[2], lang)} (5 / 15 min)`}>
               <Meter value={(100 * o.load[0]) / Math.max(1, o.cpus)} label={t("overview.load")} warn={100} bad={200} />
             </Stat>
             <Stat
@@ -154,37 +151,59 @@ export function OverviewPage() {
                 {t("overview.mounts")}
               </h2>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="text-faint">
-                    <tr>
-                      <th className="py-1.5 pr-3 font-medium">{t("overview.mountpoint")}</th>
-                      <th className="py-1.5 pr-3 font-medium">{t("overview.usage")}</th>
-                      <th className="py-1.5 pr-3 font-medium">{t("overview.inodes")}</th>
-                      <th className="py-1.5 font-medium">{t("overview.free")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(o.mounts ?? []).map((m) => (
-                      <tr key={m.mountpoint} className="border-t border-line">
-                        <td className="py-1.5 pr-3">
+                <DataTable
+                  rows={o.mounts}
+                  rowKey={(m) => m.mountpoint}
+                  className=""
+                  label={t("overview.mounts")}
+                  columns={[
+                    {
+                      key: "mount",
+                      label: t("overview.mountpoint"),
+                      sortValue: (m) => m.mountpoint,
+                      filterValue: (m) => `${m.mountpoint} ${m.fstype}`,
+                      filter: "text",
+                      cell: (m) => (
+                        <>
                           <span className="font-mono">{m.mountpoint}</span>{" "}
                           <span className="text-faint">
                             {m.fstype}
                             {m.read_only ? " · ro" : ""}
                           </span>
-                        </td>
-                        <td className="w-40 py-1.5 pr-3">
+                        </>
+                      ),
+                    },
+                    {
+                      key: "usage",
+                      label: t("overview.usage"),
+                      thClass: "w-40",
+                      tdClass: "w-40",
+                      sortValue: (m) => m.used_pct,
+                      cell: (m) => (
+                        <>
                           <div className="flex items-center gap-2">
                             <Meter value={m.used_pct} label={`${m.mountpoint} ${t("overview.usage")}`} warn={85} bad={95} />
                             <span className="w-12 text-right tabular-nums">{pct(m.used_pct, lang)}</span>
                           </div>
-                        </td>
-                        <td className="py-1.5 pr-3 tabular-nums">{m.inodes_total ? pct(m.inodes_pct, lang) : "–"}</td>
-                        <td className="py-1.5 tabular-nums">{bytes(m.available, lang)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </>
+                      ),
+                    },
+                    {
+                      key: "inodes",
+                      label: t("overview.inodes"),
+                      tdClass: "tabular-nums",
+                      sortValue: (m) => (m.inodes_total ? m.inodes_pct : undefined),
+                      cell: (m) => <>{m.inodes_total ? pct(m.inodes_pct, lang) : "–"}</>,
+                    },
+                    {
+                      key: "free",
+                      label: t("overview.free"),
+                      tdClass: "tabular-nums",
+                      sortValue: (m) => m.available,
+                      cell: (m) => <>{bytes(m.available, lang)}</>,
+                    },
+                  ]}
+                />
               </div>
             </Panel>
 
@@ -242,30 +261,53 @@ export function OverviewPage() {
               </Link>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="text-faint">
-                  <tr>
-                    <th className="py-1.5 pr-3 font-medium">PID</th>
-                    <th className="py-1.5 pr-3 font-medium">{t("processes.user")}</th>
-                    <th className="py-1.5 pr-3 text-right font-medium">CPU</th>
-                    <th className="py-1.5 pr-3 text-right font-medium">RAM</th>
-                    <th className="py-1.5 font-medium">{t("processes.command")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(o.top ?? []).map((p) => (
-                    <tr key={p.pid} className="border-t border-line">
-                      <td className="py-1.5 pr-3 tabular-nums">{p.pid}</td>
-                      <td className="py-1.5 pr-3">{p.user}</td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums">{pct(p.cpu, lang, 1)}</td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums">{bytes(p.rss, lang)}</td>
-                      <td className="max-w-0 truncate py-1.5 font-mono" title={p.command}>
-                        {p.command}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                rows={o.top}
+                rowKey={(p) => String(p.pid)}
+                className=""
+                label={t("overview.top")}
+                columns={[
+                  {
+                    key: "pid",
+                    label: "PID",
+                    tdClass: "tabular-nums",
+                    sortValue: (p) => p.pid,
+                    cell: (p) => <>{p.pid}</>,
+                  },
+                  {
+                    key: "user",
+                    label: t("processes.user"),
+                    sortValue: (p) => p.user,
+                    filter: "text",
+                    cell: (p) => <>{p.user}</>,
+                  },
+                  {
+                    key: "cpu",
+                    label: "CPU",
+                    thClass: "text-right",
+                    tdClass: "text-right tabular-nums",
+                    sortValue: (p) => p.cpu,
+                    cell: (p) => <>{pct(p.cpu, lang, 1)}</>,
+                  },
+                  {
+                    key: "rss",
+                    label: "RAM",
+                    thClass: "text-right",
+                    tdClass: "text-right tabular-nums",
+                    sortValue: (p) => p.rss,
+                    cell: (p) => <>{bytes(p.rss, lang)}</>,
+                  },
+                  {
+                    key: "cmd",
+                    label: t("processes.command"),
+                    tdClass: "max-w-0 truncate font-mono",
+                    tdTitle: (p) => p.command,
+                    sortValue: (p) => p.command,
+                    filter: "text",
+                    cell: (p) => <>{p.command}</>,
+                  },
+                ]}
+              />
             </div>
           </Panel>
         </>

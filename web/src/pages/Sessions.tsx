@@ -5,6 +5,7 @@ import { Notice, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { errorText } from "../lib/errors";
 import { useSession } from "../lib/session";
+import { DataTable, type Column } from "../components/DataTable";
 
 interface SessionInfo {
   id: string;
@@ -65,43 +66,73 @@ export function Sessions() {
           <p className="text-muted">{t("common.loading")}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-faint">
-                <tr>
-                  {all && <th className="py-2 pr-4 font-medium">{t("sessions.account")}</th>}
-                  <th className="py-2 pr-4 font-medium">{t("sessions.ip")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("sessions.created")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("sessions.lastUsed")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("sessions.state")}</th>
-                  <th className="py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {(q.data ?? []).map((s) => (
-                  <tr key={s.id} className="border-t border-line">
-                    {all && (
-                      <td className="py-2 pr-4">
+            <DataTable
+              rows={q.data}
+              rowKey={(s) => s.id}
+              label={t("sessions.title")}
+              defaultSort={{ key: "last", desc: true }}
+              rowMenu={(s) => ({ label: s.account_name ?? "", items: [{ label: t("sessions.end"), icon: "logout", danger: true, onSelect: () => void revoke(s) }] })}
+              columns={(
+                [
+                  {
+                    key: "account",
+                    label: t("sessions.account"),
+                    sortValue: (s) => s.account_name,
+                    filterValue: (s) => `${s.account_name} ${s.linux_user}`,
+                    filter: "text",
+                    cell: (s) => (
+                      <>
                         {s.account_name} <span className="text-faint">({s.linux_user})</span>
-                      </td>
-                    )}
-                    <td className="py-2 pr-4 font-mono">{s.source_ip || "—"}</td>
-                    <td className="py-2 pr-4">{fmt(s.created)}</td>
-                    <td className="py-2 pr-4">{fmt(s.last_used)}</td>
-                    <td className="py-2 pr-4">
-                      {s.current && (
-                        <span className="mr-2 rounded-full border border-cyan px-2 py-0.5 text-xs text-cyan">{t("sessions.current")}</span>
-                      )}
-                      {s.step_up && <span className="rounded-full border border-line-strong px-2 py-0.5 text-xs">{t("header.stepUpActive")}</span>}
-                    </td>
-                    <td className="py-2 text-right">
-                      <button type="button" className="btn btn-secondary min-h-9" onClick={() => void revoke(s)}>
-                        {t("sessions.end")}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </>
+                    ),
+                  },
+                  {
+                    key: "ip",
+                    label: t("sessions.ip"),
+                    tdClass: "font-mono",
+                    sortValue: (s) => s.source_ip,
+                    filter: "text",
+                    cell: (s) => <>{s.source_ip || "—"}</>,
+                  },
+                  {
+                    key: "created",
+                    label: t("sessions.created"),
+                    sortValue: (s) => s.created,
+                    cell: (s) => <>{fmt(s.created)}</>,
+                  },
+                  {
+                    key: "last",
+                    label: t("sessions.lastUsed"),
+                    sortValue: (s) => s.last_used,
+                    cell: (s) => <>{fmt(s.last_used)}</>,
+                  },
+                  {
+                    key: "state",
+                    label: t("sessions.state"),
+                    sortValue: (s) => (s.current ? 2 : 0) + (s.step_up ? 1 : 0),
+                    cell: (s) => (
+                      <>
+                        {s.current && <span className="mr-2 rounded-full border border-cyan px-2 py-0.5 text-xs text-cyan">{t("sessions.current")}</span>}
+                        {s.step_up && <span className="rounded-full border border-line-strong px-2 py-0.5 text-xs">{t("header.stepUpActive")}</span>}
+                      </>
+                    ),
+                  },
+                  {
+                    key: "actions",
+                    label: t("common.actions"),
+                    tdClass: "text-right text-right",
+                    srOnly: true,
+                    cell: (s) => (
+                      <>
+                        <button type="button" className="btn btn-secondary min-h-9" onClick={() => void revoke(s)}>
+                          {t("sessions.end")}
+                        </button>
+                      </>
+                    ),
+                  },
+                ] satisfies Column<SessionInfo>[]
+              ).filter((c) => all || c.key !== "account")}
+            />
           </div>
         )}
       </Panel>

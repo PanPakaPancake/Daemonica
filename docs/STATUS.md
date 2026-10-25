@@ -1,6 +1,6 @@
 # Status (progress against SPEC v1.2)
 
-_Last updated: 2026-10-24_
+_Last updated: 2026-10-25_
 
 ## Current phase: Phase 1 — milestone M1.0 (in progress)
 
@@ -56,7 +56,8 @@ _Last updated: 2026-10-24_
 | M1.0 | ⚠ nearly done | All core items done incl. accounts, audit view, allowlist Plan→Apply→Confirm. Open: TLS change in settings, DNS-01 guided, certificate renewal timer, Playwright E2E with virtual authenticator, helper hardening score ≤ 6.0. |
 | M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Open: last logins, log follow via WebSocket (DEC-017), allowlisted log files (SOLL), owner acceptance check against `top`/`free`/`df`. |
 | M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Open: last login per user (wtmpdb), owner acceptance. |
-| M1.3 – M1.8 | ✖ open | |
+| M1.3 | ✓ accepted by owner 2026-10-25 | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021); lists with sort/filter on every column and right-click menus (DEC-022). Open: folder download as archive (KANN). |
+| M1.4 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status
 
@@ -121,6 +122,26 @@ _Last updated: 2026-10-24_
 | Key files read/written by a worker under the user's credentials (`no_new_privs`), atomic write, optimistic concurrency, symlinks not followed | ✓ | `internal/worker`, host test: symlink to `/etc/shadow` refused, shadow untouched |
 | Host keys with fingerprints; effective `sshd -T` read-only | ✓ | `sshkeys.server` |
 | Operator manages own keys only; admin all (step-up for others) | ✓ | `SSHKeyOps.target` |
+
+### M1.3 requirement status
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| View: tree + list, breadcrumbs, sort/filter, search in folder, properties (owner, group, rwx + octal, size, times, symlink target), hidden files toggle, server-side pagination | ✓ | `files.List/Stat`, UI `/files`; `TestListSortFilterPage` |
+| Views details/compact/tiles (remembered per browser); sortable column headers (name, type, size, mode, owner, modified) and filter row for every column (name, type, size, mode, owner, modified), server-side; right-click menu | ✓ | DEC-022; `files.ListArgs` `owner`/`kind`/`size`/`mode`/`mtime`, sort `mode`/`owner`; `TestListSortFilterPage`, `TestParseNumFilter`, `TestModeMatches` |
+| New file/folder, rename, move/copy (cross-device move = copy + delete), delete (recursive only with typed name), chmod (Linux rules), chown (admin + step-up root mode only) | ✓ | `internal/files`; `TestCreateRenameRawDelete`, `TestTransfer`; `TestFileManagerEndToEnd` |
+| All operations in a worker under the mapped Linux user; Linux permissions are the boundary | ✓ | integration: create in `/etc` → `permission_denied`, upload owned by the user |
+| Root mode: admin only, step-up, 10 min, red bar, every write audited | ✓ | `fs.root_enable` (files.root, step-up), session-bound; `RootBar`; integration test |
+| Hard-blocked Daemonica data/keys/sockets (also as root); access attempts denied and audited | ✓ | `files.Blocked` on canonical paths; `TestRulesOnCanonicalPath`; denied results audited |
+| Sensitive paths (shadow, gshadow, host keys, `~/.ssh/id_*`): warning confirmation + step-up | ✓ | `useFsRunner` dialog; helper permit; integration test |
+| Path safety: canonicalization, no NUL, fd-based (`openat2`, `RESOLVE_*`), no symlink following on writes, TOCTOU race test | ✓ | DEC-019; `TestWriteSymlinkedDirRefused`, `TestSymlinkRaceRootMode` |
+| Editor: CodeMirror 6, highlighting (conf/ini/yaml/json/toml/sh/py/js/ts/md/sql/xml/nginx/systemd/crontab …), search/replace, line numbers, wrap, indentation, LF/CRLF kept, UTF-8 only, binary → download, 5 MiB limit | ✓ | `CodeEditor.tsx`, `files.Read` (binary/size detection) |
+| Save atomic (temp + rename) keeping owner/mode/ACL/xattr; optimistic concurrency with diff dialog; unsaved-changes warning; clear read-only message | ✓ | `files.Write`; `TestEditorRoundTrip`; `FileEditor.tsx` |
+| /etc pre-versions (30 days/20 versions) with restore | ✓ | DEC-021; `VersionStore`, `fs.versions`/`fs.version_read`, editor „Versionen“; `TestSaveKeepsPreviousVersion`, `TestVersionStoreRetention` |
+| Validation of known files before saving (sshd, sudoers, nginx, units, fstab) | ✓ | DEC-021; sudoers blocking pre-check, others post-check with rollback; `TestSave*`, `TestValidatorFor`; integration `TestEditorValidationAndVersions` with real `sshd -t`, `nginx -t`, `visudo -c` |
+| Upload: drag & drop, multiple, progress, cancel, streaming, limit (default 1 GiB), space check, mode 0640 (changeable), owner = user, overwrite only after confirmation, SHA-256 in audit | ✓ | `files.Upload`, `useUploads`; `TestUpload`, `TestLargeUploadStreams` (512 MiB, heap < 64 MiB) |
+| Download: streaming with Range, `attachment` + `nosniff`, one-time token (60 s) | ✓ | `fileDownload`, `fs.download_token`; integration test (reuse/other session refused) |
+| Roles: read-only ✖; operator/admin within Linux permissions | ✓ | policy `files` (read-only deny), UI hides navigation |
 
 ### Test results
 

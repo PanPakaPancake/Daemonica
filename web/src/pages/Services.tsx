@@ -9,6 +9,7 @@ import { api } from "../lib/api";
 import { errorText } from "../lib/errors";
 import { bytes, dateTime, relative } from "../lib/format";
 import { useSession } from "../lib/session";
+import { DataTable } from "../components/DataTable";
 
 interface Unit {
   name: string;
@@ -100,6 +101,8 @@ export function Services() {
     }
   };
 
+  const isRunning = (u: Unit) => u.active === "active" || u.active === "activating";
+
   const request = (u: Unit, action: Action) => {
     const destructive = action === "stop" || action === "disable" || action === "mask";
     if (u.name.startsWith("daemonica-web") && destructive) {
@@ -134,11 +137,7 @@ export function Services() {
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">{t("services.state")}</span>
-          <select
-            className="input header-select"
-            value={state}
-            onChange={(e) => setParams(e.target.value ? { state: e.target.value } : {}, { replace: true })}
-          >
+          <select className="input header-select" value={state} onChange={(e) => setParams(e.target.value ? { state: e.target.value } : {}, { replace: true })}>
             <option value="">{t("services.all")}</option>
             <option value="running">{t("services.running")}</option>
             <option value="active">active</option>
@@ -157,79 +156,115 @@ export function Services() {
 
       <Panel className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-faint">
-              <tr>
-                <th className="px-4 py-2 font-medium">{t("services.unit")}</th>
-                <th className="px-2 py-2 font-medium">{t("services.state")}</th>
-                <th className="hidden px-2 py-2 font-medium md:table-cell">{t("services.enabled")}</th>
-                <th className="hidden px-2 py-2 font-medium lg:table-cell">{t("services.since")}</th>
-                <th className="hidden px-2 py-2 text-right font-medium lg:table-cell">RAM</th>
-                <th className="px-4 py-2 text-right font-medium">{t("services.actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {q.isLoading && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-muted">
-                    {t("common.loading")}
-                  </td>
-                </tr>
-              )}
-              {rows.map((u) => {
-                const running = u.active === "active" || u.active === "activating";
-                return (
-                  <tr key={u.name} className="border-t border-line hover:bg-bg-2">
-                    <td className="min-w-[14rem] max-w-[26rem] px-4 py-2">
-                      <button type="button" className="block max-w-full truncate text-left font-mono text-fg hover:underline" onClick={() => setSelected(u.name)}>
-                        {u.name}
-                      </button>
-                      <span className="block truncate text-xs text-muted" title={u.description}>
-                        {u.protected && (
-                          <span className="mr-1 inline-flex items-center gap-0.5 text-warn">
-                            <Icon name="shield" className="h-3 w-3" />
-                            {t("services.protected")} ·
-                          </span>
-                        )}
-                        {u.description}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2">
-                      <span className={activeTone[u.active] ?? "text-faint"} aria-hidden="true">
-                        {activeIcon[u.active] ?? "○"}{" "}
-                      </span>
-                      {u.active}
-                      <span className="text-faint"> ({u.sub})</span>
-                    </td>
-                    <td className="hidden px-2 py-2 md:table-cell">{u.file_state || "–"}</td>
-                    <td className="hidden whitespace-nowrap px-2 py-2 lg:table-cell" title={dateTime(u.since, lang)}>
-                      {running ? relative(u.since, lang) : "–"}
-                    </td>
-                    <td className="hidden px-2 py-2 text-right tabular-nums lg:table-cell">{u.memory ? bytes(u.memory, lang) : "–"}</td>
-                    <td className="px-4 py-2">
-                      {canControl && (
-                        <div className="flex justify-end gap-1">
-                          {!running ? (
-                            <IconButton icon="play" label={t("services.start")} busy={busy === `${u.name}:start`} onClick={() => request(u, "start")} />
-                          ) : (
-                            <IconButton icon="stop" label={t("services.stop")} busy={busy === `${u.name}:stop`} onClick={() => request(u, "stop")} />
-                          )}
-                          <IconButton icon="restart" label={t("services.restart")} busy={busy === `${u.name}:restart`} onClick={() => request(u, "restart")} />
-                        </div>
+          <DataTable
+            rows={q.data ? rows : undefined}
+            rowKey={(u) => u.name}
+            loading={q.isLoading}
+            empty={t("services.empty")}
+            label={t("services.title")}
+            defaultSort={{ key: "unit", desc: false }}
+            rowMenu={(u) => ({
+              label: u.name,
+              items: [
+                { label: t("services.details"), icon: "info", onSelect: () => setSelected(u.name) },
+                ...(canControl
+                  ? [
+                      isRunning(u)
+                        ? { label: t("services.stop"), icon: "stop" as const, onSelect: () => request(u, "stop") }
+                        : { label: t("services.start"), icon: "play" as const, onSelect: () => request(u, "start") },
+                      { label: t("services.restart"), icon: "restart" as const, onSelect: () => request(u, "restart") },
+                    ]
+                  : []),
+              ],
+            })}
+            columns={[
+              {
+                key: "unit",
+                label: t("services.unit"),
+                tdClass: "min-w-[14rem] max-w-[26rem]",
+                sortValue: (u) => u.name,
+                filterValue: (u) => `${u.name} ${u.description}`,
+                filter: "text",
+                cell: (u) => (
+                  <>
+                    <button type="button" className="block max-w-full truncate text-left font-mono text-fg hover:underline" onClick={() => setSelected(u.name)}>
+                      {u.name}
+                    </button>
+                    <span className="block truncate text-xs text-muted" title={u.description}>
+                      {u.protected && (
+                        <span className="mr-1 inline-flex items-center gap-0.5 text-warn">
+                          <Icon name="shield" className="h-3 w-3" />
+                          {t("services.protected")} ·
+                        </span>
                       )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {!q.isLoading && rows.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-muted">
-                    {t("services.empty")}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                      {u.description}
+                    </span>
+                  </>
+                ),
+              },
+              {
+                key: "state",
+                label: t("services.state"),
+                tdClass: "whitespace-nowrap",
+                sortValue: (u) => u.active,
+                filter: { options: ["active", "activating", "deactivating", "inactive", "failed"].map((s) => ({ value: s, label: s })) },
+                cell: (u) => (
+                  <>
+                    <span className={activeTone[u.active] ?? "text-faint"} aria-hidden="true">
+                      {activeIcon[u.active] ?? "○"}{" "}
+                    </span>
+                    {u.active}
+                    <span className="text-faint"> ({u.sub})</span>
+                  </>
+                ),
+              },
+              {
+                key: "enabled",
+                label: t("services.enabled"),
+                thClass: "hidden md:table-cell",
+                tdClass: "hidden md:table-cell",
+                sortValue: (u) => u.file_state,
+                filter: { options: [...new Set((q.data ?? []).map((x) => x.file_state).filter(Boolean))].sort().map((s) => ({ value: s, label: s })) },
+                cell: (u) => <>{u.file_state || "–"}</>,
+              },
+              {
+                key: "since",
+                label: t("services.since"),
+                thClass: "hidden lg:table-cell",
+                tdClass: "hidden whitespace-nowrap lg:table-cell",
+                sortValue: (u) => (isRunning(u) ? u.since : undefined),
+                tdTitle: (u) => dateTime(u.since, lang),
+                cell: (u) => <>{isRunning(u) ? relative(u.since, lang) : "–"}</>,
+              },
+              {
+                key: "mem",
+                label: "RAM",
+                thClass: "hidden text-right lg:table-cell",
+                tdClass: "hidden text-right tabular-nums lg:table-cell",
+                sortValue: (u) => u.memory || undefined,
+                cell: (u) => <>{u.memory ? bytes(u.memory, lang) : "–"}</>,
+              },
+              {
+                key: "actions",
+                label: t("services.actions"),
+                thClass: "text-right",
+                cell: (u) => (
+                  <>
+                    {canControl && (
+                      <div className="flex justify-end gap-1">
+                        {!isRunning(u) ? (
+                          <IconButton icon="play" label={t("services.start")} busy={busy === `${u.name}:start`} onClick={() => request(u, "start")} />
+                        ) : (
+                          <IconButton icon="stop" label={t("services.stop")} busy={busy === `${u.name}:stop`} onClick={() => request(u, "stop")} />
+                        )}
+                        <IconButton icon="restart" label={t("services.restart")} busy={busy === `${u.name}:restart`} onClick={() => request(u, "restart")} />
+                      </div>
+                    )}
+                  </>
+                ),
+              },
+            ]}
+          />
         </div>
       </Panel>
 

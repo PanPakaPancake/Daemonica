@@ -210,4 +210,48 @@ textarea.input {
 .input.header-select {
   width: auto;
 }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+.menu-pop {
+  background: var(--bg-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+}
+
+.progress {
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.progress > span {
+  display: block;
+  height: 100%;
+  background: var(--grad-brand);
+}
+
+.dropzone-active {
+  outline: 2px dashed var(--cyan);
+  outline-offset: -6px;
+}
+
+/* Editor container: CodeMirror fills it. */
+.editor-host {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  background: var(--bg-0);
+}
+.editor-host .cm-editor {
+  height: 100%;
+}
 }

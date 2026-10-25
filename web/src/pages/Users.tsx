@@ -2,12 +2,15 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Link } from "react-router";
 import { Icon } from "../components/icons";
 import { Explain, Field, Notice, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { errorText } from "../lib/errors";
 import { useSession } from "../lib/session";
+import { DataTable } from "../components/DataTable";
+import type { MenuItem } from "../components/Modal";
 
 interface LinuxUser {
   name: string;
@@ -85,6 +88,30 @@ export function Users() {
     void change(op, { name: u.name, ...body, ...(u.admin_mapped && { confirm_mapped: true }) }, done);
   };
 
+  // Same actions as the row buttons, for the right-click menu.
+  const userItems = (u: LinuxUser): MenuItem[] => [
+    { label: t("users.edit"), icon: "edit", onSelect: () => setDlg({ kind: "edit", user: u }) },
+    ...(u.uid !== 0
+      ? [
+          {
+            label: u.sudo ? t("users.revokeSudo") : t("users.grantSudo"),
+            icon: "shield" as const,
+            onSelect: () => {
+              if (!window.confirm(u.sudo ? t("users.revokeSudoConfirm", { name: u.name }) : t("users.grantSudoConfirm", { name: u.name }))) return;
+              guarded(u, "set_sudo", { sudo: !u.sudo }, t("users.done"));
+            },
+          },
+          {
+            label: isLocked(u) ? t("users.unlock") : t("users.lock"),
+            icon: "lock" as const,
+            onSelect: () => guarded(u, "set_locked", { locked: !isLocked(u) }, t("users.done")),
+          },
+        ]
+      : []),
+    { label: t("users.password"), icon: "key", onSelect: () => setDlg({ kind: "password", user: u }) },
+    ...(u.uid !== 0 ? [{ label: t("common.remove"), icon: "trash" as const, danger: true, onSelect: () => setDlg({ kind: "delete", user: u }) }] : []),
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -133,21 +160,23 @@ export function Users() {
       {tab === "users" && (
         <Panel className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-faint">
-                <tr>
-                  <th className="px-4 py-2 font-medium">{t("users.name")}</th>
-                  <th className="px-2 py-2 font-medium">UID</th>
-                  <th className="hidden px-2 py-2 font-medium md:table-cell">{t("users.groups")}</th>
-                  <th className="px-2 py-2 font-medium">{t("users.status")}</th>
-                  <th className="hidden px-2 py-2 font-medium lg:table-cell">{t("users.keys")}</th>
-                  <th className="px-4 py-2 text-right font-medium">{t("services.actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.name} className="border-t border-line align-top hover:bg-bg-2">
-                    <td className="px-4 py-2">
+            <DataTable
+              rows={q.data ? users : undefined}
+              rowKey={(u) => u.name}
+              loading={q.isLoading}
+              label={t("users.title")}
+              defaultSort={{ key: "uid", desc: false }}
+              rowMenu={(u) => ({ label: u.name, items: isAdmin ? userItems(u) : [] })}
+              columns={[
+                {
+                  key: "name",
+                  label: t("users.name"),
+                  tdClass: "align-top",
+                  sortValue: (u) => u.name,
+                  filterValue: (u) => `${u.name} ${u.gecos ?? ""} ${u.home} ${u.shell}`,
+                  filter: "text",
+                  cell: (u) => (
+                    <>
                       <span className="font-mono font-semibold">{u.name}</span>
                       {u.gecos && <span className="block text-xs text-muted">{u.gecos}</span>}
                       <span className="block text-xs text-faint">
@@ -159,21 +188,63 @@ export function Users() {
                           {t("users.mapped", { accounts: u.dashboard_accounts.join(", ") })}
                         </span>
                       )}
-                    </td>
-                    <td className="px-2 py-2 tabular-nums">{u.uid}</td>
-                    <td className="hidden px-2 py-2 md:table-cell">
+                    </>
+                  ),
+                },
+                {
+                  key: "uid",
+                  label: "UID",
+                  tdClass: "tabular-nums align-top",
+                  sortValue: (u) => u.uid,
+                  filterValue: (u) => String(u.uid),
+                  filter: "text",
+                  cell: (u) => <>{u.uid}</>,
+                },
+                {
+                  key: "groups",
+                  label: t("users.groups"),
+                  thClass: "hidden md:table-cell",
+                  tdClass: "hidden md:table-cell align-top",
+                  sortValue: (u) => u.groups.join(", "),
+                  filter: "text",
+                  cell: (u) => (
+                    <>
                       <span className="flex flex-wrap gap-1">
                         {u.groups.map((g) => (
-                          <span key={g} className={`rounded-full border px-1.5 text-xs ${g === "sudo" || g === "admin" ? "border-warn text-warn" : "border-line text-muted"}`}>
+                          <span
+                            key={g}
+                            className={`rounded-full border px-1.5 text-xs ${g === "sudo" || g === "admin" ? "border-warn text-warn" : "border-line text-muted"}`}
+                          >
                             {g}
                           </span>
                         ))}
                       </span>
-                    </td>
-                    <td className="px-2 py-2">
+                    </>
+                  ),
+                },
+                {
+                  key: "status",
+                  label: t("users.status"),
+                  tdClass: "align-top",
+                  sortValue: (u) =>
+                    statusList(u, t)
+                      .map((x) => x.text)
+                      .join(", "),
+                  filter: "text",
+                  cell: (u) => (
+                    <>
                       <StatusBadges u={u} />
-                    </td>
-                    <td className="hidden px-2 py-2 lg:table-cell">
+                    </>
+                  ),
+                },
+                {
+                  key: "keys",
+                  label: t("users.keys"),
+                  thClass: "hidden lg:table-cell",
+                  tdClass: "hidden lg:table-cell align-top",
+                  sortValue: (u) => (u.key_count >= 0 ? u.key_count : undefined),
+                  cell: (u) => (
+                    <>
                       {u.key_count >= 0 ? (
                         <Link to={`/ssh-keys?user=${encodeURIComponent(u.name)}`} className="text-violet underline">
                           {t("users.keyCount", { count: u.key_count })}
@@ -181,8 +252,16 @@ export function Users() {
                       ) : (
                         "–"
                       )}
-                    </td>
-                    <td className="px-4 py-2">
+                    </>
+                  ),
+                },
+                {
+                  key: "actions",
+                  label: t("services.actions"),
+                  thClass: "text-right",
+                  tdClass: "align-top",
+                  cell: (u) => (
+                    <>
                       {isAdmin && (
                         <div className="flex flex-wrap justify-end gap-1">
                           <SmallBtn label={t("users.edit")} onClick={() => setDlg({ kind: "edit", user: u })} />
@@ -191,7 +270,8 @@ export function Users() {
                               label={u.sudo ? t("users.revokeSudo") : t("users.grantSudo")}
                               warn
                               onClick={() => {
-                                if (!window.confirm(u.sudo ? t("users.revokeSudoConfirm", { name: u.name }) : t("users.grantSudoConfirm", { name: u.name }))) return;
+                                if (!window.confirm(u.sudo ? t("users.revokeSudoConfirm", { name: u.name }) : t("users.grantSudoConfirm", { name: u.name })))
+                                  return;
                                 guarded(u, "set_sudo", { sudo: !u.sudo }, t("users.done"));
                               }}
                             />
@@ -206,39 +286,68 @@ export function Users() {
                           {u.uid !== 0 && <SmallBtn label={t("common.remove")} danger onClick={() => setDlg({ kind: "delete", user: u })} />}
                         </div>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </>
+                  ),
+                },
+              ]}
+            />
           </div>
         </Panel>
       )}
 
       {tab === "groups" && (
         <Panel className="p-0">
-          <table className="w-full text-left text-sm">
-            <thead className="text-faint">
-              <tr>
-                <th className="px-4 py-2 font-medium">{t("users.group")}</th>
-                <th className="px-2 py-2 font-medium">GID</th>
-                <th className="px-2 py-2 font-medium">{t("users.members")}</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((g) => (
-                <tr key={g.name} className="border-t border-line hover:bg-bg-2">
-                  <td className="px-4 py-2 font-mono">{g.name}</td>
-                  <td className="px-2 py-2 tabular-nums">{g.gid}</td>
-                  <td className="px-2 py-2 text-muted">{g.members.join(", ") || "–"}</td>
-                  <td className="px-4 py-2 text-right">
-                    {isAdmin && g.name !== "sudo" && g.name !== "admin" && <SmallBtn label={t("users.edit")} onClick={() => setDlg({ kind: "group", group: g })} />}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            rows={q.data ? groups : undefined}
+            rowKey={(g) => g.name}
+            label={t("users.group")}
+            defaultSort={{ key: "name", desc: false }}
+            rowMenu={(g) => ({
+              label: g.name,
+              items:
+                isAdmin && g.name !== "sudo" && g.name !== "admin"
+                  ? [{ label: t("users.edit"), icon: "edit", onSelect: () => setDlg({ kind: "group", group: g }) }]
+                  : [],
+            })}
+            columns={[
+              {
+                key: "name",
+                label: t("users.group"),
+                tdClass: "font-mono",
+                sortValue: (g) => g.name,
+                filter: "text",
+                cell: (g) => <>{g.name}</>,
+              },
+              {
+                key: "gid",
+                label: "GID",
+                tdClass: "tabular-nums",
+                sortValue: (g) => g.gid,
+                cell: (g) => <>{g.gid}</>,
+              },
+              {
+                key: "members",
+                label: t("users.members"),
+                tdClass: "text-muted",
+                sortValue: (g) => g.members.join(", "),
+                filter: "text",
+                cell: (g) => <>{g.members.join(", ") || "–"}</>,
+              },
+              {
+                key: "actions",
+                label: t("common.actions"),
+                tdClass: "text-right",
+                srOnly: true,
+                cell: (g) => (
+                  <>
+                    {isAdmin && g.name !== "sudo" && g.name !== "admin" && (
+                      <SmallBtn label={t("users.edit")} onClick={() => setDlg({ kind: "group", group: g })} />
+                    )}
+                  </>
+                ),
+              },
+            ]}
+          />
         </Panel>
       )}
 
@@ -319,8 +428,7 @@ export function Users() {
 /** An account counts as locked when it is expired or has a locked (but existing) password. */
 const isLocked = (u: LinuxUser) => u.expired || (u.locked && !u.no_password);
 
-function StatusBadges({ u }: { u: LinuxUser }) {
-  const { t } = useTranslation();
+function statusList(u: LinuxUser, t: TFunction) {
   const b: { tone: string; icon: string; text: string }[] = [];
   if (u.expired) b.push({ tone: "text-bad", icon: "✖", text: t("users.st.expired") });
   else if (u.locked && !u.no_password) b.push({ tone: "text-warn", icon: "⚠", text: t("users.st.pwLocked") });
@@ -328,6 +436,12 @@ function StatusBadges({ u }: { u: LinuxUser }) {
   if (u.must_change) b.push({ tone: "text-warn", icon: "⚠", text: t("users.st.mustChange") });
   if (u.sudo || u.uid === 0) b.push({ tone: "text-warn", icon: "★", text: u.uid === 0 ? "root" : "sudo" });
   if (!b.length) b.push({ tone: "text-ok", icon: "✓", text: t("users.st.active") });
+  return b;
+}
+
+function StatusBadges({ u }: { u: LinuxUser }) {
+  const { t } = useTranslation();
+  const b = statusList(u, t);
   return (
     <span className="flex flex-col gap-0.5 text-xs">
       {b.map((x) => (

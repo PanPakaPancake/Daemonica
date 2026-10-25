@@ -6,6 +6,8 @@ import { Explain, Field, Notice, Panel } from "../components/ui";
 import { api, type Account } from "../lib/api";
 import { errorText } from "../lib/errors";
 import { useSession } from "../lib/session";
+import { DataTable } from "../components/DataTable";
+import type { MenuItem } from "../components/Modal";
 
 interface AccountView extends Account {
   disabled: boolean;
@@ -55,6 +57,36 @@ export function Accounts() {
       setBusy(false);
     }
   };
+
+  // Same actions as the row buttons, for the right-click menu.
+  const accountItems = (a: AccountView): MenuItem[] => [
+    ...(a.invited && !a.disabled
+      ? [
+          {
+            label: t("accounts.reinvite"),
+            icon: "passkey" as const,
+            disabled: busy,
+            onSelect: () => void act(async () => showInvite(await withStepUp(() => api<InviteResult>("POST", `/accounts/${id(a)}/reinvite`)))),
+          },
+        ]
+      : []),
+    {
+      label: a.disabled ? t("accounts.enable") : t("accounts.disable"),
+      icon: "lock",
+      disabled: busy,
+      onSelect: () => void act(() => withStepUp(() => api("PATCH", `/accounts/${id(a)}/disabled`, { disabled: !a.disabled }))),
+    },
+    {
+      label: t("common.remove"),
+      icon: "trash",
+      danger: true,
+      disabled: busy,
+      onSelect: () => {
+        setDeleting(a.id);
+        setConfirm("");
+      },
+    },
+  ];
 
   const showInvite = (r: InviteResult) => {
     setInvite(r);
@@ -156,26 +188,32 @@ export function Accounts() {
           <p className="text-muted">{t("common.loading")}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-faint">
-                <tr>
-                  <th className="py-2 pr-4 font-medium">{t("accounts.name")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("accounts.role")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("accounts.linuxUser")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("accounts.passkeys")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("accounts.sessions")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("accounts.status")}</th>
-                  <th className="py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {(list.data ?? []).map((a) => (
-                  <tr key={a.id} className="border-t border-line align-top">
-                    <td className="py-2 pr-4">
+            <DataTable
+              rows={list.data}
+              rowKey={(a) => a.id}
+              label={t("accounts.title")}
+              defaultSort={{ key: "name", desc: false }}
+              rowMenu={(a) => ({ label: a.name, items: a.self ? [] : accountItems(a) })}
+              columns={[
+                {
+                  key: "name",
+                  label: t("accounts.name"),
+                  sortValue: (a) => a.name,
+                  filter: "text",
+                  cell: (a) => (
+                    <>
                       <span className="font-medium">{a.name}</span>
                       {a.self && <span className="ml-2 rounded-full border border-cyan px-2 py-0.5 text-xs text-cyan">{t("accounts.you")}</span>}
-                    </td>
-                    <td className="py-2 pr-4">
+                    </>
+                  ),
+                },
+                {
+                  key: "role",
+                  label: t("accounts.role"),
+                  sortValue: (a) => a.role,
+                  filter: { options: roles.map((r) => ({ value: r, label: t(`header.role.${r}`) })) },
+                  cell: (a) => (
+                    <>
                       {a.self ? (
                         t(`header.role.${a.role}`)
                       ) : (
@@ -197,11 +235,36 @@ export function Accounts() {
                           ))}
                         </select>
                       )}
-                    </td>
-                    <td className="py-2 pr-4 font-mono">{a.linux_user}</td>
-                    <td className="py-2 pr-4">{a.passkeys}</td>
-                    <td className="py-2 pr-4">{a.sessions}</td>
-                    <td className="py-2 pr-4">
+                    </>
+                  ),
+                },
+                {
+                  key: "linux",
+                  label: t("accounts.linuxUser"),
+                  tdClass: "font-mono",
+                  sortValue: (a) => a.linux_user,
+                  filter: "text",
+                  cell: (a) => <>{a.linux_user}</>,
+                },
+                {
+                  key: "passkeys",
+                  label: t("accounts.passkeys"),
+                  sortValue: (a) => a.passkeys,
+                  cell: (a) => <>{a.passkeys}</>,
+                },
+                {
+                  key: "sessions",
+                  label: t("accounts.sessions"),
+                  sortValue: (a) => a.sessions,
+                  cell: (a) => <>{a.sessions}</>,
+                },
+                {
+                  key: "status",
+                  label: t("accounts.status"),
+                  sortValue: (a) => (a.disabled ? "disabled" : a.invited ? "invited" : "active"),
+                  filter: { options: ["active", "invited", "disabled"].map((s) => ({ value: s, label: t(`accounts.${s}`) })) },
+                  cell: (a) => (
+                    <>
                       {a.disabled ? (
                         <span className="text-bad">{t("accounts.disabled")}</span>
                       ) : a.invited ? (
@@ -209,8 +272,16 @@ export function Accounts() {
                       ) : (
                         <span className="text-ok">{t("accounts.active")}</span>
                       )}
-                    </td>
-                    <td className="py-2 text-right">
+                    </>
+                  ),
+                },
+                {
+                  key: "actions",
+                  label: t("common.actions"),
+                  tdClass: "text-right align-top",
+                  srOnly: true,
+                  cell: (a) => (
+                    <>
                       {!a.self && (
                         <div className="flex flex-wrap justify-end gap-2">
                           {a.invited && !a.disabled && (
@@ -269,11 +340,11 @@ export function Accounts() {
                           </div>
                         </form>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </>
+                  ),
+                },
+              ]}
+            />
           </div>
         )}
       </Panel>

@@ -5,6 +5,7 @@ import { Icon } from "../components/icons";
 import { Field, Notice, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { errorText } from "../lib/errors";
+import { DataTable } from "../components/DataTable";
 
 interface AuditEvent {
   ts: string;
@@ -100,9 +101,7 @@ export function Audit() {
       {err && <Notice tone="bad">{err}</Notice>}
       {verify && (
         <Notice tone={verify.ok ? "ok" : "bad"} live>
-          {verify.ok
-            ? t("audit.chainOk", { count: verify.records })
-            : t("audit.chainBad", { line: verify.bad_line ?? 0, problem: verify.problem ?? "" })}
+          {verify.ok ? t("audit.chainOk", { count: verify.records }) : t("audit.chainBad", { line: verify.bad_line ?? 0, problem: verify.problem ?? "" })}
         </Notice>
       )}
 
@@ -115,7 +114,15 @@ export function Audit() {
           }}
         >
           <Field label={t("audit.action")} help={t("audit.actionHelp")}>
-            {(p) => <input {...p} className="input font-mono" value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value.trim() })} maxLength={64} />}
+            {(p) => (
+              <input
+                {...p}
+                className="input font-mono"
+                value={draft.action}
+                onChange={(e) => setDraft({ ...draft, action: e.target.value.trim() })}
+                maxLength={64}
+              />
+            )}
           </Field>
           <Field label={t("audit.result")}>
             {(p) => (
@@ -152,36 +159,70 @@ export function Audit() {
           <p className="text-muted">{t("audit.empty")}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-faint">
-                <tr>
-                  <th className="py-2 pr-4 font-medium">{t("audit.time")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("audit.actor")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("audit.action")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("audit.target")}</th>
-                  <th className="py-2 pr-4 font-medium">{t("audit.result")}</th>
-                  <th className="py-2 font-medium">{t("audit.source")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((e) => (
-                  <tr key={e.event_id} className="border-t border-line align-top">
-                    <td className="whitespace-nowrap py-2 pr-4">{new Date(e.ts).toLocaleString(i18n.language)}</td>
-                    <td className="py-2 pr-4">
+            <DataTable
+              rows={events}
+              rowKey={(e) => e.event_id}
+              label={t("audit.title")}
+              columns={[
+                {
+                  key: "time",
+                  label: t("audit.time"),
+                  tdClass: "whitespace-nowrap",
+                  sortValue: (e) => e.ts,
+                  cell: (e) => <>{new Date(e.ts).toLocaleString(i18n.language)}</>,
+                },
+                {
+                  key: "actor",
+                  label: t("audit.actor"),
+                  sortValue: (e) => actor(e),
+                  filter: "text",
+                  cell: (e) => (
+                    <>
                       {actor(e)}
                       {e.step_up && <span className="ml-2 text-xs text-cyan">{t("header.stepUpActive")}</span>}
-                    </td>
-                    <td className="py-2 pr-4 font-mono">{e.action}</td>
-                    <td className="max-w-xs break-all py-2 pr-4 font-mono text-muted">{e.target ?? ""}</td>
-                    <td className={`py-2 pr-4 ${resultClass[e.result]}`}>
-                      {t(`audit.results.${e.result}`)}
-                      {e.reason && <span className="block text-xs text-faint">{e.reason}</span>}
-                    </td>
-                    <td className="py-2 font-mono text-muted">{e.source_ip ?? ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </>
+                  ),
+                },
+                {
+                  key: "action",
+                  label: t("audit.action"),
+                  tdClass: "font-mono",
+                  sortValue: (e) => e.action,
+                  filter: "text",
+                  cell: (e) => <>{e.action}</>,
+                },
+                {
+                  key: "target",
+                  label: t("audit.target"),
+                  tdClass: "max-w-xs break-all font-mono text-muted",
+                  sortValue: (e) => e.target,
+                  filter: "text",
+                  cell: (e) => <>{e.target ?? ""}</>,
+                },
+                {
+                  key: "result",
+                  label: t("audit.result"),
+                  sortValue: (e) => e.result,
+                  filter: { options: (["ok", "denied", "error"] as const).map((r) => ({ value: r, label: t(`audit.results.${r}`) })) },
+                  cell: (e) => (
+                    <>
+                      <span className={`${resultClass[e.result]}`}>
+                        {t(`audit.results.${e.result}`)}
+                        {e.reason && <span className="block text-xs text-faint">{e.reason}</span>}
+                      </span>
+                    </>
+                  ),
+                },
+                {
+                  key: "source",
+                  label: t("audit.source"),
+                  tdClass: "font-mono text-muted",
+                  sortValue: (e) => e.source_ip,
+                  filter: "text",
+                  cell: (e) => <>{e.source_ip ?? ""}</>,
+                },
+              ]}
+            />
           </div>
         )}
         {q.hasNextPage && (

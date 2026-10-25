@@ -32,12 +32,16 @@ const (
 
 // Call is the input to an operation handler.
 type Call struct {
-	Channel  Channel
-	Subject  *policy.Subject // nil for pre-auth and admin-channel operations
-	GrantID  string          // hashed grant identifier (for audit "session")
-	Grant    string          // opaque grant token (only for session operations such as step-up/logout)
-	SourceIP string
-	Params   []byte
+	Channel Channel
+	Subject *policy.Subject // nil for pre-auth and admin-channel operations
+	GrantID string          // hashed grant identifier (for audit "session")
+	// SessionKey identifies the login session across step-up token rotation.
+	SessionKey string
+	Grant      string // opaque grant token (only for session operations such as step-up/logout)
+	SourceIP   string
+	Params     []byte
+	// AuditKV collects audit parameters set by the handler (never secrets or contents).
+	AuditKV map[string]string
 }
 
 // Op is one allowlisted, typed operation (Annex D).
@@ -53,6 +57,9 @@ type Op struct {
 	Timeout      time.Duration
 	// Handle decodes Params strictly, validates them and performs the operation.
 	Handle func(ctx context.Context, c Call) (any, error)
+	// Stream replaces Handle for streaming operations (uploads/downloads, see
+	// rpc/stream.go). The handler calls st.Ready before any data flows.
+	Stream func(ctx context.Context, c Call, st *Stream) (any, error)
 	// AuditTarget optionally extracts a target string for the audit log.
 	AuditTarget func(c Call) string
 	// NoAudit suppresses success audit records for high-frequency read operations.
@@ -201,6 +208,10 @@ func (s *Server) handleConn(ctx context.Context, c net.Conn) {
 			}
 			return
 		}
+		if op, ok := s.Ops[req.Op]; ok && op.Stream != nil {
+			s.serveStream(ctx, c, req, op)
+			return
+		}
 		resp := s.Dispatch(ctx, req)
 		_ = c.SetWriteDeadline(time.Now().Add(30 * time.Second))
 		if err := rpc.WriteFrame(c, resp); err != nil {
@@ -209,76 +220,142 @@ func (s *Server) handleConn(ctx context.Context, c net.Conn) {
 	}
 }
 
+// authorize resolves the caller and checks the static policy of op. A non-nil
+// response means the request is refused.
+func (s *Server) authorize(op *Op, req *rpc.Request) (Call, *rpc.Response) {
+	call := Call{Channel: s.Channel, SourceIP: req.SourceIP, Params: req.Params, AuditKV: map[string]string{}}
+	switch {
+	case op.AdminChannel:
+		if s.Channel != ChannelAdmin {
+			return call, rpc.Fail(req.ID, rpc.CodeUnknownOp, "")
+		}
+	case s.Channel == ChannelAdmin:
+		// Web operations are not exposed on the admin socket.
+		return call, rpc.Fail(req.ID, rpc.CodeUnknownOp, "")
+	case op.PreAuth:
+		// No subject.
+	default:
+		subj, gid, err := s.Grants.Resolve(req.Grant, time.Now())
+		if err != nil {
+			s.audit(op, call, audit.ResultDenied, "invalid or expired grant")
+			return call, rpc.Fail(req.ID, rpc.CodeUnauthorized, "")
+		}
+		call.Subject, call.GrantID, call.Grant = &subj, gid, req.Grant
+		call.SessionKey = s.Grants.SessionKey(req.Grant)
+		switch policy.Decide(subj, op.Action, 0, false) {
+		case policy.Deny:
+			s.audit(op, call, audit.ResultDenied, "policy")
+			return call, rpc.Fail(req.ID, rpc.CodeForbidden, "")
+		case policy.NeedStepUp:
+			s.audit(op, call, audit.ResultDenied, "step-up required")
+			return call, rpc.Fail(req.ID, rpc.CodeStepUpNeeded, "")
+		case policy.Allow:
+		}
+	}
+	return call, nil
+}
+
+// deniedCodes are audited as "denied" rather than "error".
+var deniedCodes = map[string]bool{rpc.CodeForbidden: true, rpc.CodeStepUpNeeded: true, rpc.CodeLockout: true,
+	rpc.CodeTokenInvalid: true, "path_blocked": true, "protected_path": true, "sensitive_path": true,
+	"permission_denied": true, "root_mode_required": true}
+
+// finish audits the outcome and builds the response.
+func (s *Server) finish(ctx context.Context, op *Op, call Call, id uint64, result any, err error) *rpc.Response {
+	if err != nil {
+		var oe *OpError
+		if errors.As(err, &oe) {
+			res := audit.ResultError
+			if deniedCodes[oe.Code] {
+				res = audit.ResultDenied
+			}
+			s.audit(op, call, res, oe.Code)
+			return rpc.Fail(id, oe.Code, oe.Msg)
+		}
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			s.audit(op, call, audit.ResultError, "timeout")
+			return rpc.Fail(id, rpc.CodeTimeout, "")
+		}
+		s.Log.Error("operation failed", "op", op.Name, "err", err)
+		s.audit(op, call, audit.ResultError, "internal")
+		return rpc.Fail(id, rpc.CodeInternal, "")
+	}
+	if !op.NoAudit || call.AuditKV["sensitive"] != "" || call.AuditKV["as_root"] != "" {
+		s.audit(op, call, audit.ResultOK, "")
+	}
+	resp, rerr := rpc.Succeed(id, result)
+	if rerr != nil {
+		return rpc.Fail(id, rpc.CodeInternal, "")
+	}
+	return resp
+}
+
 // Dispatch authenticates, authorizes, executes and audits one request.
 func (s *Server) Dispatch(ctx context.Context, req *rpc.Request) *rpc.Response {
 	op, ok := s.Ops[req.Op]
 	if !ok {
 		return rpc.Fail(req.ID, rpc.CodeUnknownOp, "")
 	}
-	call := Call{Channel: s.Channel, SourceIP: req.SourceIP, Params: req.Params}
-
-	switch {
-	case op.AdminChannel:
-		if s.Channel != ChannelAdmin {
-			return rpc.Fail(req.ID, rpc.CodeUnknownOp, "")
-		}
-	case s.Channel == ChannelAdmin:
-		// Web operations are not exposed on the admin socket.
-		return rpc.Fail(req.ID, rpc.CodeUnknownOp, "")
-	case op.PreAuth:
-		// No subject.
-	default:
-		subj, gid, err := s.Grants.Resolve(req.Grant, time.Now())
-		if err != nil {
-			s.audit(op, call, nil, audit.ResultDenied, "invalid or expired grant")
-			return rpc.Fail(req.ID, rpc.CodeUnauthorized, "")
-		}
-		call.Subject, call.GrantID, call.Grant = &subj, gid, req.Grant
-		switch policy.Decide(subj, op.Action, 0, false) {
-		case policy.Deny:
-			s.audit(op, call, nil, audit.ResultDenied, "policy")
-			return rpc.Fail(req.ID, rpc.CodeForbidden, "")
-		case policy.NeedStepUp:
-			s.audit(op, call, nil, audit.ResultDenied, "step-up required")
-			return rpc.Fail(req.ID, rpc.CodeStepUpNeeded, "")
-		case policy.Allow:
-		}
+	if op.Handle == nil {
+		return rpc.Fail(req.ID, rpc.CodeBadRequest, "streaming operation")
 	}
-
+	call, fail := s.authorize(op, req)
+	if fail != nil {
+		return fail
+	}
 	opCtx, cancel := context.WithTimeout(ctx, op.Timeout)
 	defer cancel()
 	result, err := op.Handle(opCtx, call)
-	if err != nil {
-		var oe *OpError
-		if errors.As(err, &oe) {
-			res := audit.ResultError
-			if oe.Code == rpc.CodeForbidden || oe.Code == rpc.CodeStepUpNeeded || oe.Code == rpc.CodeLockout || oe.Code == rpc.CodeTokenInvalid {
-				res = audit.ResultDenied
-			}
-			s.audit(op, call, nil, res, oe.Code)
-			return rpc.Fail(req.ID, oe.Code, oe.Msg)
-		}
-		if errors.Is(opCtx.Err(), context.DeadlineExceeded) {
-			s.audit(op, call, nil, audit.ResultError, "timeout")
-			return rpc.Fail(req.ID, rpc.CodeTimeout, "")
-		}
-		s.Log.Error("operation failed", "op", op.Name, "err", err)
-		s.audit(op, call, nil, audit.ResultError, "internal")
-		return rpc.Fail(req.ID, rpc.CodeInternal, "")
-	}
-	if !op.NoAudit {
-		s.audit(op, call, nil, audit.ResultOK, "")
-	}
-	resp, err := rpc.Succeed(req.ID, result)
-	if err != nil {
-		return rpc.Fail(req.ID, rpc.CodeInternal, "")
-	}
-	return resp
+	return s.finish(opCtx, op, call, req.ID, result, err)
 }
 
-func (s *Server) audit(op *Op, c Call, params map[string]string, result, reason string) {
+// Stream is the data channel of a streaming operation.
+type Stream struct {
+	rw io.ReadWriter
+	id uint64
+}
+
+// Ready sends the ready frame with metadata; data may flow afterwards.
+func (st *Stream) Ready(meta any) error {
+	resp, err := rpc.Succeed(st.id, meta)
+	if err != nil {
+		return err
+	}
+	return rpc.WriteFrame(st.rw, resp)
+}
+
+// Reader returns the client's data (uploads): io.EOF after the end marker,
+// io.ErrUnexpectedEOF if the client broke off.
+func (st *Stream) Reader() *rpc.ChunkReader { return &rpc.ChunkReader{R: st.rw} }
+
+// Writer returns a chunk writer towards the client (downloads); Close it to
+// send the end marker.
+func (st *Stream) Writer() rpc.ChunkWriter { return rpc.ChunkWriter{W: st.rw} }
+
+func (s *Server) serveStream(ctx context.Context, c net.Conn, req *rpc.Request, op *Op) {
+	call, fail := s.authorize(op, req)
+	if fail != nil {
+		_ = c.SetWriteDeadline(time.Now().Add(30 * time.Second))
+		_ = rpc.WriteFrame(c, fail)
+		return
+	}
+	opCtx, cancel := context.WithTimeout(ctx, op.Timeout)
+	defer cancel()
+	context.AfterFunc(opCtx, func() { _ = c.SetDeadline(time.Now()) })
+	st := &Stream{rw: rpc.NewStreamConn(c), id: req.ID}
+	result, err := op.Stream(opCtx, call, st)
+	resp := s.finish(opCtx, op, call, req.ID, result, err)
+	_ = c.SetWriteDeadline(time.Now().Add(30 * time.Second))
+	_ = rpc.WriteFrame(c, resp)
+}
+
+func (s *Server) audit(op *Op, c Call, result, reason string) {
 	if s.Audit == nil {
 		return
+	}
+	var params map[string]string
+	if len(c.AuditKV) > 0 {
+		params = c.AuditKV
 	}
 	ev := audit.Event{Action: op.Name, Result: result, Reason: reason, SourceIP: c.SourceIP, Params: params,
 		Session: c.GrantID}

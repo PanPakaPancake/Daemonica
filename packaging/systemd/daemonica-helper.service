@@ -25,7 +25,6 @@ UMask=0077
 # with its reason in docs/ARCHITECTURE.md ("Hardening exceptions").
 # NoNewPrivileges is intentionally NOT set: the elevated terminal must be able
 # to run sudo. Standard-mode workers set no_new_privs themselves.
-PrivateTmp=yes
 ProtectKernelModules=yes
 ProtectKernelLogs=yes
 ProtectClock=yes

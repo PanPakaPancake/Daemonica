@@ -32,6 +32,10 @@ Daemonica manages exactly one Debian/Ubuntu host. It is split into three binarie
 | `internal/validate` | Strict allowlist validators for identifiers passed to programs/files. |
 | `internal/web` | HTTP handlers, middleware (headers, CSRF, problem+json, correlation ID, panic recovery), rate limiter. |
 | `internal/web/ui` | Embedded frontend build (`go:embed`). |
+| `internal/worker` | Re-exec of the helper binary under a Linux user's credentials (`no_new_privs`, umask 077); optional data pipe on fd 3 for streams. |
+| `internal/sysinfo`, `internal/services`, `internal/journal`, `internal/execx` | M1.1 data sources: `/proc` collector, systemd over D-Bus, `journalctl --output=json`, bounded argv execution. |
+| `internal/users`, `internal/sshkeys` | M1.2: shadow-utils via argv, `authorized_keys` parser and worker handlers. |
+| `internal/files` | M1.3 file manager worker operations (openat2-based path handling, rules on canonical paths, streams; DEC-019). |
 
 ## Request flow (authenticated operation)
 
@@ -54,6 +58,27 @@ Daemonica manages exactly one Debian/Ubuntu host. It is split into three binarie
 | `config.web` | web | pre-auth (socket-local only) | Listener settings |
 | `session.whoami` | web | grant | Current subject |
 
+## Helper operations (M1.1–M1.3)
+
+| Namespace | Operations | Policy action(s) |
+|---|---|---|
+| `sysinfo` / `proc` | `sysinfo.overview`, `proc.list`, `proc.signal` | overview.read, proc.read, proc.signal (owner check) |
+| `services` | `services.list`, `services.get`, `services.action` | overview.read; services.control / control_protected / enable (decided per unit and action) |
+| `journal` | `journal.query` | logs.read |
+| `users` / `groups` | `users.list/create/update/set_locked/set_sudo/set_password/delete`, `groups.create/set_members/delete` | users.read, users.write |
+| `sshkeys` | `sshkeys.list/add/remove/set_options/fix_permissions/server` | sshkeys.own, sshkeys.others |
+| `fs` | `fs.info`, `fs.list`, `fs.stat`, `fs.create`, `fs.rename`, `fs.transfer`, `fs.delete`, `fs.chmod`, `fs.chown` (root mode only), `fs.download_token`, `fs.root_enable` (step-up), `fs.root_disable`, `fs.versions`; streams: `fs.read`, `fs.write` (previous version + validation, DEC-021), `fs.upload`, `fs.download`, `fs.version_read` | files, files.root |
+
+### Streams
+
+Streaming operations (uploads/downloads) use the same request frame, then a
+"ready" response frame, then length-prefixed chunks (≤ 256 KiB) ending with a
+zero-length end marker, then a final response frame (`internal/rpc/stream.go`).
+A stream without end marker is an abort. Every read/write refreshes a 2-minute
+idle deadline, so long transfers work while stalled peers are dropped. In the
+helper, stream data is piped to/from the worker's fd 3 using the same framing,
+so the worker can tell a completed upload from an aborted one.
+
 ## Hardening exceptions (daemonica-helper.service)
 
 | Directive not set | Reason |
@@ -68,5 +93,6 @@ Daemonica manages exactly one Debian/Ubuntu host. It is split into three binarie
 | `MemoryDenyWriteExecute=yes` | Child programs (apt, dpkg maintainer scripts) may need W+X mappings. |
 | `RestrictSUIDSGID=yes` | `sudo`/setuid programs in the elevated terminal. |
 | `ProtectProc=invisible` | Process management needs all processes. |
+| `PrivateTmp=yes` | File manager workers (and later terminals) inherit the helper's mount namespace and must see the real `/tmp` (DEC-019). |
 
 Actual `systemd-analyze security` scores will be recorded in the phase audit report.

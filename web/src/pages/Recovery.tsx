@@ -61,7 +61,17 @@ export function TokenEnroll({ mode }: { mode: Mode }) {
           {err && <Notice tone="bad">{err}</Notice>}
           {!supported() && <Notice tone="bad">{t("errors.webauthn_unsupported")}</Notice>}
           <Field label={t(`${mode}.token`)}>
-            {(p) => <input {...p} className="input font-mono" autoComplete="off" spellCheck={false} value={token} onChange={(e) => setToken(e.target.value.trim())} required />}
+            {(p) => (
+              <input
+                {...p}
+                className="input font-mono"
+                autoComplete="off"
+                spellCheck={false}
+                value={token}
+                onChange={(e) => setToken(e.target.value.trim())}
+                required
+              />
+            )}
           </Field>
           <Field label={t("setup.passkey.name")}>
             {(p) => <input {...p} className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={64} />}

@@ -1,8 +1,11 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NavLink, Outlet, useLocation } from "react-router";
+import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { setLanguage } from "../i18n";
+import { api } from "../lib/api";
 import { useSession } from "../lib/session";
+import { useFsInfo } from "../lib/useFs";
 import { applyTheme, initialTheme, type Theme } from "../lib/theme";
 import { Icon, type IconName } from "./icons";
 import { BrandIcon, Wordmark } from "./ui";
@@ -45,7 +48,7 @@ const groups: NavGroup[] = [
     key: "nav.tools",
     items: [
       { key: "nav.terminal", icon: "terminal" },
-      { key: "nav.files", icon: "files" },
+      { to: "/files", key: "nav.files", icon: "files", hideReadOnly: true },
       { to: "/logs", key: "nav.logs", icon: "logs", hideReadOnly: true },
       { to: "/processes", key: "nav.processes", icon: "process" },
       { key: "nav.capture", icon: "capture" },
@@ -182,6 +185,7 @@ export function Layout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {me?.role === "admin" && <RootBar />}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-bg-1 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <button
@@ -245,10 +249,53 @@ export function Layout() {
             )}
           </div>
         </header>
-        <main id="main" className="mx-auto w-full max-w-6xl flex-1 p-4 md:p-8">
+        <main id="main" className="mx-auto w-full min-w-0 max-w-[2200px] flex-1 p-4 md:p-6 xl:px-8">
           <Outlet />
         </main>
       </div>
+    </div>
+  );
+}
+
+/** Red, non-dismissable bar while the file manager's root mode is active (SPEC §5.5, §7.4). */
+function RootBar() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const info = useFsInfo(true);
+  const until = info.data?.root.active ? Date.parse(info.data.root.until ?? "") : 0;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!until) return;
+    const id = setInterval(() => {
+      const n = Date.now();
+      setNow(n);
+      if (n >= until) void qc.invalidateQueries({ queryKey: ["fs-info"] });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [until, qc]);
+  const left = Math.max(0, Math.floor((until - now) / 1000));
+  if (!until || left <= 0) return null;
+  const mmss = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+  return (
+    <div className="elevated-bar flex flex-wrap items-center justify-between gap-2 px-4 py-1.5 text-sm font-semibold" role="status">
+      <span className="flex items-center gap-2">
+        <Icon name="shield" className="h-4 w-4" />
+        {t("files.root.bar", { time: mmss })}
+      </span>
+      <span className="flex items-center gap-2">
+        <Link to="/files" className="underline">
+          {t("nav.files")}
+        </Link>
+        <button
+          type="button"
+          className="rounded border border-white/70 px-2 py-0.5 text-xs hover:bg-white/10"
+          onClick={() =>
+            void api("POST", "/files/root/disable").finally(() => void qc.invalidateQueries({ queryKey: ["fs-info"] }))
+          }
+        >
+          {t("files.root.disable")}
+        </button>
+      </span>
     </div>
   );
 }

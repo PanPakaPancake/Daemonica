@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PanPakaPancake/daemonica/internal/execx"
 	"github.com/PanPakaPancake/daemonica/internal/files"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
 	"github.com/PanPakaPancake/daemonica/internal/policy"
@@ -27,6 +28,9 @@ import (
 
 // The test binary doubles as the worker (like daemonica-helper does).
 func TestMain(m *testing.M) {
+	if len(os.Args) > 1 && os.Args[1] == execx.UmaskArg {
+		execx.LauncherMain(os.Args[2:])
+	}
 	if len(os.Args) > 1 && os.Args[1] == worker.Arg {
 		h := sshkeys.WorkerHandlers()
 		for k, v := range files.WorkerHandlers() {

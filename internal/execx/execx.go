@@ -8,10 +8,33 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"time"
 )
+
+// UmaskArg is argv[1] of the helper binary in launcher mode (see Launcher).
+const UmaskArg = "__exec-umask022"
+
+// Launcher, when set to the helper binary, makes Run start every program
+// through it with umask 022 instead of the helper's own 0077 (its unit sets
+// UMask=0077). System tools expect the usual umask: netplan, for example,
+// writes networkd files that systemd-networkd must be able to read. Without
+// a shell: the launcher sets the umask and execs the absolute path with the
+// same argv.
+var Launcher string
+
+// LauncherMain is the launcher mode; it never returns.
+func LauncherMain(args []string) {
+	if len(args) < 1 || !filepath.IsAbs(args[0]) {
+		os.Exit(127)
+	}
+	syscall.Umask(0o022)
+	_ = syscall.Exec(args[0], args, Env) //nolint:gosec // absolute path from the helper, argv only
+	os.Exit(127)
+}
 
 // Env is the fixed environment for child processes.
 var Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C.UTF-8", "LC_ALL=C.UTF-8", "SYSTEMD_COLORS=0", "SYSTEMD_PAGER=", "PAGER=cat"}
@@ -54,6 +77,9 @@ func Run(ctx context.Context, timeout time.Duration, limit int, stdin io.Reader,
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, path, args...) //nolint:gosec // fixed absolute path, argv only
+	if Launcher != "" {
+		cmd = exec.CommandContext(ctx, Launcher, append([]string{UmaskArg, path}, args...)...) //nolint:gosec // helper binary, argv only
+	}
 	cmd.Env = Env
 	cmd.Dir = "/"
 	cmd.Stdin = stdin

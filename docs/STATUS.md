@@ -169,7 +169,7 @@ _Last updated: 2026-10-25_
 | Writing for NetworkManager and systemd-networkd (SOLL) | ✖ | read-only (DEC-024) |
 | Interfaces, routes, DNS, gateway, hostname, open ports with process | ✓ | `net.get`, `net.ports`; integration test compares with `ss` |
 | DHCP/static v4/v6, gateway, DNS, MTU, extra addresses, static routes; VLAN/bridge/bond shown | ✓ | `Network.tsx`; `TestNormalize` |
-| Plan → Apply → Confirm, 90 s rollback in the helper, confirm over a new connection, red warning for the session's interface/route, diff, syntax check, change lock | ✓ (unit) / ⏳ VM | `TestNetworkPlanApplyRollback`; VM test "wrong gateway rolls back" pending |
+| Plan → Apply → Confirm, 90 s rollback in the helper, confirm over a new connection, red warning for the session's interface/route, diff, syntax check, change lock | ✓ (unit) / ⏳ VM | `TestNetworkPlanApplyRollback`, `TestNetworkHandlerVerifiesKernelState`; integration `TestLauncherUmaskNetplan`; VM test "wrong gateway rolls back" failed once (netplan under UMask=0077, fixed), repeat pending |
 | Firewall status: backend, active, persistent, defaults, rule count, IPv6, logging, last change from audit, counters; traffic light with plain-language hints | ✓ | `firewall.get`; `TestLight`, `TestCounters`, `TestFirewallPlanEnable` |
 | Reachability view (SOLL) | ✓ | `Reach` tab; `TestEvaluate` |
 | ufw rules with explanations, managed-rule marking, add (template or port/protocol, source, allow/deny/limit), delete, logging level, enable/disable | ✓ | `Firewall.tsx`, `explainRule` tests, `TestPlanSimulateSteps`, `TestAddSpec` |

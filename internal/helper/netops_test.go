@@ -158,3 +158,122 @@ func TestNetworkPlanApplyRollback(t *testing.T) {
 		t.Fatalf("read-only: %+v", r)
 	}
 }
+
+// fakeKernel plays systemd-networkd: each netplan apply takes over the
+// gateway of the file, except the first `broken` ones, which leave the
+// interface without routes (as when networkd cannot read its file).
+type fakeKernel struct {
+	mu     sync.Mutex
+	file   string
+	broken int
+	gw     string
+	applys int
+}
+
+func (k *fakeKernel) run(_ context.Context, _ time.Duration, path string, args ...string) (execx.Result, error) {
+	if path == "/usr/sbin/netplan" && len(args) == 1 && args[0] == "apply" {
+		k.mu.Lock()
+		defer k.mu.Unlock()
+		k.applys++
+		b, _ := os.ReadFile(k.file)
+		k.gw = ""
+		if k.broken > 0 {
+			k.broken--
+			return execx.Result{}, nil
+		}
+		for _, l := range strings.Split(string(b), "\n") {
+			if v, ok := strings.CutPrefix(strings.TrimSpace(l), "via: "); ok {
+				k.gw = strings.Trim(v, `"`)
+			}
+		}
+	}
+	return execx.Result{}, nil
+}
+
+func (k *fakeKernel) state() (netcfg.State, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	st := netcfg.State{Interfaces: []netcfg.Interface{{Name: "eth0", Addresses: []string{"203.0.113.10/24"}}}}
+	if k.gw != "" {
+		st.Routes = []netcfg.Route{{Family: 4, To: "default", Via: k.gw, Dev: "eth0"}}
+	}
+	return st, nil
+}
+
+func TestNetworkHandlerVerifiesKernelState(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	file := filepath.Join(root, "/etc/netplan/50-cloud-init.yaml")
+	_ = os.MkdirAll(filepath.Dir(file), 0o755)
+	plan := func(k *fakeKernel) json.RawMessage {
+		if err := os.WriteFile(file, []byte(npBase), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		np := &netcfg.Netplan{Root: root, Run: k.run}
+		cfg, err := np.Config("eth0", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg.Gateway4 = "203.0.113.254"
+		p, err := np.Plan(ctx, cfg, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, _ := json.Marshal(p)
+		return b
+	}
+
+	// Healthy: apply and rollback both take effect.
+	k := &fakeKernel{file: file}
+	h := &NetworkHandler{Root: root, Run: k.run, State: k.state, Settle: 200 * time.Millisecond}
+	p := plan(k)
+	if err := h.Apply(ctx, p); err != nil || k.gw != "203.0.113.254" {
+		t.Fatalf("apply: %v gw=%s", err, k.gw)
+	}
+	if err := h.Rollback(ctx, p); err != nil || k.gw != "203.0.113.1" {
+		t.Fatalf("rollback: %v gw=%s", err, k.gw)
+	}
+
+	// netplan apply exits 0 but the routes are gone: apply reports an error.
+	k = &fakeKernel{file: file, broken: 1}
+	h = &NetworkHandler{Root: root, Run: k.run, State: k.state, Settle: 200 * time.Millisecond}
+	p = plan(k)
+	if err := h.Apply(ctx, p); err == nil || !strings.Contains(err.Error(), "default route via 203.0.113.254") {
+		t.Fatalf("broken apply: %v", err)
+	}
+
+	// A rollback whose first activation does not take effect activates again.
+	k.broken = 1
+	if err := h.Rollback(ctx, p); err != nil || k.gw != "203.0.113.1" || k.applys != 3 {
+		t.Fatalf("rollback retry: %v gw=%s applys=%d", err, k.gw, k.applys)
+	}
+	// Never takes effect: the rollback fails instead of reporting ok.
+	k.broken = 2
+	if err := h.Rollback(ctx, p); err == nil {
+		t.Fatal("failed rollback reported ok")
+	}
+}
+
+func TestMissing(t *testing.T) {
+	st := netcfg.State{
+		Interfaces: []netcfg.Interface{{Name: "eth0", Addresses: []string{"148.230.104.4/24", "2a02:4780:41:abcd::1/48", "fe80::1/64"}}},
+		Routes: []netcfg.Route{{Family: 4, To: "default", Via: "148.230.104.254", Dev: "eth0"}, {Family: 6, To: "default", Via: "2a02:4780:41::1", Dev: "eth0"},
+			{Family: 4, To: "10.1.0.0/16", Via: "148.230.104.1", Dev: "eth0"}},
+	}
+	ok := netcfg.IfaceConfig{Name: "eth0", Addresses: []string{"148.230.104.4/24", "2a02:4780:41:abcd::1/48"}, Gateway4: "148.230.104.254", Gateway6: "2a02:4780:41::1",
+		Routes: []netcfg.StaticRoute{{To: "10.1.0.0/16", Via: "148.230.104.1"}}}
+	if m := netcfg.Missing(st, ok); len(m) != 0 {
+		t.Fatalf("missing: %v", m)
+	}
+	bad := ok
+	bad.Gateway4, bad.Addresses, bad.DHCP6 = "148.230.104.253", []string{"148.230.104.5/24"}, false
+	if m := netcfg.Missing(st, bad); len(m) != 2 {
+		t.Fatalf("missing: %v", m)
+	}
+	if m := netcfg.Missing(st, netcfg.IfaceConfig{Name: "eth1", DHCP4: true}); len(m) != 1 {
+		t.Fatalf("missing iface: %v", m)
+	}
+	if m := netcfg.Missing(netcfg.State{Interfaces: []netcfg.Interface{{Name: "eth0", Addresses: []string{"fe80::1/64"}}}}, netcfg.IfaceConfig{Name: "eth0", DHCP4: true, DHCP6: true}); len(m) != 2 {
+		t.Fatalf("dhcp: %v", m)
+	}
+}

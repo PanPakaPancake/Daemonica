@@ -18,6 +18,7 @@ import (
 
 	"github.com/PanPakaPancake/daemonica/internal/audit"
 	"github.com/PanPakaPancake/daemonica/internal/capture"
+	"github.com/PanPakaPancake/daemonica/internal/execx"
 	"github.com/PanPakaPancake/daemonica/internal/files"
 	"github.com/PanPakaPancake/daemonica/internal/firewall"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
@@ -44,6 +45,10 @@ func main() {
 		}
 		worker.Main(handlers)
 	}
+	// Exec launcher mode: runs a system program with umask 022 (execx.Launcher).
+	if len(os.Args) > 1 && os.Args[1] == execx.UmaskArg {
+		execx.LauncherMain(os.Args[2:])
+	}
 	// Terminal child mode (pty.ExecLauncher fallback): becomes the login shell.
 	if len(os.Args) > 1 && os.Args[1] == pty.ChildArg {
 		pty.ChildMain(os.Args[2:])
@@ -54,6 +59,9 @@ func main() {
 	webUser := flag.String("web-user", "daemonica-web", "system user of the web process")
 	tlsDir := flag.String("tls-dir", "/var/lib/daemonica/tls", "certificate directory of the web process")
 	flag.Parse()
+	if self, err := os.Executable(); err == nil {
+		execx.Launcher = self
+	}
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	if os.Geteuid() != 0 {
@@ -99,7 +107,7 @@ func main() {
 	}
 	// Plan→Apply→Confirm handlers (network/firewall follow with their modules).
 	pm.Register(&helper.AllowlistHandler{Config: cfg})
-	pm.Register(&helper.NetworkHandler{Run: netcfg.ExecRunner})
+	pm.Register(&helper.NetworkHandler{Run: netcfg.ExecRunner, State: (&netcfg.Reader{}).Read})
 	ufw := &firewall.Ufw{Run: netcfg.ExecRunner}
 	pm.Register(&firewall.Handler{Ufw: ufw})
 	pm.OnEvent = func(ch planner.Change, event string, err error) {

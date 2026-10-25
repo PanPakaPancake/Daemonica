@@ -335,7 +335,7 @@ func (u *Ifupdown) Plan(ctx context.Context, cfg IfaceConfig, mac string) (Plan,
 		return Plan{}, invalid("no change")
 	}
 	fc := FileChange{Path: interfacesFile, Old: ptr(raw), New: ptr(out)}
-	p := Plan{Manager: "ifupdown", Iface: cfg.Name, Files: []FileChange{fc}, Diff: UnifiedDiff(fc.Path, fc.Old, fc.New)}
+	p := Plan{Manager: "ifupdown", Iface: cfg.Name, Files: []FileChange{fc}, Diff: UnifiedDiff(fc.Path, fc.Old, fc.New), Old: &cur, New: &cfg}
 	return p, u.validate(ctx, p)
 }
 

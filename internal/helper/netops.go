@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/PanPakaPancake/daemonica/internal/netcfg"
@@ -21,6 +22,12 @@ const KindNetwork = "network"
 type NetworkHandler struct {
 	Root string
 	Run  netcfg.Runner
+	// State reads the kernel state; when set, every apply and rollback is
+	// checked against the planned settings (a zero exit code of netplan
+	// apply does not mean networkd uses the configuration).
+	State func() (netcfg.State, error)
+	// Settle is how long the check waits for the settings (default 30 s).
+	Settle time.Duration
 }
 
 // Kind implements planner.Handler.
@@ -45,7 +52,54 @@ func (h *NetworkHandler) activate(ctx context.Context, payload json.RawMessage, 
 	if err != nil {
 		return err
 	}
-	return b.Activate(ctx, p, rollback)
+	if err := b.Activate(ctx, p, rollback); err != nil {
+		return err
+	}
+	want := p.New
+	if rollback {
+		want = p.Old
+	}
+	if h.State == nil || want == nil {
+		return nil
+	}
+	missing := h.settle(ctx, *want)
+	if len(missing) > 0 && rollback {
+		// The old configuration must come back: activate once more.
+		if err := b.Activate(ctx, p, true); err != nil {
+			return err
+		}
+		missing = h.settle(ctx, *want)
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("network configuration not in effect after activation: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+// settle waits until the kernel state shows cfg or the settle time is over.
+func (h *NetworkHandler) settle(ctx context.Context, cfg netcfg.IfaceConfig) []string {
+	wait := h.Settle
+	if wait <= 0 {
+		wait = 30 * time.Second
+	}
+	deadline := time.Now().Add(wait)
+	for {
+		st, err := h.State()
+		var missing []string
+		if err != nil {
+			missing = []string{"state: " + err.Error()}
+		} else {
+			missing = netcfg.Missing(st, cfg)
+		}
+		if len(missing) == 0 || !time.Now().Before(deadline) {
+			return missing
+		}
+		select {
+		case <-ctx.Done():
+			return missing
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
 }
 
 // Apply implements planner.Handler.

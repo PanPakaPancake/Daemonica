@@ -66,6 +66,89 @@ type Plan struct {
 	Iface   string       `json:"iface"`
 	Files   []FileChange `json:"files"`
 	Diff    string       `json:"diff"`
+	// Old and New are the interface settings before and after; after
+	// activating, the helper checks that the kernel state matches them.
+	Old *IfaceConfig `json:"old,omitempty"`
+	New *IfaceConfig `json:"new,omitempty"`
+}
+
+// Missing lists what of cfg is not in effect in st (empty: all in effect):
+// the static addresses, the gateways and static routes on the interface, and
+// for DHCP at least one address of that family.
+func Missing(st State, cfg IfaceConfig) []string {
+	var ifc *Interface
+	for i := range st.Interfaces {
+		if st.Interfaces[i].Name == cfg.Name {
+			ifc = &st.Interfaces[i]
+		}
+	}
+	if ifc == nil {
+		return []string{"interface " + cfg.Name}
+	}
+	has := map[netip.Prefix]bool{}
+	fam := map[int]bool{}
+	for _, a := range ifc.Addresses {
+		if p, err := netip.ParsePrefix(a); err == nil {
+			has[p] = true
+			if !p.Addr().IsLinkLocalUnicast() {
+				fam[family(p.Addr())] = true
+			}
+		}
+	}
+	var out []string
+	for _, a := range cfg.Addresses {
+		if p, err := netip.ParsePrefix(a); err == nil && !has[p] {
+			out = append(out, "address "+a)
+		}
+	}
+	if cfg.DHCP4 && !fam[4] {
+		out = append(out, "DHCPv4 address")
+	}
+	if cfg.DHCP6 && !fam[6] {
+		out = append(out, "DHCPv6 address")
+	}
+	route := func(to, via string) bool {
+		v, err := netip.ParseAddr(via)
+		if err != nil {
+			return true
+		}
+		for _, r := range st.Routes {
+			if r.Dev != cfg.Name || r.Family != family(v) {
+				continue
+			}
+			rv, err := netip.ParseAddr(r.Via)
+			if err != nil || rv != v {
+				continue
+			}
+			if to == "default" && r.To == "default" {
+				return true
+			}
+			if a, err := netip.ParsePrefix(to); err == nil {
+				if b, err := netip.ParsePrefix(r.To); err == nil && a.Masked() == b.Masked() {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	for _, gw := range []string{cfg.Gateway4, cfg.Gateway6} {
+		if gw != "" && !route("default", gw) {
+			out = append(out, "default route via "+gw)
+		}
+	}
+	for _, r := range cfg.Routes {
+		if r.Via != "" && !route(r.To, r.Via) {
+			out = append(out, "route "+r.To+" via "+r.Via)
+		}
+	}
+	return out
+}
+
+func family(a netip.Addr) int {
+	if a.Is4() || a.Is4In6() {
+		return 4
+	}
+	return 6
 }
 
 // Runner runs a program (execx.Run in production).

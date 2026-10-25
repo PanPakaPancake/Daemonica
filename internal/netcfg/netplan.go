@@ -443,7 +443,7 @@ func (n *Netplan) Plan(ctx context.Context, cfg IfaceConfig, mac string) (Plan, 
 	if fc.Old != nil && *fc.Old == *fc.New {
 		return Plan{}, invalid("no change")
 	}
-	p := Plan{Manager: "netplan", Iface: cfg.Name, Files: []FileChange{fc}, Diff: UnifiedDiff(fc.Path, fc.Old, fc.New)}
+	p := Plan{Manager: "netplan", Iface: cfg.Name, Files: []FileChange{fc}, Diff: UnifiedDiff(fc.Path, fc.Old, fc.New), Old: &cur, New: &cfg}
 	return p, n.validate(ctx, p)
 }
 

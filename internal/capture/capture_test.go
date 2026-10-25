@@ -187,14 +187,30 @@ type fakeStarter struct {
 	args    []string
 }
 
+// set changes the stream for the next Start.
+func (f *fakeStarter) set(data []byte, hold bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.data, f.hold = data, hold
+}
+
+func (f *fakeStarter) stops() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.stopped
+}
+
 func (f *fakeStarter) Start(_ context.Context, _ string, args []string, _ Spec) (io.ReadCloser, func(), error) {
 	r, w := io.Pipe()
+	f.mu.Lock()
 	f.args = args
+	data, hold := f.data, f.hold
+	f.mu.Unlock()
 	done := make(chan struct{})
 	var once sync.Once
 	go func() {
-		_, _ = w.Write(f.data)
-		if f.hold {
+		_, _ = w.Write(data)
+		if hold {
 			<-done
 		}
 		_ = w.Close()
@@ -267,8 +283,8 @@ func TestManagerLimits(t *testing.T) {
 		t.Fatal("second capture must be refused")
 	}
 	end := wait(t, m)
-	if end.Reason != "packets" || end.Captured != 20 || end.State != "done" || fs.stopped != 1 {
-		t.Fatalf("packets: %+v stopped=%d", end, fs.stopped)
+	if end.Reason != "packets" || end.Captured != 20 || end.State != "done" || fs.stops() != 1 {
+		t.Fatalf("packets: %+v stopped=%d", end, fs.stops())
 	}
 	st, _ := os.Stat(filepath.Join(m.Dir, meta.ID+".pcap"))
 	if st.Mode().Perm() != 0o600 || st.Size() != end.Bytes {
@@ -306,7 +322,7 @@ func TestManagerLimits(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		big.Write(record(make([]byte, 60000), 1))
 	}
-	fs.data, fs.stopped = big.Bytes(), 0
+	fs.set(big.Bytes(), true)
 	if _, err := m.Start(ctx, spec(t, func(s *Spec) { s.SizeBytes = 1 << 20 }), "acc"); err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +331,7 @@ func TestManagerLimits(t *testing.T) {
 	}
 
 	// Stop by the user; the process ending by itself.
-	fs.data = stream(3)
+	fs.set(stream(3), true)
 	meta, _ = m.Start(ctx, spec(t, nil), "acc")
 	time.Sleep(50 * time.Millisecond)
 	if err := m.Stop(meta.ID); err != nil {
@@ -324,13 +340,13 @@ func TestManagerLimits(t *testing.T) {
 	if end := m.Current().Meta; end.Reason != "stopped" || end.Captured != 3 {
 		t.Fatalf("stopped: %+v", end)
 	}
-	fs.hold = false
+	fs.set(stream(3), false)
 	m.Start(ctx, spec(t, nil), "acc") //nolint:errcheck // checked by wait
 	if end := wait(t, m); end.Reason != "ended" {
 		t.Fatalf("ended: %+v", end)
 	}
 	// Garbage instead of pcap fails.
-	fs.data = []byte("not a pcap stream at all!")
+	fs.set([]byte("not a pcap stream at all!"), false)
 	m.Start(ctx, spec(t, nil), "acc") //nolint:errcheck // checked by wait
 	if end := wait(t, m); end.State != "failed" || end.Reason != "error" {
 		t.Fatalf("garbage: %+v", end)

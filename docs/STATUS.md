@@ -56,7 +56,7 @@ _Last updated: 2026-10-25_
 | M1.0 | ⚠ nearly done | All core items done incl. accounts, audit view, allowlist Plan→Apply→Confirm. Open: TLS change in settings, DNS-01 guided, certificate renewal timer, Playwright E2E with virtual authenticator, helper hardening score ≤ 6.0. |
 | M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Open: last logins, log follow via WebSocket (DEC-017), allowlisted log files (SOLL), owner acceptance check against `top`/`free`/`df`. |
 | M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Open: last login per user (wtmpdb), owner acceptance. |
-| M1.3 | ⚠ implemented, in owner test | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021). Open: folder download as archive (KANN), owner acceptance. |
+| M1.3 | ✓ accepted by owner 2026-10-25 | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021); lists with sort/filter on every column and right-click menus (DEC-022). Open: folder download as archive (KANN). |
 | M1.4 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status

@@ -93,17 +93,28 @@ func (p *execProc) Stop() {
 }
 
 // KillSession sends SIGHUP to all processes in session sid, waits up to
-// grace for them to exit and SIGKILLs the rest.
+// grace for them to exit and SIGKILLs the rest. It returns once they are
+// gone (a SIGKILLed process can take a moment to die on a busy host).
 func KillSession(sid int, grace time.Duration) {
 	signalSession(sid, syscall.SIGHUP)
-	deadline := time.Now().Add(grace)
-	for time.Now().Before(deadline) {
-		if len(SessionPIDs(sid)) == 0 {
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
+	if waitSessionGone(sid, grace) {
+		return
 	}
 	signalSession(sid, syscall.SIGKILL)
+	waitSessionGone(sid, 2*time.Second)
+}
+
+func waitSessionGone(sid int, within time.Duration) bool {
+	deadline := time.Now().Add(within)
+	for {
+		if len(SessionPIDs(sid)) == 0 {
+			return true
+		}
+		if !time.Now().Before(deadline) {
+			return false
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 func signalSession(sid int, sig syscall.Signal) {

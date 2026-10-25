@@ -127,6 +127,10 @@ func (e *termEnv) open(t *testing.T, grant string, mode pty.Mode) (*term, error)
 
 func (tm *term) send(s string) error { return tm.d.Send(append([]byte{'d'}, s...)) }
 
+// endWithin covers one watchdog interval (terminalCheck) plus the stop grace
+// time (SIGHUP, SIGKILL after 5 s) with room for a loaded CI host.
+const endWithin = terminalCheck + 5*time.Second + 8*time.Second
+
 func (tm *term) end(t *testing.T, within time.Duration) TermEnd {
 	t.Helper()
 	select {
@@ -220,7 +224,7 @@ func TestTerminalElevatedNeedsFreshStepUp(t *testing.T) {
 	time.Sleep(300 * time.Millisecond)
 	// Elevated sessions end after 30 minutes.
 	e.offset.Store(int64(ElevatedTerminalTTL + time.Second))
-	if res := tm.end(t, 6*time.Second); res.Reason != "expired" {
+	if res := tm.end(t, endWithin); res.Reason != "expired" {
 		t.Fatalf("end: %+v", res)
 	}
 	if out := tm.out.String(); !regexp.MustCompile(`(^|\s)0\r?\n`).MatchString(out) || !strings.Contains(out, "NoNewPrivs:\t0") {
@@ -236,7 +240,7 @@ func TestTerminalEndsWithSessionAndIdle(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.grants.Revoke(g)
-	if res := a.end(t, 6*time.Second); res.Reason != "session_ended" {
+	if res := a.end(t, endWithin); res.Reason != "session_ended" {
 		t.Fatalf("logout: %+v", res)
 	}
 
@@ -246,7 +250,7 @@ func TestTerminalEndsWithSessionAndIdle(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.offset.Store(int64(DefaultTerminalIdle*time.Minute + time.Second))
-	if res := b.end(t, 6*time.Second); res.Reason != "idle" {
+	if res := b.end(t, endWithin); res.Reason != "idle" {
 		t.Fatalf("idle: %+v", res)
 	}
 }
@@ -260,7 +264,7 @@ func TestTerminalCutWhenAllowlistChanges(t *testing.T) {
 	if _, err := e.ops.Config.Update(func(c *Config) error { c.Allowlist = []string{"10.0.0.0/8"}; return nil }); err != nil {
 		t.Fatal(err)
 	}
-	if res := tm.end(t, 6*time.Second); res.Reason != "allowlist" {
+	if res := tm.end(t, endWithin); res.Reason != "allowlist" {
 		t.Fatalf("end: %+v", res)
 	}
 }

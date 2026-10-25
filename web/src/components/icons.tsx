@@ -61,7 +61,8 @@ export type IconName =
   | "filter"
   | "viewList"
   | "viewGrid"
-  | "viewCompact";
+  | "viewCompact"
+  | "paste";
 
 const paths: Record<IconName, ReactNode> = {
   overview: (
@@ -286,6 +287,12 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   move: <path d="M4 12h14m-4-4 4 4-4 4M4 5v14" />,
+  paste: (
+    <>
+      <rect x="5.5" y="4.5" width="13" height="16" rx="1.5" />
+      <path d="M9 4.5V3.5h6v1M9 11h6M9 15h4" />
+    </>
+  ),
   lock: (
     <>
       <rect x="5" y="10.5" width="14" height="10" rx="1.5" />

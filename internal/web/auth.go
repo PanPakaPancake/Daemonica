@@ -70,7 +70,7 @@ func httpStatus(code string) int {
 	case "permission_denied", "path_blocked", "protected_path", "root_mode_required":
 		return http.StatusForbidden
 	case "sensitive_path", "already_exists", "not_empty", "symlink_refused", "virtual_fs", "busy", "mount_point",
-		"not_regular_file", "is_a_directory", "not_a_directory", "read_only_fs", "limit_exceeded":
+		"not_regular_file", "is_a_directory", "not_a_directory", "read_only_fs", "limit_exceeded", "no_login_shell":
 		return http.StatusConflict
 	case "no_space":
 		return http.StatusInsufficientStorage

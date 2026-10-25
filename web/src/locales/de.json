@@ -63,7 +63,8 @@
     "range_not_satisfiable": "Der angeforderte Bereich liegt außerhalb der Datei.",
     "mount_point": "Der Vorgang würde ein anderes eingehängtes Dateisystem betreffen und wurde abgelehnt.",
     "root_mode_required": "Dafür muss der Root-Modus aktiv sein.",
-    "timeout": "Der Vorgang hat zu lange gedauert."
+    "timeout": "Der Vorgang hat zu lange gedauert.",
+    "no_login_shell": "Für diesen Linux-Benutzer ist keine Login-Shell eingetragen."
   },
   "login": {
     "title": "Anmelden",
@@ -795,6 +796,51 @@
       "365d": "Letztes Jahr",
       "-30d": "Älter als 30 Tage",
       "-365d": "Älter als 1 Jahr"
+    }
+  },
+  "terminal": {
+    "title": "Terminal",
+    "intro": "Shell auf diesem Server als Linux-Benutzer {{user}}.",
+    "readonly": "Mit der Rolle „Nur lesen“ steht das Terminal nicht zur Verfügung.",
+    "new": "Neues Terminal",
+    "newHint": "Shell als dein Linux-Benutzer (ohne sudo)",
+    "root": "Root-Shell",
+    "rootHint": "Shell als root – verlangt jedes Mal deinen Passkey, endet nach 30 Minuten",
+    "sudo": "Shell mit sudo",
+    "sudoHint": "Shell als dein Linux-Benutzer, sudo gemäß sudoers erlaubt – verlangt jedes Mal deinen Passkey, endet nach 30 Minuten",
+    "full": "Es sind bereits {{max}} Terminals offen. Schließe eines, um ein neues zu öffnen.",
+    "empty": "Noch kein Terminal offen.",
+    "keys": "Strg+Umschalt+C kopiert, Strg+Umschalt+V fügt ein",
+    "tabs": "Terminals",
+    "close": "Schließen",
+    "reopen": "Neu öffnen",
+    "connecting": "Verbinde …",
+    "search": "Im Verlauf suchen",
+    "searchPlaceholder": "Suchen …",
+    "prev": "Vorheriger Treffer",
+    "next": "Nächster Treffer",
+    "copy": "Auswahl kopieren",
+    "paste": "Einfügen",
+    "elevatedRoot": "ERHÖHT – root-Shell",
+    "elevatedSudo": "ERHÖHT – Shell mit sudo ({{user}})",
+    "endsIn": "endet in {{time}}",
+    "bar_one": "ERHÖHT: ein Terminal mit erweiterten Rechten ist offen – endet in {{time}}",
+    "bar_other": "ERHÖHT: {{count}} Terminals mit erweiterten Rechten sind offen – das erste endet in {{time}}",
+    "ended": {
+      "exit": "Die Shell wurde beendet.",
+      "closed": "Die Verbindung wurde geschlossen.",
+      "idle": "Wegen Inaktivität beendet.",
+      "expired": "Die 30 Minuten für erhöhte Rechte sind abgelaufen.",
+      "session_ended": "Deine Anmeldung ist beendet oder wurde geändert.",
+      "allowlist": "Deine Adresse ist nicht mehr in der Allowlist.",
+      "shutdown": "Der Dienst wurde neu gestartet.",
+      "connection": "Die Verbindung wurde unterbrochen.",
+      "error": "Die Verbindung wurde unterbrochen."
+    },
+    "note": {
+      "standard": "In diesem Terminal sind sudo, su und setuid-Programme wirkungslos.",
+      "sudo": "sudo wirkt hier gemäß sudoers – {{user}} braucht dort einen Eintrag (z. B. Mitglied der Gruppe sudo).",
+      "root": "Dieses Terminal läuft als root."
     }
   }
 }

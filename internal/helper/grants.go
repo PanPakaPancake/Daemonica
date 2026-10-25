@@ -206,6 +206,47 @@ func (g *GrantStore) SessionKey(tok string) string {
 	return gr.rec.Subject.AccountID + "/" + strconv.FormatInt(gr.rec.Created.UnixNano(), 36)
 }
 
+// StepUpUntil returns the end of the step-up window of tok (zero if none or invalid).
+func (g *GrantStore) StepUpUntil(tok string) time.Time {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if gr, ok := g.grants[auth.Hash(tok)]; ok {
+		return gr.rec.StepUpUntil
+	}
+	return time.Time{}
+}
+
+// Alive reports whether the login session key (see SessionKey) still has a
+// valid grant and returns its current subject. Unlike Resolve it slides the
+// idle timeout only when touch is set (user activity in a long-lived
+// connection such as a terminal), so an idle open terminal does not keep
+// the session alive.
+func (g *GrantStore) Alive(key string, now time.Time, touch bool) (policy.Subject, bool) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for h, gr := range g.grants {
+		if gr.rec.Subject.AccountID+"/"+strconv.FormatInt(gr.rec.Created.UnixNano(), 36) != key {
+			continue
+		}
+		if g.expired(gr.rec, now) {
+			g.deleteLocked(h)
+			return policy.Subject{}, false
+		}
+		if touch {
+			gr.rec.LastUsed = now
+			if g.persist != nil && now.Sub(gr.lastWrite) >= touchInterval {
+				if g.persist.TouchGrant(h, now) == nil {
+					gr.lastWrite = now
+				}
+			}
+		}
+		s := gr.rec.Subject
+		s.StepUp = now.Before(gr.rec.StepUpUntil)
+		return s, true
+	}
+	return policy.Subject{}, false
+}
+
 // MarkStepUp records a fresh step-up on an existing grant without rotation (tests, internal use).
 func (g *GrantStore) MarkStepUp(tok string, now time.Time) error {
 	g.mu.Lock()

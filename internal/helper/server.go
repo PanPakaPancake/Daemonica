@@ -311,9 +311,16 @@ func (s *Server) Dispatch(ctx context.Context, req *rpc.Request) *rpc.Response {
 
 // Stream is the data channel of a streaming operation.
 type Stream struct {
-	rw io.ReadWriter
-	id uint64
+	rw   io.ReadWriter
+	conn net.Conn
+	id   uint64
 }
+
+// Duplex returns the raw connection for operations where both sides send
+// chunks at the same time and pauses may be long (terminal). Unlike the
+// Reader/Writer path it has no per-read idle deadline; the operation's
+// context still ends it.
+func (st *Stream) Duplex() io.ReadWriter { return st.conn }
 
 // Ready sends the ready frame with metadata; data may flow afterwards.
 func (st *Stream) Ready(meta any) error {
@@ -342,7 +349,7 @@ func (s *Server) serveStream(ctx context.Context, c net.Conn, req *rpc.Request, 
 	opCtx, cancel := context.WithTimeout(ctx, op.Timeout)
 	defer cancel()
 	context.AfterFunc(opCtx, func() { _ = c.SetDeadline(time.Now()) })
-	st := &Stream{rw: rpc.NewStreamConn(c), id: req.ID}
+	st := &Stream{rw: rpc.NewStreamConn(c), conn: c, id: req.ID}
 	result, err := op.Stream(opCtx, call, st)
 	resp := s.finish(opCtx, op, call, req.ID, result, err)
 	_ = c.SetWriteDeadline(time.Now().Add(30 * time.Second))

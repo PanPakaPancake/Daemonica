@@ -27,11 +27,22 @@ import { Users } from "./pages/Users";
 import { SSHKeys } from "./pages/SSHKeys";
 import { Files } from "./pages/Files";
 import { FileEditor } from "./pages/FileEditor";
+import { TerminalPage } from "./pages/Terminal";
 
 // Per-response style nonce from the server (DEC-018): lets Radix's scroll lock
 // insert its <style> element under the strict CSP.
 const styleNonce = document.querySelector<HTMLMetaElement>('meta[name="style-nonce"]')?.content;
-if (styleNonce && styleNonce !== "__STYLE_NONCE__") setNonce(styleNonce);
+if (styleNonce && styleNonce !== "__STYLE_NONCE__") {
+  setNonce(styleNonce);
+  // Other UI libraries (xterm.js) create <style> elements without a nonce
+  // option; give every style element created by our own scripts the nonce.
+  const create = document.createElement.bind(document);
+  document.createElement = ((tag: string, options?: ElementCreationOptions) => {
+    const el = create(tag, options);
+    if (tag.toLowerCase() === "style") el.setAttribute("nonce", styleNonce);
+    return el;
+  }) as typeof document.createElement;
+}
 
 applyTheme(initialTheme());
 
@@ -89,6 +100,7 @@ if (root) {
                 <Route path="ssh-keys" element={<SSHKeys />} />
                 <Route path="files" element={<Files />} />
                 <Route path="files/edit" element={<FileEditor />} />
+                <Route path="terminal" element={<TerminalPage />} />
                 <Route path="security/passkeys" element={<Passkeys />} />
                 <Route path="security/sessions" element={<Sessions />} />
                 <Route path="security/accounts" element={<Accounts />} />

@@ -63,7 +63,8 @@
     "range_not_satisfiable": "The requested range lies outside the file.",
     "mount_point": "The operation would affect another mounted file system and was refused.",
     "root_mode_required": "Root mode must be active for this.",
-    "timeout": "The operation took too long."
+    "timeout": "The operation took too long.",
+    "no_login_shell": "This Linux user has no login shell."
   },
   "login": {
     "title": "Sign in",
@@ -795,6 +796,51 @@
       "365d": "Last year",
       "-30d": "Older than 30 days",
       "-365d": "Older than 1 year"
+    }
+  },
+  "terminal": {
+    "title": "Terminal",
+    "intro": "Shell on this server as Linux user {{user}}.",
+    "readonly": "The terminal is not available with the read-only role.",
+    "new": "New terminal",
+    "newHint": "Shell as your Linux user (without sudo)",
+    "root": "Root shell",
+    "rootHint": "Shell as root – asks for your passkey every time, ends after 30 minutes",
+    "sudo": "Shell with sudo",
+    "sudoHint": "Shell as your Linux user with sudo per sudoers – asks for your passkey every time, ends after 30 minutes",
+    "full": "{{max}} terminals are already open. Close one to open another.",
+    "empty": "No terminal open yet.",
+    "keys": "Ctrl+Shift+C copies, Ctrl+Shift+V pastes",
+    "tabs": "Terminals",
+    "close": "Close",
+    "reopen": "Open again",
+    "connecting": "Connecting …",
+    "search": "Search scrollback",
+    "searchPlaceholder": "Search …",
+    "prev": "Previous match",
+    "next": "Next match",
+    "copy": "Copy selection",
+    "paste": "Paste",
+    "elevatedRoot": "ELEVATED – root shell",
+    "elevatedSudo": "ELEVATED – shell with sudo ({{user}})",
+    "endsIn": "ends in {{time}}",
+    "bar_one": "ELEVATED: a terminal with elevated rights is open – ends in {{time}}",
+    "bar_other": "ELEVATED: {{count}} terminals with elevated rights are open – the first ends in {{time}}",
+    "ended": {
+      "exit": "The shell has exited.",
+      "closed": "The connection was closed.",
+      "idle": "Ended after inactivity.",
+      "expired": "The 30 minutes of elevated rights are over.",
+      "session_ended": "Your sign-in has ended or changed.",
+      "allowlist": "Your address is no longer in the allowlist.",
+      "shutdown": "The service was restarted.",
+      "connection": "The connection was interrupted.",
+      "error": "The connection was interrupted."
+    },
+    "note": {
+      "standard": "In this terminal sudo, su and setuid programs have no effect.",
+      "sudo": "sudo works here as sudoers allows – {{user}} needs an entry there (e.g. member of group sudo).",
+      "root": "This terminal runs as root."
     }
   }
 }

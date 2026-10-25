@@ -347,13 +347,7 @@
     "lockoutAck": "I understand: my current IP {{ip}} will no longer be allowed. Without a confirmation from an allowed network the change is reverted after 90 seconds.",
     "publicAck": "I deliberately want to make the dashboard publicly reachable.",
     "plan": "Plan change",
-    "preview": "Change preview",
-    "apply": "Apply",
-    "keep": "I am still connected – keep it",
-    "undo": "Revert now",
     "confirmPrompt": "The new allowlist is active. Confirm within {{seconds}} s that you can still reach the dashboard; otherwise it is reverted automatically.",
-    "confirmed": "Change confirmed and saved.",
-    "rolledBack": "Change reverted.",
     "rolledBackTimeout": "No confirmation received – the server restored the previous allowlist.",
     "risk": {
       "low": "Low risk.",
@@ -842,5 +836,124 @@
       "sudo": "sudo works here as sudoers allows – {{user}} needs an entry there (e.g. member of group sudo).",
       "root": "This terminal runs as root."
     }
+  },
+  "change": {
+    "preview": "Change preview",
+    "apply": "Apply",
+    "applying": "Applying …",
+    "keep": "I am still connected – keep it",
+    "undo": "Revert now",
+    "rolledBack": "Change reverted.",
+    "confirmed": "Change confirmed and saved."
+  },
+  "network": {
+    "title": "Network",
+    "intro": "Interfaces, routes, DNS and open ports of this server. Changes go through preview → apply → confirm and are reverted automatically after 90 seconds without confirmation.",
+    "host": "Host name",
+    "gateway": "Default gateway",
+    "dns": "DNS servers",
+    "search": "Search domains",
+    "resolved": "via systemd-resolved",
+    "manager": "Managed by",
+    "managers": {
+      "netplan": "netplan",
+      "ifupdown": "ifupdown (/etc/network/interfaces)",
+      "networkmanager": "NetworkManager",
+      "networkd": "systemd-networkd",
+      "none": "not detected"
+    },
+    "readOnly": {
+      "mixed": "Several systems configure the network on this server at the same time. Daemonica only shows the configuration so they do not overwrite each other.",
+      "not_implemented": "Daemonica only shows this network manager so far. Change it with its own tools (e.g. nmcli) in the terminal.",
+      "unsupported": "No supported network manager detected – the configuration is shown only."
+    },
+    "tab": {
+      "overview": "Interfaces and routes",
+      "ports": "Open ports"
+    },
+    "interfaces": "Interfaces",
+    "routes": "Routes",
+    "col": {
+      "name": "Name",
+      "kind": "Type",
+      "state": "State",
+      "addresses": "Addresses",
+      "mac": "MAC",
+      "speed": "Speed",
+      "family": "Family",
+      "to": "Destination",
+      "via": "Via",
+      "dev": "Interface",
+      "metric": "Metric",
+      "protocol": "Origin",
+      "src": "Source address",
+      "proto": "Protocol",
+      "bind": "Bind address",
+      "port": "Port",
+      "process": "Process",
+      "user": "User",
+      "exposure": "Reachable from"
+    },
+    "kind": {
+      "ethernet": "Ethernet",
+      "loopback": "Loopback",
+      "vlan": "VLAN",
+      "bridge": "Bridge",
+      "bond": "Bond",
+      "wireless": "Wi-Fi",
+      "virtual": "Virtual",
+      "other": "Other"
+    },
+    "vlanOf": "ID {{id}} on {{parent}}",
+    "session": "your connection",
+    "sessionHint": "Your current dashboard connection runs over this interface.",
+    "default": "Default",
+    "onLink": "on-link",
+    "edit": "Edit configuration",
+    "copyAddresses": "Copy addresses",
+    "actionsFor": "Actions for {{name}}",
+    "portsIntro": "Listening TCP ports and open UDP ports with their process – the same list as “ss -tulnp”.",
+    "kernel": "kernel / no process",
+    "allV4": "all IPv4 addresses",
+    "allV6": "all IPv6 addresses",
+    "exposure": {
+      "local": "local only",
+      "all": "all networks",
+      "specific": "one address"
+    },
+    "editTitle": "Network: {{name}}",
+    "writesTo": "Changes are saved in {{file}}.",
+    "notEditable": {
+      "several_files": "This interface is configured in several files ({{file}}). To lose nothing, Daemonica only shows it.",
+      "advanced": "This interface uses settings Daemonica does not edit (e.g. bridge, bond or routing options). It is shown only.",
+      "manager": "The network manager of this server is shown only.",
+      "not_configured": ""
+    },
+    "sessionWarn": "Your current connection (from {{ip}}) runs over {{name}}. A wrong setting disconnects you – without confirmation the server reverts after 90 seconds.",
+    "dhcp4": "Get an address via DHCP",
+    "dhcp6": "Get an address via DHCPv6",
+    "gateway4": "Gateway (IPv4)",
+    "gateway6": "Gateway (IPv6)",
+    "addresses": "Static addresses",
+    "addressesHelp": "One address per line with prefix length, e.g. 192.0.2.10/24 or 2001:db8::10/64.",
+    "dnsServers": "DNS servers",
+    "searchDomains": "Search domains",
+    "listHelp": "Separate several entries with spaces.",
+    "mtuHelp": "Empty = default",
+    "staticRoutes": "Static routes",
+    "noRoutes": "No additional routes.",
+    "addRoute": "Add route",
+    "removeRoute": "Remove route",
+    "lockoutAck": "I understand that I am changing the interface of my own connection ({{name}}) and may have to open the dashboard at a new address afterwards.",
+    "plan": "Create preview",
+    "explain": "Daemonica checks the configuration with the network manager's tool before applying it. After applying you have 90 seconds to confirm over a new connection. If that fails, the server restores the previous configuration by itself.",
+    "confirmPrompt": "The new network configuration is active. Confirm within {{seconds}} s that you can still reach the dashboard; otherwise the server reverts automatically.",
+    "risk": {
+      "low": "Low risk.",
+      "medium": "Medium risk: connections over this interface may be interrupted briefly.",
+      "high": "Red alert: this interface carries your own connection. A mistake disconnects you until the server reverts after 90 seconds."
+    },
+    "rolledBackTimeout": "No confirmation received – the server restored the previous network configuration.",
+    "newUrl": "Your address changes. Confirm at the new address:"
   }
 }

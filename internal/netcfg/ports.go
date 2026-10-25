@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"net/netip"
 	"os"
+	"os/user"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -18,6 +19,7 @@ type Port struct {
 	Address   string    `json:"address"`
 	Port      int       `json:"port"`
 	UID       int       `json:"uid"`
+	User      string    `json:"user,omitempty"`
 	Processes []PortPID `json:"processes"`
 }
 
@@ -46,6 +48,17 @@ func (r *Reader) Ports() ([]Port, error) {
 			return nil, err
 		}
 		out = append(out, ps...)
+	}
+	names := map[int]string{}
+	for i := range out {
+		n, ok := names[out[i].UID]
+		if !ok {
+			if u, err := user.LookupId(strconv.Itoa(out[i].UID)); err == nil {
+				n = u.Username
+			}
+			names[out[i].UID] = n
+		}
+		out[i].User = n
 	}
 	slices.SortFunc(out, func(a, b Port) int {
 		if a.Port != b.Port {

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ChangeFlow, type Change } from "../components/ChangeFlow";
 import { Icon } from "../components/icons";
 import { Explain, Field, Notice, Panel } from "../components/ui";
 import { api, ApiError } from "../lib/api";
@@ -20,39 +21,7 @@ interface SettingsView {
   client_ip: string;
   client_allowed: boolean;
 }
-interface Change {
-  id: string;
-  summary: string;
-  diff: string;
-  risk: "low" | "medium" | "high";
-  state: "planned" | "applied" | "confirmed" | "rolled_back" | "failed" | "discarded";
-  deadline?: string;
-}
-
 const loopback = new Set(["127.0.0.0/8", "::1/128"]);
-
-/** Seconds left until deadline; onExpire fires once from the timer callback. */
-function useCountdown(deadline: string | undefined, onExpire: () => void) {
-  const [now, setNow] = useState(() => Date.now());
-  const expire = useRef(onExpire);
-  useEffect(() => {
-    expire.current = onExpire;
-  });
-  useEffect(() => {
-    if (!deadline) return;
-    const end = Date.parse(deadline);
-    const id = window.setInterval(() => {
-      const n = Date.now();
-      setNow(n);
-      if (n >= end) {
-        window.clearInterval(id);
-        expire.current();
-      }
-    }, 500);
-    return () => window.clearInterval(id);
-  }, [deadline]);
-  return deadline ? Math.max(0, Math.ceil((Date.parse(deadline) - now) / 1000)) : 0;
-}
 
 export function Settings() {
   const { t } = useTranslation();
@@ -68,13 +37,7 @@ export function Settings() {
   const [ackPublic, setAckPublic] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string>();
-  const [done, setDone] = useState<string>();
-  // The change is rolled back by the helper when the timer runs out (independent of the browser).
-  const left = useCountdown(change?.state === "applied" ? change.deadline : undefined, () => {
-    setChange((c) => (c ? { ...c, state: "rolled_back" } : c));
-    setDone(t("settings.rolledBackTimeout"));
-    void qc.invalidateQueries({ queryKey: ["settings"] });
-  });
+  const [done, setDone] = useState<{ msg: string; tone: "ok" | "warn" }>();
 
   const s = q.data;
   const current = s ? s.allowlist.filter((x) => !loopback.has(x)).join("\n") : "";
@@ -119,40 +82,6 @@ export function Settings() {
       }
     });
 
-  const apply = () =>
-    run(async () => {
-      if (!change) return;
-      const c = await withStepUp(() => api<Change>("POST", `/changes/${encodeURIComponent(change.id)}/apply`));
-      setChange(c);
-    });
-
-  // Confirmation travels over a NEW connection (the apply response closed the
-  // old one), which proves the new allowlist still admits this browser.
-  const confirm = () =>
-    run(async () => {
-      if (!change) return;
-      const c = await api<Change>("POST", `/changes/${encodeURIComponent(change.id)}/confirm`);
-      setChange(undefined);
-      setText(undefined);
-      setDone(c.state === "confirmed" ? t("settings.confirmed") : "");
-      await qc.invalidateQueries({ queryKey: ["settings"] });
-    });
-
-  const rollback = () =>
-    run(async () => {
-      if (!change) return;
-      await api<Change>("POST", `/changes/${encodeURIComponent(change.id)}/rollback`);
-      setChange(undefined);
-      setDone(t("settings.rolledBack"));
-      await qc.invalidateQueries({ queryKey: ["settings"] });
-    });
-
-  const discard = () => {
-    setChange(undefined);
-    setNeedLockout(false);
-    setNeedPublic(false);
-  };
-
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -160,9 +89,9 @@ export function Settings() {
         <p className="mt-1 text-muted">{t("settings.intro")}</p>
       </div>
       {err && <Notice tone="bad">{err}</Notice>}
-      {done && (
-        <Notice tone="ok" live>
-          {done}
+      {done?.msg && (
+        <Notice tone={done.tone} live>
+          {done.msg}
         </Notice>
       )}
       {q.isError && <Notice tone="bad">{errorText(t, q.error)}</Notice>}
@@ -238,42 +167,23 @@ export function Settings() {
           )}
 
           {change && (
-            <div className="mt-6 flex flex-col gap-4">
-              <h3 className="font-semibold">{t("settings.preview")}</h3>
-              <pre className="overflow-x-auto rounded-[8px] border border-line bg-bg-0 p-3 font-mono text-sm">
-                {change.diff.split("\n").map((l, i) => (
-                  <span key={i} className={l.startsWith("+") ? "text-ok" : l.startsWith("-") ? "text-bad" : "text-muted"}>
-                    {l + "\n"}
-                  </span>
-                ))}
-              </pre>
-              <p className={change.risk === "high" ? "text-bad" : "text-warn"}>{t(`settings.risk.${change.risk}`)}</p>
-              {change.state === "planned" && (
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void apply()}>
-                    {t("settings.apply")}
-                  </button>
-                  <button type="button" className="btn btn-secondary" disabled={busy} onClick={discard}>
-                    {t("common.cancel")}
-                  </button>
-                </div>
-              )}
-              {change.state === "applied" && (
-                <>
-                  <Notice tone="warn" live>
-                    {t("settings.confirmPrompt", { seconds: left })}
-                  </Notice>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void confirm()}>
-                      <Icon name="check" />
-                      {t("settings.keep")}
-                    </button>
-                    <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void rollback()}>
-                      {t("settings.undo")}
-                    </button>
-                  </div>
-                </>
-              )}
+            <div className="mt-6">
+              <ChangeFlow
+                change={change}
+                ns="settings"
+                onChange={(c) => {
+                  setChange(c);
+                  if (!c) {
+                    setText(undefined);
+                    setNeedLockout(false);
+                    setNeedPublic(false);
+                  }
+                }}
+                onDone={(msg, tone) => {
+                  setDone({ msg, tone });
+                  void qc.invalidateQueries({ queryKey: ["settings"] });
+                }}
+              />
             </div>
           )}
         </Panel>

@@ -369,3 +369,33 @@ func TestReadLive(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestNetplanGenerateReal validates edited files with the real netplan (skipped without it).
+func TestNetplanGenerateReal(t *testing.T) {
+	if _, err := os.Stat("/usr/sbin/netplan"); err != nil {
+		t.Skip("netplan not installed")
+	}
+	root := t.TempDir()
+	write(t, root, "/etc/netplan/50-cloud-init.yaml", cloudInit)
+	n := &Netplan{Root: root, Run: ExecRunner}
+	c, _ := n.Config("eth0", "52:54:00:12:34:56")
+	c.Gateway4, c.MTU, c.Search = "203.0.113.254", 1400, []string{"example.org"}
+	c.Routes = []StaticRoute{{To: "10.0.0.0/8", Via: "203.0.113.2", Metric: 50}, {To: "2001:db8:1::/48", Via: "2001:db8::2"}}
+	nc, err := Normalize(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := n.Plan(context.Background(), nc, "52:54:00:12:34:56"); err != nil {
+		t.Fatalf("real netplan rejects our file: %v", err)
+	}
+	// And rejects a broken one.
+	write(t, root, "/etc/netplan/60-bad.yaml", "network:\n  version: 2\n  ethernets:\n    eth9:\n      addresses: [notanip]\n")
+	if _, err := n.Plan(context.Background(), nc, "52:54:00:12:34:56"); err == nil {
+		t.Fatal("broken configuration accepted")
+	}
+	nc2, _ := Normalize(IfaceConfig{Name: "eth7", DHCP4: true, DHCP6: true})
+	_ = os.Remove(filepath.Join(root, "/etc/netplan/60-bad.yaml"))
+	if _, err := n.Plan(context.Background(), nc2, ""); err != nil {
+		t.Fatalf("new file: %v", err)
+	}
+}

@@ -39,7 +39,7 @@ const groups: NavGroup[] = [
     items: [
       { to: "/users", key: "nav.users", icon: "users" },
       { to: "/ssh-keys", key: "nav.sshKeys", icon: "key", hideReadOnly: true },
-      { key: "nav.network", icon: "network" },
+      { to: "/network", key: "nav.network", icon: "network" },
       { key: "nav.firewall", icon: "firewall" },
       { key: "nav.updates", icon: "updates" },
       { key: "nav.disks", icon: "disk" },

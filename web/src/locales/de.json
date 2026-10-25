@@ -347,13 +347,7 @@
     "lockoutAck": "Ich verstehe: Meine aktuelle IP {{ip}} ist danach nicht mehr freigegeben. Ohne Bestätigung aus einem erlaubten Netz wird die Änderung nach 90 Sekunden zurückgesetzt.",
     "publicAck": "Ich will das Dashboard bewusst öffentlich erreichbar machen.",
     "plan": "Änderung planen",
-    "preview": "Vorschau der Änderung",
-    "apply": "Anwenden",
-    "keep": "Ich bin noch verbunden – beibehalten",
-    "undo": "Sofort zurücksetzen",
     "confirmPrompt": "Die neue Freigabe ist aktiv. Bestätige innerhalb von {{seconds}} s, dass du das Dashboard weiterhin erreichst; sonst wird automatisch zurückgesetzt.",
-    "confirmed": "Änderung bestätigt und gespeichert.",
-    "rolledBack": "Änderung zurückgesetzt.",
     "rolledBackTimeout": "Keine Bestätigung erhalten – der Server hat die vorherige Freigabe wiederhergestellt.",
     "risk": {
       "low": "Geringes Risiko.",
@@ -842,5 +836,124 @@
       "sudo": "sudo wirkt hier gemäß sudoers – {{user}} braucht dort einen Eintrag (z. B. Mitglied der Gruppe sudo).",
       "root": "Dieses Terminal läuft als root."
     }
+  },
+  "change": {
+    "preview": "Vorschau der Änderung",
+    "apply": "Anwenden",
+    "applying": "Wird angewendet …",
+    "keep": "Ich bin noch verbunden – beibehalten",
+    "undo": "Sofort zurücksetzen",
+    "rolledBack": "Änderung zurückgesetzt.",
+    "confirmed": "Änderung bestätigt und gespeichert."
+  },
+  "network": {
+    "title": "Netzwerk",
+    "intro": "Schnittstellen, Routen, DNS und offene Ports dieses Servers. Änderungen laufen über Vorschau → Anwenden → Bestätigen und werden ohne Bestätigung nach 90 Sekunden automatisch zurückgesetzt.",
+    "host": "Hostname",
+    "gateway": "Standard-Gateway",
+    "dns": "DNS-Server",
+    "search": "Suchdomänen",
+    "resolved": "über systemd-resolved",
+    "manager": "Verwaltet durch",
+    "managers": {
+      "netplan": "netplan",
+      "ifupdown": "ifupdown (/etc/network/interfaces)",
+      "networkmanager": "NetworkManager",
+      "networkd": "systemd-networkd",
+      "none": "nicht erkannt"
+    },
+    "readOnly": {
+      "mixed": "Auf diesem Server konfigurieren mehrere Systeme das Netzwerk gleichzeitig. Daemonica zeigt die Konfiguration deshalb nur an, damit sich die Systeme nicht gegenseitig überschreiben.",
+      "not_implemented": "Dieser Netzwerkmanager wird in Daemonica bisher nur angezeigt. Ändern kannst du ihn mit seinen eigenen Werkzeugen (z. B. nmcli) im Terminal.",
+      "unsupported": "Kein unterstützter Netzwerkmanager erkannt – die Konfiguration wird nur angezeigt."
+    },
+    "tab": {
+      "overview": "Schnittstellen und Routen",
+      "ports": "Offene Ports"
+    },
+    "interfaces": "Schnittstellen",
+    "routes": "Routen",
+    "col": {
+      "name": "Name",
+      "kind": "Art",
+      "state": "Status",
+      "addresses": "Adressen",
+      "mac": "MAC",
+      "speed": "Geschwindigkeit",
+      "family": "Familie",
+      "to": "Ziel",
+      "via": "Über",
+      "dev": "Schnittstelle",
+      "metric": "Metrik",
+      "protocol": "Herkunft",
+      "src": "Quelladresse",
+      "proto": "Protokoll",
+      "bind": "Bindeadresse",
+      "port": "Port",
+      "process": "Prozess",
+      "user": "Benutzer",
+      "exposure": "Erreichbar von"
+    },
+    "kind": {
+      "ethernet": "Ethernet",
+      "loopback": "Loopback",
+      "vlan": "VLAN",
+      "bridge": "Bridge",
+      "bond": "Bond",
+      "wireless": "WLAN",
+      "virtual": "Virtuell",
+      "other": "Sonstige"
+    },
+    "vlanOf": "ID {{id}} auf {{parent}}",
+    "session": "deine Verbindung",
+    "sessionHint": "Über diese Schnittstelle läuft deine aktuelle Dashboard-Verbindung.",
+    "default": "Standard (default)",
+    "onLink": "direkt verbunden",
+    "edit": "Konfiguration bearbeiten",
+    "copyAddresses": "Adressen kopieren",
+    "actionsFor": "Aktionen für {{name}}",
+    "portsIntro": "Lauschende TCP-Ports und offene UDP-Ports mit dem zugehörigen Prozess – dieselbe Liste wie „ss -tulnp“.",
+    "kernel": "Kernel / kein Prozess",
+    "allV4": "alle IPv4-Adressen",
+    "allV6": "alle IPv6-Adressen",
+    "exposure": {
+      "local": "nur lokal",
+      "all": "allen Netzen",
+      "specific": "einer Adresse"
+    },
+    "editTitle": "Netzwerk: {{name}}",
+    "writesTo": "Änderungen werden in {{file}} gespeichert.",
+    "notEditable": {
+      "several_files": "Diese Schnittstelle wird in mehreren Dateien konfiguriert ({{file}}). Damit nichts verloren geht, zeigt Daemonica sie nur an.",
+      "advanced": "Diese Schnittstelle nutzt Einstellungen, die Daemonica nicht bearbeitet (z. B. Bridge-, Bond- oder Routing-Optionen). Sie wird nur angezeigt.",
+      "manager": "Der Netzwerkmanager dieses Servers wird nur angezeigt.",
+      "not_configured": ""
+    },
+    "sessionWarn": "Über {{name}} läuft deine aktuelle Verbindung (von {{ip}}). Eine falsche Einstellung trennt dich – ohne Bestätigung setzt der Server nach 90 Sekunden zurück.",
+    "dhcp4": "Adresse per DHCP beziehen",
+    "dhcp6": "Adresse per DHCPv6 beziehen",
+    "gateway4": "Gateway (IPv4)",
+    "gateway6": "Gateway (IPv6)",
+    "addresses": "Feste Adressen",
+    "addressesHelp": "Eine Adresse pro Zeile mit Präfixlänge, z. B. 192.0.2.10/24 oder 2001:db8::10/64.",
+    "dnsServers": "DNS-Server",
+    "searchDomains": "Suchdomänen",
+    "listHelp": "Mehrere Einträge durch Leerzeichen trennen.",
+    "mtuHelp": "Leer = Standard",
+    "staticRoutes": "Statische Routen",
+    "noRoutes": "Keine zusätzlichen Routen.",
+    "addRoute": "Route hinzufügen",
+    "removeRoute": "Route entfernen",
+    "lockoutAck": "Mir ist klar, dass ich die Schnittstelle meiner eigenen Verbindung ({{name}}) ändere und das Dashboard danach eventuell unter einer neuen Adresse aufrufen muss.",
+    "plan": "Vorschau erstellen",
+    "explain": "Daemonica prüft die Konfiguration vor dem Anwenden mit dem Werkzeug des Netzwerkmanagers. Nach dem Anwenden hast du 90 Sekunden Zeit, über eine neue Verbindung zu bestätigen. Gelingt das nicht, stellt der Server die vorherige Konfiguration selbst wieder her.",
+    "confirmPrompt": "Die neue Netzwerkkonfiguration ist aktiv. Bestätige innerhalb von {{seconds}} s, dass du das Dashboard weiterhin erreichst; sonst setzt der Server automatisch zurück.",
+    "risk": {
+      "low": "Geringes Risiko.",
+      "medium": "Mittleres Risiko: Verbindungen über diese Schnittstelle können kurz unterbrochen werden.",
+      "high": "Warnstufe Rot: Diese Schnittstelle trägt deine eigene Verbindung. Ein Fehler trennt dich, bis der Server nach 90 Sekunden zurücksetzt."
+    },
+    "rolledBackTimeout": "Keine Bestätigung erhalten – der Server hat die vorherige Netzwerkkonfiguration wiederhergestellt.",
+    "newUrl": "Deine Adresse ändert sich. Bestätige über die neue Adresse:"
   }
 }

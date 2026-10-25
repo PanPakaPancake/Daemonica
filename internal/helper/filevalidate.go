@@ -18,7 +18,8 @@ import (
 // the others are checked on the live configuration right after the save,
 // because their checks need the complete configuration (includes, drop-ins).
 // On failure the previous content is restored unless the user chose to
-// save anyway; for sudoers there is no override.
+// save anyway or the configuration already failed before the save; for
+// sudoers there is no override.
 
 // Validator describes the check for one kind of file.
 type Validator struct {
@@ -38,6 +39,9 @@ type Validation struct {
 	Output     string `json:"output,omitempty"`
 	Blocking   bool   `json:"blocking,omitempty"`
 	RolledBack bool   `json:"rolled_back,omitempty"`
+	// Preexisting: the configuration already failed the check before this
+	// save, so the save was kept.
+	Preexisting bool `json:"preexisting,omitempty"`
 }
 
 const (

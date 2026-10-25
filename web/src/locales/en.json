@@ -753,7 +753,8 @@
       "versionSame": "The version is identical to the editor content.",
       "versionBack": "Back to the list",
       "versionLoad": "Load into the editor",
-      "versionLoaded": "Version from {{time}} loaded. Save to restore it."
+      "versionLoaded": "Version from {{time}} loaded. Save to restore it.",
+      "savedPreexisting": "Saved. The check with {{tool}} fails, but it already failed before this change. Review the configuration before reloading the service."
     }
   }
 }

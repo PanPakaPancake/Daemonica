@@ -101,8 +101,10 @@ func newFSEnv(t *testing.T, uploadMiB int) *fsEnv {
 		t.Fatal(err)
 	}
 	ops := map[string]*helper.Op{}
+	state := t.TempDir()
 	(&helper.FileOps{Worker: &worker.Runner{Timeout: 5 * time.Minute}, Lookup: worker.Lookup,
-		UploadMiB: func() int { return uploadMiB }}).Register(ops)
+		UploadMiB: func() int { return uploadMiB },
+		Versions:  &helper.VersionStore{Dir: filepath.Join(state, "versions")}, StateDir: state}).Register(ops)
 	gs := helper.NewGrantStore(30*time.Minute, 12*time.Hour)
 	sock := filepath.Join(t.TempDir(), "h.sock")
 	l, err := helper.ListenUnix(sock, 0o600, -1)

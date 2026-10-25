@@ -148,7 +148,8 @@ export function FileEditor() {
       const parts = [t(res.atomic ? "files.editor.saved" : "files.editor.savedInPlace")];
       if (v?.ok) parts.push(t("files.editor.checkPassed", { tool: v.tool }));
       if (res.version) parts.push(t("files.editor.versionKept"));
-      setMsg(v && !v.ok ? { tone: "warn", text: t("files.editor.savedDespite", { tool: v.tool }) } : { tone: "ok", text: parts.join(" ") });
+      if (v && !v.ok) setMsg({ tone: "warn", text: t(v.preexisting ? "files.editor.savedPreexisting" : "files.editor.savedDespite", { tool: v.tool }) });
+      else setMsg({ tone: "ok", text: parts.join(" ") });
       void qc.invalidateQueries({ queryKey: ["fs-list"] });
     } catch (e) {
       if (e instanceof ApiError && e.code === "conflict") {

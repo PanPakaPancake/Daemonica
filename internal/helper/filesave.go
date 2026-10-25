@@ -119,6 +119,13 @@ func (f *FileOps) save(ctx context.Context, c Call, id worker.Identity, el bool,
 		v = nil // done
 	}
 
+	// Baseline of a post-save check: if the live configuration already fails,
+	// a failure after the save is not this edit's fault and is not rolled back.
+	baselineOK := true
+	if v != nil {
+		baselineOK = v.Run(ctx, want, want).OK
+	}
+
 	var stored Version
 	if versioned && exists && sha256Hex(old) != sha256Hex(data) {
 		var err error
@@ -157,6 +164,9 @@ func (f *FileOps) save(ctx context.Context, c Call, id worker.Identity, el bool,
 		c.AuditKV["validation"] = "ok"
 	case force:
 		c.AuditKV["validation"] = "failed_kept"
+	case !baselineOK:
+		val.Preexisting = true
+		c.AuditKV["validation"] = "failed_preexisting"
 	default:
 		c.AuditKV["validation"] = "failed"
 		// Restore the previous state.

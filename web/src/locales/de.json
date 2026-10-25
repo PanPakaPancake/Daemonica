@@ -753,7 +753,8 @@
       "versionSame": "Die Version ist identisch mit dem Inhalt im Editor.",
       "versionBack": "Zurück zur Liste",
       "versionLoad": "In den Editor laden",
-      "versionLoaded": "Version vom {{time}} geladen. Speichere, um sie wiederherzustellen."
+      "versionLoaded": "Version vom {{time}} geladen. Speichere, um sie wiederherzustellen.",
+      "savedPreexisting": "Gespeichert. Die Prüfung mit {{tool}} schlägt fehl, aber das tat sie schon vor dieser Änderung. Prüfe die Konfiguration, bevor du den Dienst neu lädst."
     }
   }
 }

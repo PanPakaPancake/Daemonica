@@ -315,3 +315,15 @@ func TestCleanOutput(t *testing.T) {
 		t.Fatalf("not capped: %d", len(long))
 	}
 }
+
+func TestSaveKeepsWhenAlreadyFailing(t *testing.T) {
+	e := newSaveEnv(t, shValidator(false))
+	h := e.put(t, "site.conf", "BAD old\n")
+	res := e.save(t, "site.conf", h, "BAD new\n", false, false)
+	if !res.Saved || res.Validation == nil || res.Validation.OK || !res.Validation.Preexisting || res.Validation.RolledBack {
+		t.Fatalf("result %+v %+v", res, res.Validation)
+	}
+	if got := e.content(t, "site.conf"); got != "BAD new\n" {
+		t.Fatalf("content %q", got)
+	}
+}

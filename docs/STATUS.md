@@ -56,7 +56,7 @@ _Last updated: 2026-10-25_
 | M1.0 | ⚠ nearly done | All core items done incl. accounts, audit view, allowlist Plan→Apply→Confirm. Open: TLS change in settings, DNS-01 guided, certificate renewal timer, Playwright E2E with virtual authenticator, helper hardening score ≤ 6.0. |
 | M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Open: last logins, log follow via WebSocket (DEC-017), allowlisted log files (SOLL), owner acceptance check against `top`/`free`/`df`. |
 | M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Open: last login per user (wtmpdb), owner acceptance. |
-| M1.3 | ⚠ implemented, in owner test | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021). Open: folder download as archive (KANN), integration test of the validators on the VM, owner acceptance. |
+| M1.3 | ⚠ implemented, in owner test | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021). Open: folder download as archive (KANN), owner acceptance. |
 | M1.4 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status
@@ -137,7 +137,7 @@ _Last updated: 2026-10-25_
 | Editor: CodeMirror 6, highlighting (conf/ini/yaml/json/toml/sh/py/js/ts/md/sql/xml/nginx/systemd/crontab …), search/replace, line numbers, wrap, indentation, LF/CRLF kept, UTF-8 only, binary → download, 5 MiB limit | ✓ | `CodeEditor.tsx`, `files.Read` (binary/size detection) |
 | Save atomic (temp + rename) keeping owner/mode/ACL/xattr; optimistic concurrency with diff dialog; unsaved-changes warning; clear read-only message | ✓ | `files.Write`; `TestEditorRoundTrip`; `FileEditor.tsx` |
 | /etc pre-versions (30 days/20 versions) with restore | ✓ | DEC-021; `VersionStore`, `fs.versions`/`fs.version_read`, editor „Versionen“; `TestSaveKeepsPreviousVersion`, `TestVersionStoreRetention` |
-| Validation of known files before saving (sshd, sudoers, nginx, units, fstab) | ✓ (unit tests) / ⚠ (VM run with the real tools pending) | DEC-021; sudoers blocking pre-check, others post-check with rollback; `TestSave*`, `TestValidatorFor` |
+| Validation of known files before saving (sshd, sudoers, nginx, units, fstab) | ✓ | DEC-021; sudoers blocking pre-check, others post-check with rollback; `TestSave*`, `TestValidatorFor`; integration `TestEditorValidationAndVersions` with real `sshd -t`, `nginx -t`, `visudo -c` |
 | Upload: drag & drop, multiple, progress, cancel, streaming, limit (default 1 GiB), space check, mode 0640 (changeable), owner = user, overwrite only after confirmation, SHA-256 in audit | ✓ | `files.Upload`, `useUploads`; `TestUpload`, `TestLargeUploadStreams` (512 MiB, heap < 64 MiB) |
 | Download: streaming with Range, `attachment` + `nosniff`, one-time token (60 s) | ✓ | `fileDownload`, `fs.download_token`; integration test (reuse/other session refused) |
 | Roles: read-only ✖; operator/admin within Linux permissions | ✓ | policy `files` (read-only deny), UI hides navigation |

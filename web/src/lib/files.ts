@@ -154,6 +154,8 @@ export interface Validation {
   blocking?: boolean;
   /** The save was undone because the check failed. */
   rolled_back?: boolean;
+  /** The configuration already failed the check before this save; it was kept. */
+  preexisting?: boolean;
 }
 
 export interface WriteResult {

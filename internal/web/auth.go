@@ -290,6 +290,26 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 		mux.Handle("POST /api/v1/ssh-keys/"+op, sess("sshkeys."+op))
 	}
 
+	// M1.5a: network.
+	mux.Handle("GET /api/v1/network", sess("net.get"))
+	mux.Handle("GET /api/v1/network/ports", sess("net.ports"))
+	mux.Handle("POST /api/v1/network/config", sess("net.config"))
+	mux.Handle("POST /api/v1/network/plan", sess("net.plan"))
+
+	// M1.5b: firewall.
+	mux.Handle("GET /api/v1/firewall", sess("firewall.get"))
+	mux.Handle("GET /api/v1/firewall/raw", sess("firewall.raw"))
+	mux.Handle("POST /api/v1/firewall/plan", sess("firewall.plan"))
+	mux.Handle("POST /api/v1/firewall/install", sess("firewall.install"))
+	mux.Handle("POST /api/v1/firewall/logs", sess("firewall.logs"))
+
+	// M1.5d: packet capture.
+	mux.Handle("GET /api/v1/captures", sess("capture.status"))
+	for _, op := range []string{"start", "stop", "lines", "delete", "delete_all", "settings", "download_token", "install"} {
+		mux.Handle("POST /api/v1/captures/"+op, sess("capture."+op))
+	}
+	mux.Handle("GET /api/v1/captures/download/{token}", http.HandlerFunc(s.captureDownload))
+
 	mux.Handle("GET /api/v1/settings", sess("settings.get"))
 	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))
 	mux.Handle("GET /api/v1/changes/{id}", sess("settings.change_get"))

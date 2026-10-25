@@ -187,7 +187,7 @@ export function Accounts() {
         {list.isLoading ? (
           <p className="text-muted">{t("common.loading")}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <DataTable
               rows={list.data}
               rowKey={(a) => a.id}

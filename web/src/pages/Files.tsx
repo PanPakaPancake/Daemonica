@@ -389,7 +389,7 @@ export function Files() {
           {data?.truncated && <Notice tone="info">{t("files.truncated")}</Notice>}
           {data?.virtual && <Notice tone="info">{t("files.virtual")}</Notice>}
 
-          <Panel className="overflow-x-auto p-0">
+          <Panel className="relative overflow-x-auto p-0">
             {view === "details" ? (
               <DataTable
                 label={t("files.title")}

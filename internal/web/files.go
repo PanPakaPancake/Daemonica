@@ -210,6 +210,45 @@ func (d deadlineWriter) Write(p []byte) (int, error) {
 	return d.w.Write(p)
 }
 
+// captureDownload streams a packet capture for a one-time token (M1.5d).
+func (s *Server) captureDownload(w http.ResponseWriter, r *http.Request) {
+	grant := s.Sessions.Grant(r)
+	if grant == "" {
+		Problem(w, r, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	tok := r.PathValue("token")
+	if !tokenRE.MatchString(tok) {
+		Problem(w, r, http.StatusUnauthorized, "token_invalid")
+		return
+	}
+	var meta struct {
+		Name string `json:"name"`
+		Size int64  `json:"size"`
+	}
+	ds, err := s.Helper.Download(r.Context(), "capture.download", grant, clientIP(r).String(), map[string]string{"token": tok}, &meta)
+	if err != nil {
+		s.rpcFail(w, r, err)
+		return
+	}
+	defer func() { _ = ds.Close() }()
+	h := w.Header()
+	h.Set("Content-Type", "application/vnd.tcpdump.pcap")
+	h.Set("Content-Disposition", contentDisposition(meta.Name))
+	h.Set("Cache-Control", "no-store")
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Length", strconv.FormatInt(meta.Size, 10))
+	w.WriteHeader(http.StatusOK)
+	rc := http.NewResponseController(w)
+	if _, err := io.Copy(deadlineWriter{w: w, rc: rc}, ds); err != nil {
+		s.Log.Warn("capture download interrupted", "err", err)
+		return
+	}
+	if err := ds.Finish(nil); err != nil {
+		s.Log.Warn("capture download finished with error", "code", rpc.ErrorCode(err))
+	}
+}
+
 // fileDownload streams a file for a one-time download token.
 func (s *Server) fileDownload(w http.ResponseWriter, r *http.Request) {
 	grant := s.Sessions.Grant(r)

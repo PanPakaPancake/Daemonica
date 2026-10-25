@@ -42,6 +42,7 @@ type termTicket struct {
 	grant   string
 	ip      netip.Addr
 	params  json.RawMessage
+	op      string // follow tickets: the followed query
 	expires time.Time
 }
 

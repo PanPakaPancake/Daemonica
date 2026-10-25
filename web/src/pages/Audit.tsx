@@ -158,7 +158,7 @@ export function Audit() {
         ) : events.length === 0 ? (
           <p className="text-muted">{t("audit.empty")}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <DataTable
               rows={events}
               rowKey={(e) => e.event_id}

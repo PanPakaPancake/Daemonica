@@ -150,7 +150,7 @@ export function OverviewPage() {
                 <Icon name="disk" className="h-4 w-4 text-cyan" />
                 {t("overview.mounts")}
               </h2>
-              <div className="overflow-x-auto">
+              <div className="relative overflow-x-auto">
                 <DataTable
                   rows={o.mounts}
                   rowKey={(m) => m.mountpoint}
@@ -260,7 +260,7 @@ export function OverviewPage() {
                 {t("overview.allProcesses")}
               </Link>
             </div>
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
               <DataTable
                 rows={o.top}
                 rowKey={(p) => String(p.pid)}

@@ -27,6 +27,9 @@ import { Users } from "./pages/Users";
 import { SSHKeys } from "./pages/SSHKeys";
 import { Files } from "./pages/Files";
 import { FileEditor } from "./pages/FileEditor";
+import { Firewall } from "./pages/Firewall";
+import { Capture } from "./pages/Capture";
+import { Network } from "./pages/Network";
 import { TerminalPage } from "./pages/Terminal";
 
 // Per-response style nonce from the server (DEC-018): lets Radix's scroll lock
@@ -101,6 +104,9 @@ if (root) {
                 <Route path="files" element={<Files />} />
                 <Route path="files/edit" element={<FileEditor />} />
                 <Route path="terminal" element={<TerminalPage />} />
+                <Route path="network" element={<Network />} />
+                <Route path="firewall" element={<Firewall />} />
+                <Route path="capture" element={<Capture />} />
                 <Route path="security/passkeys" element={<Passkeys />} />
                 <Route path="security/sessions" element={<Sessions />} />
                 <Route path="security/accounts" element={<Accounts />} />

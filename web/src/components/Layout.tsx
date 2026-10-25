@@ -39,8 +39,8 @@ const groups: NavGroup[] = [
     items: [
       { to: "/users", key: "nav.users", icon: "users" },
       { to: "/ssh-keys", key: "nav.sshKeys", icon: "key", hideReadOnly: true },
-      { key: "nav.network", icon: "network" },
-      { key: "nav.firewall", icon: "firewall" },
+      { to: "/network", key: "nav.network", icon: "network" },
+      { to: "/firewall", key: "nav.firewall", icon: "firewall" },
       { key: "nav.updates", icon: "updates" },
       { key: "nav.disks", icon: "disk" },
       { key: "nav.timeHost", icon: "clock" },
@@ -53,7 +53,7 @@ const groups: NavGroup[] = [
       { to: "/files", key: "nav.files", icon: "files", hideReadOnly: true },
       { to: "/logs", key: "nav.logs", icon: "logs", hideReadOnly: true },
       { to: "/processes", key: "nav.processes", icon: "process" },
-      { key: "nav.capture", icon: "capture" },
+      { to: "/capture", key: "nav.capture", icon: "capture", adminOnly: true },
     ],
   },
   {

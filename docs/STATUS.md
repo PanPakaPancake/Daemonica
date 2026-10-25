@@ -58,7 +58,8 @@ _Last updated: 2026-10-25_
 | M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Open: last login per user (wtmpdb), owner acceptance. |
 | M1.3 | ✓ accepted by owner 2026-10-25 | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021); lists with sort/filter on every column and right-click menus (DEC-022). Open: folder download as archive (KANN). |
 | M1.4 | ✓ accepted by owner 2026-10-25 | Web terminal (table below, DEC-023). KANN items (keep background processes, reconnect after short drops) not implemented. |
-| M1.5 – M1.8 | ✖ open | |
+| M1.5 | ✓ accepted by owner 2026-10-25 | Network, firewall, firewall logs, packet capture (tables below, DEC-024–DEC-028). Browser acceptance 1–4 passed on the VM 2026-10-25. |
+| M1.6 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status
 
@@ -158,6 +159,39 @@ _Last updated: 2026-10-25_
 | Audit start/end, mode, duration, source IP (no input) | ✓ | `pty.start`, `pty.open` (`end`, `duration_s`); `TestTerminalStandardShell` |
 | No file transfer; read-only ✖ | ✓ | no transfer protocol; policy `terminal` denies read-only |
 | Keep background processes, reconnect after short drops (KANN) | ✖ | not implemented |
+
+### M1.5 requirement status
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| Detect netplan (incl. renderer), ifupdown, NetworkManager, systemd-networkd; mixed/unsupported read-only with explanation | ✓ | `netcfg.Detector`; `TestDetectAndDNS` |
+| Writing for netplan and ifupdown (MUSS) | ✓ | `TestNetplanReadEdit`, `TestNetplanNewAndConflicts`, `TestIfupdown`, `TestNetplanGenerateReal` |
+| Writing for NetworkManager and systemd-networkd (SOLL) | ✖ | read-only (DEC-024) |
+| Interfaces, routes, DNS, gateway, hostname, open ports with process | ✓ | `net.get`, `net.ports`; integration test compares with `ss` |
+| DHCP/static v4/v6, gateway, DNS, MTU, extra addresses, static routes; VLAN/bridge/bond shown | ✓ | `Network.tsx`; `TestNormalize` |
+| Plan → Apply → Confirm, 90 s rollback in the helper, confirm over a new connection, red warning for the session's interface/route, diff, syntax check, change lock | ✓ | `TestNetworkPlanApplyRollback`, `TestNetworkHandlerVerifiesKernelState`; integration `TestLauncherUmaskNetplan`; VM test "wrong gateway rolls back" passed 2026-10-25 (first run failed: netplan under UMask=0077, fixed in 93ace59) |
+| Firewall status: backend, active, persistent, defaults, rule count, IPv6, logging, last change from audit, counters; traffic light with plain-language hints | ✓ | `firewall.get`; `TestLight`, `TestCounters`, `TestFirewallPlanEnable` |
+| Reachability view (SOLL) | ✓ | `Reach` tab; `TestEvaluate` |
+| ufw rules with explanations, managed-rule marking, add (template or port/protocol, source, allow/deny/limit), delete, logging level, enable/disable | ✓ | `Firewall.tsx`, `explainRule` tests, `TestPlanSimulateSteps`, `TestAddSpec` |
+| Raw view (`nft list ruleset` / `iptables-save`), searchable, export; firewalld read-only | ✓ | `firewall.raw`; `TestDetect` |
+| Auto rules for SSH (`sshd -T`) and dashboard on enable, mandatory acknowledgement, timer; reset with step-up + type name | ✓ | `TestAccessRules`, `TestFirewallPlanEnable` |
+| Install ufw when missing | ✓ | `firewall.install` |
+| All firewall changes via Plan → Apply → Confirm with lockout protection | ✓ | `TestHandlerApplyRollback`; VM test "enable does not lock out" passed 2026-10-25 |
+| Firewall logs: journald kernel entries parsed into fields, filters, free text, live follow over WebSocket with rate limit and skipped hint | ✓ | `TestParseLog`, `TestFirewallLogsAndBlockSource`, `TestFollowSocket`; VM test "< 3 s" passed 2026-10-25 |
+| Export CSV/JSON with row limit | ✓ | 2000 rows per query (DEC-027) |
+| Statistics (SOLL): top sources, top ports, timeline, per action | ✓ | `FirewallLogs.tsx` |
+| Block source (admin, step-up, plan) with protection of own IP, allowlist networks, SSH/dashboard | ✓ | `TestFirewallLogsAndBlockSource` |
+| Logging control with explanations, wizard when off, warning for high/full | ✓ | `FirewallLogs.tsx`, `Firewall.tsx` |
+| Entries lost to journald rate limiting shown "as far as detectable" | ✖ | not implemented yet |
+| No external lookups; only parsed fields shown | ✓ | DEC-027 |
+| Packet capture: admin only, step-up per start, privacy warning, audit without contents | ✓ | `TestCaptureOps`, policy table |
+| Wizard: purpose templates, interface (regex + existence), filter builder, free BPF under Advanced (allowlist, no leading `-`, compile check, single argv element), limits, full packets with extra warning, promiscuous off, dashboard excluded | ✓ | `capture.Spec`, `TestSpec`, `TestCaptureOps`, `Capture.tsx`, `capture.test.ts` |
+| tcpdump in a transient unit with `CAP_NET_RAW` only, `NoNewPrivileges`, `ProtectSystem=strict`, `PrivateTmp`, `RestrictAddressFamilies`, `SystemCallFilter`, `MemoryMax`, `RuntimeMaxSec` | ✓ | `TestUnitProperties`; integration `TestCaptureOnHost` checks `systemctl show`, UID, CapEff and NoNewPrivs on the VM (passed 2026-10-25) |
+| Helper enforces duration, packets, size, free disk; one capture at a time | ✓ | manager tests |
+| Own memory-safe parser for the live summary (Ethernet/VLAN, ARP, IPv4/6, TCP/UDP/ICMP(v6), DNS names) | ✓ | `FuzzSummarize` |
+| Live view over WebSocket (500 lines/s, "N packets not shown"), pause, view filter, client buffer 10,000; statistics (SOLL) | ✓ | `Capture.tsx`, DEC-026 |
+| Storage 0600, retention 24 h (1–168 h), total limit 1 GiB, delete all; download as attachment via 60 s one-time token with step-up | ✓ | `TestCaptureOps`, manager prune test; metadata as JSON sidecars (DEC-028) |
+| Install tcpdump when missing (admin, step-up) | ✓ | `capture.install` |
 
 ### Test results
 

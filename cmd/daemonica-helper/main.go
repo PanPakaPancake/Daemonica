@@ -7,6 +7,7 @@ import (
 	"context"
 	"flag"
 	"log/slog"
+	"net"
 	"os"
 	"os/signal"
 	"os/user"
@@ -16,8 +17,12 @@ import (
 	"time"
 
 	"github.com/PanPakaPancake/daemonica/internal/audit"
+	"github.com/PanPakaPancake/daemonica/internal/capture"
+	"github.com/PanPakaPancake/daemonica/internal/execx"
 	"github.com/PanPakaPancake/daemonica/internal/files"
+	"github.com/PanPakaPancake/daemonica/internal/firewall"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
+	"github.com/PanPakaPancake/daemonica/internal/netcfg"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
 	"github.com/PanPakaPancake/daemonica/internal/pty"
 	"github.com/PanPakaPancake/daemonica/internal/services"
@@ -40,6 +45,10 @@ func main() {
 		}
 		worker.Main(handlers)
 	}
+	// Exec launcher mode: runs a system program with umask 022 (execx.Launcher).
+	if len(os.Args) > 1 && os.Args[1] == execx.UmaskArg {
+		execx.LauncherMain(os.Args[2:])
+	}
 	// Terminal child mode (pty.ExecLauncher fallback): becomes the login shell.
 	if len(os.Args) > 1 && os.Args[1] == pty.ChildArg {
 		pty.ChildMain(os.Args[2:])
@@ -50,6 +59,9 @@ func main() {
 	webUser := flag.String("web-user", "daemonica-web", "system user of the web process")
 	tlsDir := flag.String("tls-dir", "/var/lib/daemonica/tls", "certificate directory of the web process")
 	flag.Parse()
+	if self, err := os.Executable(); err == nil {
+		execx.Launcher = self
+	}
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	if os.Geteuid() != 0 {
@@ -95,6 +107,9 @@ func main() {
 	}
 	// Plan→Apply→Confirm handlers (network/firewall follow with their modules).
 	pm.Register(&helper.AllowlistHandler{Config: cfg})
+	pm.Register(&helper.NetworkHandler{Run: netcfg.ExecRunner, State: (&netcfg.Reader{}).Read})
+	ufw := &firewall.Ufw{Run: netcfg.ExecRunner}
+	pm.Register(&firewall.Handler{Ufw: ufw})
 	pm.OnEvent = func(ch planner.Change, event string, err error) {
 		ev := audit.Event{Action: "change." + event, Target: "change:" + ch.ID, Result: audit.ResultOK,
 			Actor: audit.Actor{AccountID: ch.Owner}, Params: map[string]string{"kind": ch.Kind, "risk": ch.Risk}}
@@ -173,6 +188,41 @@ func main() {
 	cleanupCancel()
 	(&helper.TermOps{Launcher: launcher, Grants: grants, Config: cfg, Audit: al, Lookup: worker.Lookup, Shell: pty.LoginShell,
 		TasksMax: 1024, MemoryMax: terminalMemoryMax()}).Register(ops)
+	// M1.5a: network view and configuration (Plan → Apply → Confirm).
+	unitActive := func(unit string) bool {
+		actx, acancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer acancel()
+		d, err := sd.Get(actx, unit)
+		return err == nil && d.Active == "active"
+	}
+	(&helper.NetOps{Reader: &netcfg.Reader{}, Run: netcfg.ExecRunner, Planner: pm, Detector: &netcfg.Detector{Active: unitActive}}).Register(ops)
+	// M1.5b: firewall (ufw managed, others read-only).
+	(&helper.FirewallOps{Ufw: ufw, Detector: &firewall.Detector{Run: netcfg.ExecRunner, Active: unitActive}, Net: &netcfg.Reader{}, Config: cfg, Planner: pm,
+		Run: netcfg.ExecRunner, AuditPath: *auditPath, AccountName: func(ctx context.Context, id string) string {
+			a, err := db.AccountByID(ctx, id)
+			if err != nil {
+				return ""
+			}
+			return a.Name
+		}}).Register(ops)
+	// M1.5d: packet capture (tcpdump in a sandboxed transient unit).
+	capStarter := &capture.SystemdStarter{Conn: launcher.Conn}
+	capMgr := &capture.Manager{Dir: filepath.Join(*stateDir, "captures"), Starter: capStarter}
+	capInitCtx, capInitCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	if err := capMgr.Init(capInitCtx); err != nil {
+		log.Error("cannot prepare the capture directory", "err", err)
+	}
+	capInitCancel()
+	capOps := &helper.CaptureOps{M: capMgr, Config: cfg, Run: netcfg.ExecRunner, Ifaces: func() ([]string, error) {
+		ifs, err := net.Interfaces()
+		names := make([]string, 0, len(ifs))
+		for _, i := range ifs {
+			names = append(names, i.Name)
+		}
+		return names, err
+	}}
+	capOps.Register(ops)
+	go capOps.Janitor(context.Background(), 10*time.Minute)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to
 	// traverse it to reach helper.sock (admin.sock stays 0600 root).

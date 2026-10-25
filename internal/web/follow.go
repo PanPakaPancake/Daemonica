@@ -27,8 +27,9 @@ const (
 	CloseFollowEnded websocket.StatusCode = 4000
 )
 
-// followOps are the queries that may be followed; each takes an "after" cursor.
-var followOps = map[string]bool{"journal.query": true, "firewall.logs": true}
+// followOps are the queries that may be followed (each takes an "after"
+// cursor) with their rate limit in entries per second.
+var followOps = map[string]int{"journal.query": followRate, "firewall.logs": followRate, "capture.lines": 500}
 
 func (s *Server) registerFollowRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/follow/ticket", LimitBody(4<<10, http.HandlerFunc(s.followTicket)))
@@ -39,6 +40,7 @@ type followPage struct {
 	Entries   []json.RawMessage `json:"entries"`
 	Cursor    string            `json:"cursor"`
 	Truncated bool              `json:"truncated"`
+	Skipped   int               `json:"skipped"` // dropped by the source (e.g. capture buffer)
 }
 
 func (s *Server) followTicket(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +55,7 @@ func (s *Server) followTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&p); err != nil || !followOps[p.Op] {
+	if err := dec.Decode(&p); err != nil || followOps[p.Op] == 0 {
 		Problem(w, r, http.StatusBadRequest, "bad_request")
 		return
 	}
@@ -98,7 +100,7 @@ func (s *Server) followSocket(w http.ResponseWriter, r *http.Request) {
 	grant := s.Sessions.Grant(r)
 	ip := clientIP(r)
 	t, ok := s.follows.take(r.URL.Query().Get("ticket"))
-	if grant == "" || !ok || t.grant != grant || t.ip != ip || !followOps[t.op] {
+	if grant == "" || !ok || t.grant != grant || t.ip != ip || followOps[t.op] == 0 {
 		Problem(w, r, http.StatusUnauthorized, "unauthorized")
 		return
 	}
@@ -152,15 +154,15 @@ func (s *Server) followSocket(w http.ResponseWriter, r *http.Request) {
 		if page.Cursor != "" {
 			params["after"] = page.Cursor
 		}
-		if len(page.Entries) == 0 {
+		if len(page.Entries) == 0 && page.Skipped == 0 {
 			continue
 		}
 		msg := struct {
 			Entries []json.RawMessage `json:"entries"`
 			Skipped int               `json:"skipped"`
-		}{Entries: page.Entries}
-		if n := len(page.Entries); n > followRate {
-			msg.Entries, msg.Skipped = page.Entries[n-followRate:], n-followRate
+		}{Entries: page.Entries, Skipped: page.Skipped}
+		if n, rate := len(page.Entries), followOps[t.op]; n > rate {
+			msg.Entries, msg.Skipped = page.Entries[n-rate:], msg.Skipped+n-rate
 		}
 		b, _ := json.Marshal(msg)
 		wctx, wcancel := context.WithTimeout(ctx, 30*time.Second)

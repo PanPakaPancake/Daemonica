@@ -303,6 +303,13 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/firewall/install", sess("firewall.install"))
 	mux.Handle("POST /api/v1/firewall/logs", sess("firewall.logs"))
 
+	// M1.5d: packet capture.
+	mux.Handle("GET /api/v1/captures", sess("capture.status"))
+	for _, op := range []string{"start", "stop", "lines", "delete", "delete_all", "settings", "download_token", "install"} {
+		mux.Handle("POST /api/v1/captures/"+op, sess("capture."+op))
+	}
+	mux.Handle("GET /api/v1/captures/download/{token}", http.HandlerFunc(s.captureDownload))
+
 	mux.Handle("GET /api/v1/settings", sess("settings.get"))
 	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))
 	mux.Handle("GET /api/v1/changes/{id}", sess("settings.change_get"))

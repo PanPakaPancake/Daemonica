@@ -7,6 +7,7 @@ import (
 	"context"
 	"flag"
 	"log/slog"
+	"net"
 	"os"
 	"os/signal"
 	"os/user"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/PanPakaPancake/daemonica/internal/audit"
+	"github.com/PanPakaPancake/daemonica/internal/capture"
 	"github.com/PanPakaPancake/daemonica/internal/files"
 	"github.com/PanPakaPancake/daemonica/internal/firewall"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
@@ -195,6 +197,24 @@ func main() {
 			}
 			return a.Name
 		}}).Register(ops)
+	// M1.5d: packet capture (tcpdump in a sandboxed transient unit).
+	capStarter := &capture.SystemdStarter{Conn: launcher.Conn}
+	capMgr := &capture.Manager{Dir: filepath.Join(*stateDir, "captures"), Starter: capStarter}
+	capInitCtx, capInitCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	if err := capMgr.Init(capInitCtx); err != nil {
+		log.Error("cannot prepare the capture directory", "err", err)
+	}
+	capInitCancel()
+	capOps := &helper.CaptureOps{M: capMgr, Config: cfg, Run: netcfg.ExecRunner, Ifaces: func() ([]string, error) {
+		ifs, err := net.Interfaces()
+		names := make([]string, 0, len(ifs))
+		for _, i := range ifs {
+			names = append(names, i.Name)
+		}
+		return names, err
+	}}
+	capOps.Register(ops)
+	go capOps.Janitor(context.Background(), 10*time.Minute)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to
 	// traverse it to reach helper.sock (admin.sock stays 0600 root).

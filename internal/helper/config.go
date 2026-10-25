@@ -29,6 +29,8 @@ type Config struct {
 	TLSSource   string   `json:"tls_source,omitempty"` // own | acme-staging | acme-production
 	// TerminalIdleMinutes ends web terminals without input (SPEC §7.5; 0 = default 15).
 	TerminalIdleMinutes int `json:"terminal_idle_minutes,omitempty"`
+	// CaptureRetentionHours deletes packet captures after this time (SPEC §7.6 M1.5d; 0 = 24 h, max. 7 days).
+	CaptureRetentionHours int `json:"capture_retention_hours,omitempty"`
 }
 
 // DefaultConfig is the configuration of a fresh install: setup mode, loopback only.
@@ -64,6 +66,9 @@ func (c Config) Validate() error {
 	}
 	if c.TerminalIdleMinutes < 0 || c.TerminalIdleMinutes > 24*60 {
 		return errors.New("terminal idle timeout out of range")
+	}
+	if c.CaptureRetentionHours < 0 || c.CaptureRetentionHours > 7*24 {
+		return errors.New("capture retention out of range")
 	}
 	return nil
 }

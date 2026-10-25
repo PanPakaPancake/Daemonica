@@ -31,10 +31,10 @@ var (
 
 // Builder is the guided filter (the BPF expression is generated here).
 type Builder struct {
-	Proto string   `json:"proto,omitempty"` // tcp, udp, icmp, arp, "" = any
-	Host  string   `json:"host,omitempty"`  // IP or CIDR
-	Ports []int    `json:"ports,omitempty"`
-	Dir   string   `json:"dir,omitempty"` // src, dst, "" = both
+	Proto string `json:"proto,omitempty"` // tcp, udp, icmp, arp, "" = any
+	Host  string `json:"host,omitempty"`  // IP or CIDR
+	Ports []int  `json:"ports,omitempty"`
+	Dir   string `json:"dir,omitempty"` // src, dst, "" = both
 }
 
 // Spec is a capture request.

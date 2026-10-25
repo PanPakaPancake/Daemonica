@@ -355,7 +355,9 @@ func (s *Stats) finish(start, now time.Time) {
 	for _, t := range s.talkerBy {
 		ts = append(ts, *t)
 	}
-	sort.Slice(ts, func(i, j int) bool { return ts[i].Bytes > ts[j].Bytes || ts[i].Bytes == ts[j].Bytes && ts[i].Host < ts[j].Host })
+	sort.Slice(ts, func(i, j int) bool {
+		return ts[i].Bytes > ts[j].Bytes || ts[i].Bytes == ts[j].Bytes && ts[i].Host < ts[j].Host
+	})
 	s.Talkers = ts[:min(10, len(ts))]
 }
 

@@ -182,6 +182,9 @@ func (m *Manager) Apply(ctx context.Context, id, owner string) (Change, error) {
 	}
 
 	m.mu.Lock()
+	// The window starts when the change is in effect (applying a network
+	// configuration takes seconds).
+	c.Deadline = m.now().UTC().Add(m.window)
 	m.timers[c.ID] = time.AfterFunc(m.window, func() { m.expire(c.ID) })
 	cc := *c
 	m.mu.Unlock()

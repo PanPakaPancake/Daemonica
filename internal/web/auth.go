@@ -290,6 +290,12 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 		mux.Handle("POST /api/v1/ssh-keys/"+op, sess("sshkeys."+op))
 	}
 
+	// M1.5a: network.
+	mux.Handle("GET /api/v1/network", sess("net.get"))
+	mux.Handle("GET /api/v1/network/ports", sess("net.ports"))
+	mux.Handle("POST /api/v1/network/config", sess("net.config"))
+	mux.Handle("POST /api/v1/network/plan", sess("net.plan"))
+
 	mux.Handle("GET /api/v1/settings", sess("settings.get"))
 	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))
 	mux.Handle("GET /api/v1/changes/{id}", sess("settings.change_get"))

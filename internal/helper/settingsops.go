@@ -191,7 +191,7 @@ func (s *SettingsOps) Register(ops map[string]*Op) {
 			return redact(ch), nil
 		}})
 
-	Register(ops, &Op{Name: "settings.change_apply", Action: policy.ActSettingsWrite, AuditTarget: changeTarget,
+	Register(ops, &Op{Name: "settings.change_apply", Action: policy.ActSettingsWrite, AuditTarget: changeTarget, Timeout: 4 * time.Minute,
 		Handle: func(ctx context.Context, c Call) (any, error) {
 			var p changeParams
 			if err := decode(c, &p); err != nil {
@@ -224,7 +224,7 @@ func (s *SettingsOps) Register(ops map[string]*Op) {
 			return redact(ch), nil
 		}})
 
-	Register(ops, &Op{Name: "settings.change_rollback", Action: policy.ActSettingsWrite, AuditTarget: changeTarget,
+	Register(ops, &Op{Name: "settings.change_rollback", Action: policy.ActSettingsWrite, AuditTarget: changeTarget, Timeout: 4 * time.Minute,
 		Handle: func(_ context.Context, c Call) (any, error) {
 			var p changeParams
 			if err := decode(c, &p); err != nil {

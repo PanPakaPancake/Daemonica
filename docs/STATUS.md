@@ -59,7 +59,7 @@ _Last updated: 2026-10-25_
 | M1.3 | ✓ accepted by owner 2026-10-25 | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021); lists with sort/filter on every column and right-click menus (DEC-022). Open: folder download as archive (KANN). |
 | M1.4 | ✓ accepted by owner 2026-10-25 | Web terminal (table below, DEC-023). KANN items (keep background processes, reconnect after short drops) not implemented. |
 | M1.5 | ✓ accepted by owner 2026-10-25 | Network, firewall, firewall logs, packet capture (tables below, DEC-024–DEC-028). Browser acceptance 1–4 passed on the VM 2026-10-25. |
-| M1.6 | ⚠ implemented, VM acceptance pending | Tasks and jobs plus script library on branch `wip/m16` (table below, DEC-029, DEC-030). |
+| M1.6 | ✓ accepted by the owner (2026-10-25) | Tasks and jobs plus script library and cron schedule builder (table below, DEC-029, DEC-030). |
 | M1.7 – M1.8 | ✖ open | |
 
 ### M1.0 requirement status
@@ -211,9 +211,9 @@ _Last updated: 2026-10-25_
 | "Convert to systemd timer" (KANN) | ✖ | not implemented |
 | Security: commands never in the web process; unit names allowlisted; unit-file injection (line breaks, `%` specifiers) masked; arguments not interpreted by a shell | ✓ | DEC-029; `TestUnitInjection`; programs must be trusted files (`TestTrusted`) |
 | Roles: operator runs and enables/disables; admin everything; read-only views | ✓ | policy table; `TestJobOpsRoles` |
-| Acceptance: job runs at the scheduled time, history shows exit code and log; injection payloads without effect; hardening visible in `systemctl show` | ⏳ VM | integration `TestJobsOnHost`; scheduled run in the browser acceptance |
+| Acceptance: job runs at the scheduled time, history shows exit code and log; injection payloads without effect; hardening visible in `systemctl show` | ✓ | integration `TestJobsOnHost`; scheduled run in the browser acceptance |
 | Script library (Timo's request, not in the SPEC; DEC-030): local scripts with editor, GitHub collections pinned to a commit, update only after diff + step-up, use as job or in the terminal, audit | ✓ | `TestLibraryLifecycle`, `TestParseTarball`, `TestGitHub`, `TestScriptOpsRoles`; `Scripts.tsx` |
-| Script library on the host: readable for other users despite umask 0077, trusted for root jobs, runs as `nobody`, real GitHub download | ⏳ VM | integration `TestScriptLibraryOnHost` |
+| Script library on the host: readable for other users despite umask 0077, trusted for root jobs, runs as `nobody`, real GitHub download | ✓ | integration `TestScriptLibraryOnHost` |
 
 ### Test results
 

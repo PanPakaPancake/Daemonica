@@ -800,7 +800,7 @@
   },
   "terminal": {
     "title": "Terminal",
-    "intro": "Shell auf diesem Server als Linux-Benutzer {{user}}. sudo, su und setuid-Programme sind hier wirkungslos.",
+    "intro": "Shell auf diesem Server als Linux-Benutzer {{user}}.",
     "readonly": "Mit der Rolle „Nur lesen“ steht das Terminal nicht zur Verfügung.",
     "new": "Neues Terminal",
     "newHint": "Shell als dein Linux-Benutzer (ohne sudo)",
@@ -836,6 +836,11 @@
       "shutdown": "Der Dienst wurde neu gestartet.",
       "connection": "Die Verbindung wurde unterbrochen.",
       "error": "Die Verbindung wurde unterbrochen."
+    },
+    "note": {
+      "standard": "In diesem Terminal sind sudo, su und setuid-Programme wirkungslos.",
+      "sudo": "sudo wirkt hier gemäß sudoers – {{user}} braucht dort einen Eintrag (z. B. Mitglied der Gruppe sudo).",
+      "root": "Dieses Terminal läuft als root."
     }
   }
 }

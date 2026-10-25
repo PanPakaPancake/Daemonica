@@ -53,7 +53,9 @@ export function TerminalPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{t("terminal.title")}</h1>
-          <p className="mt-1 text-muted">{t("terminal.intro", { user: me?.linux_user })}</p>
+          <p className="mt-1 text-muted">
+            {t("terminal.intro", { user: me?.linux_user })} {t(`terminal.note.${tab?.mode ?? "standard"}`, { user: tab?.user ?? me?.linux_user })}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn btn-primary" disabled={busy || full} onClick={() => void start("standard")} title={t("terminal.newHint")}>

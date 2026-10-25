@@ -800,7 +800,7 @@
   },
   "terminal": {
     "title": "Terminal",
-    "intro": "Shell on this server as Linux user {{user}}. sudo, su and setuid programs have no effect here.",
+    "intro": "Shell on this server as Linux user {{user}}.",
     "readonly": "The terminal is not available with the read-only role.",
     "new": "New terminal",
     "newHint": "Shell as your Linux user (without sudo)",
@@ -836,6 +836,11 @@
       "shutdown": "The service was restarted.",
       "connection": "The connection was interrupted.",
       "error": "The connection was interrupted."
+    },
+    "note": {
+      "standard": "In this terminal sudo, su and setuid programs have no effect.",
+      "sudo": "sudo works here as sudoers allows – {{user}} needs an entry there (e.g. member of group sudo).",
+      "root": "This terminal runs as root."
     }
   }
 }

@@ -60,6 +60,8 @@ type Spec struct {
 	// TasksMax and MemoryMax limit the session's cgroup (SystemdLauncher; 0 = unlimited).
 	TasksMax  uint64
 	MemoryMax uint64
+	// Cols and Rows are the initial terminal size (set by Open).
+	Cols, Rows uint16
 }
 
 // Process is a started shell session.
@@ -95,7 +97,8 @@ func Open(ctx context.Context, l Launcher, spec Spec, cols, rows uint16) (*Sessi
 	if err != nil {
 		return nil, err
 	}
-	if err := cpty.Setsize(master, &cpty.Winsize{Cols: clampSize(cols, MaxCols, 80), Rows: clampSize(rows, MaxRows, 24)}); err != nil {
+	spec.Cols, spec.Rows = clampSize(cols, MaxCols, 80), clampSize(rows, MaxRows, 24)
+	if err := cpty.Setsize(master, &cpty.Winsize{Cols: spec.Cols, Rows: spec.Rows}); err != nil {
 		_ = master.Close()
 		_ = tty.Close()
 		return nil, err

@@ -128,13 +128,17 @@ func TestResizeBounds(t *testing.T) {
 }
 
 func TestUnitProperties(t *testing.T) {
-	props := unitProperties(Spec{Name: "x", User: worker.Identity{Name: "alice"}, Shell: "/bin/bash", NoNewPrivs: true, TasksMax: 10}, "/dev/pts/7")
+	props := unitProperties(Spec{Name: "x", User: worker.Identity{Name: "alice"}, Shell: "/bin/bash", NoNewPrivs: true, TasksMax: 10, Cols: 120, Rows: 40}, "/dev/pts/7")
 	got := map[string]any{}
 	for _, p := range props {
 		got[p.Name] = p.Value.Value()
 	}
-	if got["User"] != "alice" || got["TTYPath"] != "/dev/pts/7" || got["NoNewPrivileges"] != true || got["TasksMax"] != uint64(10) {
+	if got["User"] != "alice" || got["TTYPath"] != "/dev/pts/7" || got["NoNewPrivileges"] != true || got["TasksMax"] != uint64(10) ||
+		got["TTYColumns"] != uint32(120) || got["TTYRows"] != uint32(40) {
 		t.Fatalf("props: %v", got)
+	}
+	if _, ok := got["TTYReset"]; ok {
+		t.Fatal("TTYReset must stay off")
 	}
 	if _, ok := got["MemoryMax"]; ok {
 		t.Fatal("unset MemoryMax must be omitted")

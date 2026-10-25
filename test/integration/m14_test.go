@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -41,7 +42,15 @@ func TestTerminalOnHost(t *testing.T) {
 	if out, err := exec.Command("/usr/sbin/useradd", "--create-home", "--user-group", "--shell", "/bin/bash", "--", termUser).CombinedOutput(); err != nil {
 		t.Fatalf("useradd: %v %s", err, out)
 	}
-	t.Cleanup(func() { _ = exec.Command("/usr/sbin/userdel", "--remove", "--", termUser).Run() })
+	t.Cleanup(func() {
+		// Shells of a failed run may still be stopping; userdel refuses a busy user.
+		for i := 0; i < 50 && exec.Command("pgrep", "-u", termUser).Run() == nil; i++ {
+			time.Sleep(200 * time.Millisecond)
+		}
+		if out, err := exec.Command("/usr/sbin/userdel", "--remove", "--", termUser).CombinedOutput(); err != nil {
+			t.Errorf("userdel %s: %v %s", termUser, err, out)
+		}
+	})
 	if err := os.WriteFile(sudoersFile, []byte(termUser+" ALL=(root) NOPASSWD: /usr/bin/true\n"), 0o440); err != nil {
 		t.Fatal(err)
 	}
@@ -90,10 +99,10 @@ func TestTerminalOnHost(t *testing.T) {
 			t.Fatalf("open %s: %v", mode, err)
 		}
 		defer func() { _ = d.Close() }()
-		var out bytes.Buffer
+		out := &termOutput{}
 		done := make(chan struct{})
-		go func() { _, _ = io.Copy(&out, d); close(done) }()
-		time.Sleep(500 * time.Millisecond)
+		go func() { _, _ = io.Copy(out, d); close(done) }()
+		waitPrompt(t, out, done)
 		_ = d.Send(append([]byte{'d'}, script...))
 		select {
 		case <-done:
@@ -133,8 +142,10 @@ func TestTerminalOnHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go func() { _, _ = io.Copy(io.Discard, d) }()
-	time.Sleep(500 * time.Millisecond)
+	bg := &termOutput{}
+	bgDone := make(chan struct{})
+	go func() { _, _ = io.Copy(bg, d); close(bgDone) }()
+	waitPrompt(t, bg, bgDone)
 	_ = d.Send([]byte("dnohup sh -c 'trap \"\" HUP; exec sleep 4242' >/dev/null 2>&1 &\n"))
 	deadline := time.Now().Add(10 * time.Second)
 	for !sleeping() && time.Now().Before(deadline) {
@@ -155,6 +166,43 @@ func TestTerminalOnHost(t *testing.T) {
 	if strings.Contains(string(out2), "active") && !strings.Contains(string(out2), "inactive") {
 		t.Fatalf("unit still active: %s", out2)
 	}
+}
+
+// termOutput collects terminal output for concurrent reads.
+type termOutput struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (o *termOutput) Write(p []byte) (int, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.buf.Write(p)
+}
+
+func (o *termOutput) String() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.buf.String()
+}
+
+// waitPrompt waits until the shell shows its prompt, so input is not typed
+// while systemd still sets up the terminal.
+func waitPrompt(t *testing.T, out *termOutput, done <-chan struct{}) {
+	t.Helper()
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		s := strings.TrimRight(out.String(), " ")
+		if strings.HasSuffix(s, "$") || strings.HasSuffix(s, "#") {
+			return
+		}
+		select {
+		case <-done:
+			t.Fatalf("shell ended before its prompt:\n%s", out.String())
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+	t.Fatalf("no prompt; output:\n%s", out.String())
 }
 
 func sleeping() bool {

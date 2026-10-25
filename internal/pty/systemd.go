@@ -125,7 +125,12 @@ func unitProperties(spec Spec, tty string) []property {
 		prop("StandardOutput", "tty"),
 		prop("StandardError", "tty"),
 		prop("TTYPath", tty),
-		prop("TTYReset", true),
+		// The pty is fresh, so no TTYReset: systemd ≥ 258 would then write
+		// reset sequences and flush input typed early. A known size keeps
+		// systemd from asking the terminal for it (DSR), whose answer would
+		// otherwise reach the shell as typed input.
+		prop("TTYRows", uint32(spec.Rows)), // the setter takes "u", the getter "q"
+		prop("TTYColumns", uint32(spec.Cols)),
 		prop("NoNewPrivileges", spec.NoNewPrivs),
 		// Pipelines behave as in an SSH session (yes | head).
 		prop("IgnoreSIGPIPE", false),

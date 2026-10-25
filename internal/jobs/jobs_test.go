@@ -577,3 +577,15 @@ func TestManagerCheck(t *testing.T) {
 		t.Fatalf("check: %+v %v %v", p, warn, err)
 	}
 }
+
+func TestSince(t *testing.T) {
+	created := time.Date(2026, 10, 25, 20, 58, 0, 0, time.UTC)
+	runs := []Run{{Invocation: "new", Start: created.Add(time.Minute)}, {Invocation: "same", Start: created.Add(-500 * time.Millisecond)}, {Invocation: "old", Start: created.Add(-time.Hour)}}
+	got := Since(runs, created)
+	if len(got) != 2 || got[0].Invocation != "new" || got[1].Invocation != "same" {
+		t.Fatalf("since: %+v", got)
+	}
+	if len(Since(runs, time.Time{})) != 3 {
+		t.Fatal("zero time must keep all runs")
+	}
+}

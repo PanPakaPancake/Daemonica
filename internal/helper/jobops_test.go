@@ -58,7 +58,7 @@ func TestJobOpsRoles(t *testing.T) {
 		},
 		History: func(_ context.Context, _ string, excerpt bool) ([]jobs.Run, error) {
 			excerpts = append(excerpts, excerpt)
-			return []jobs.Run{{Invocation: "x", Result: "success"}}, nil
+			return []jobs.Run{{Invocation: "x", Start: time.Now(), Result: "success"}}, nil
 		},
 		Cron:      func(time.Time) jobs.CronStatus { return jobs.CronStatus{Installed: true} },
 		ReadCron:  func(string) ([]byte, error) { return crontab, nil },

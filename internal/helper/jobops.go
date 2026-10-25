@@ -290,7 +290,7 @@ func (o *JobOps) Register(ops map[string]*Op) {
 				// The journal excerpt follows the logs rule (read-only sees no logs).
 				excerpt := policy.Decide(*c.Subject, policy.ActLogsRead, 0, false) == policy.Allow
 				if h, err := o.History(ctx, j.Service(), excerpt); err == nil {
-					d.History = h
+					d.History = jobs.Since(h, j.Created)
 				}
 			}
 			return d, nil

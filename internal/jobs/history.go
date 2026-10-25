@@ -172,3 +172,19 @@ func History(ctx context.Context, unit string, excerpt bool) ([]Run, error) {
 	}
 	return ParseHistory(res.Stdout, unit, excerpt), nil
 }
+
+// Since drops runs that started before t: a job created again under a name
+// used before must not show the runs of its predecessor. A zero t keeps all.
+func Since(runs []Run, t time.Time) []Run {
+	if t.IsZero() {
+		return runs
+	}
+	out := runs[:0:0]
+	for _, r := range runs {
+		// The journal's clock and the metadata's agree to the second.
+		if !r.Start.Before(t.Add(-time.Second)) {
+			out = append(out, r)
+		}
+	}
+	return out
+}

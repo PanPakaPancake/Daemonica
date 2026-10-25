@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"slices"
@@ -40,10 +41,21 @@ func TestJobsOnHost(t *testing.T) {
 	j := jobs.Job{ID: "ittest", Description: "Daemonica integration test 100%", Mode: jobs.ModeExec, Program: "/usr/bin/printf",
 		Args: append([]string{`[%s]\n`}, payload...), User: "nobody",
 		Schedule: jobs.Schedule{Kind: jobs.KindCalendar, Calendar: "*:*:0/15"}, WritePaths: []string{"/var/tmp"}, MemoryMaxMiB: 64, TasksMax: 8, Enabled: true}
-	_ = m.Delete(ctx, "ittest")
-	t.Cleanup(func() { _ = m.Delete(context.Background(), "ittest") })
-	if _, err := m.Save(ctx, j, true, "it"); err != nil {
+	purgeJobUnits(t, j)
+	t.Cleanup(func() {
+		if err := m.Delete(context.Background(), "ittest"); err != nil && !errors.Is(err, jobs.ErrNotFound) {
+			t.Logf("delete: %v", err)
+		}
+		purgeJobUnits(t, j)
+	})
+	saved, err := m.Save(ctx, j, true, "it")
+	if err != nil {
 		t.Fatalf("save: %v", err)
+	}
+	// Only runs of this job, not of an earlier one with the same name.
+	history := func() []jobs.Run {
+		h, _ := jobs.History(ctx, j.Service(), true)
+		return jobs.Since(h, saved.Created)
 	}
 	ts, err := sd.TimerState(ctx, j.Timer())
 	if err != nil || ts.Active != "active" || ts.FileState != "enabled" || ts.Next.IsZero() {
@@ -54,7 +66,7 @@ func TestJobsOnHost(t *testing.T) {
 	var runs []jobs.Run
 	deadline := time.Now().Add(150 * time.Second)
 	for time.Now().Before(deadline) {
-		runs, _ = jobs.History(ctx, j.Service(), true)
+		runs = history()
 		if len(runs) > 0 && runs[0].Result != "running" {
 			break
 		}
@@ -74,7 +86,7 @@ func TestJobsOnHost(t *testing.T) {
 		want[i] = "[" + p + "]"
 	}
 	if r.Result != "success" || r.ExitCode == nil || *r.ExitCode != 0 || !slices.Equal(r.Excerpt, want) {
-		t.Fatalf("run %+v\nwant output %q", r, want)
+		t.Fatalf("run %s %s %q\nwant output %q", r.Invocation, r.Result, r.Excerpt, want)
 	}
 	if _, err := os.Stat("/tmp/dmn-it16"); err == nil {
 		t.Fatal("payload had an effect")
@@ -105,7 +117,7 @@ func TestJobsOnHost(t *testing.T) {
 	}
 	deadline = time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
-		runs, _ = jobs.History(ctx, j.Service(), true)
+		runs = history()
 		if len(runs) > 1 && runs[0].Result != "running" {
 			break
 		}
@@ -127,6 +139,23 @@ func TestJobsOnHost(t *testing.T) {
 	if out, _ := exec.Command("systemctl", "list-units", "--all", "--no-legend", j.Service()).Output(); strings.TrimSpace(string(out)) != "" {
 		t.Errorf("unit still listed after delete: %s", out)
 	}
+}
+
+// purgeJobUnits removes what a failed earlier run of the test may have left:
+// the timer keeps starting the job otherwise.
+func purgeJobUnits(t *testing.T, j jobs.Job) {
+	t.Helper()
+	for _, u := range []string{j.Timer(), j.Service()} {
+		p := "/etc/systemd/system/" + u
+		b, err := os.ReadFile(p)
+		if err == nil && !strings.HasPrefix(string(b), jobs.Marker) {
+			t.Fatalf("%s exists and was not written by Daemonica", p)
+		}
+		_ = exec.Command("systemctl", "disable", "--now", u).Run()
+		_ = os.Remove(p)
+	}
+	_ = exec.Command("systemctl", "daemon-reload").Run()
+	_ = exec.Command("systemctl", "reset-failed", j.Service(), j.Timer()).Run()
 }
 
 // TestCrontabOnHost edits a user crontab through crontab(1).

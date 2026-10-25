@@ -58,7 +58,8 @@ func TestScriptLibraryOnHost(t *testing.T) {
 		Schedule: jobs.Schedule{Kind: jobs.KindDaily, Time: "03:00"}, Enabled: false}
 	_ = m.Delete(ctx, j.ID)
 	t.Cleanup(func() { _ = m.Delete(context.Background(), "itscript") })
-	if _, err := m.Save(ctx, j, true, "it"); err != nil {
+	saved, err := m.Save(ctx, j, true, "it")
+	if err != nil {
 		t.Fatalf("save: %v", err)
 	}
 	if err := m.RunNow(ctx, j.ID); err != nil {
@@ -66,7 +67,8 @@ func TestScriptLibraryOnHost(t *testing.T) {
 	}
 	var runs []jobs.Run
 	for deadline := time.Now().Add(30 * time.Second); time.Now().Before(deadline); time.Sleep(time.Second) {
-		if runs, _ = jobs.History(ctx, j.Service(), true); len(runs) > 0 && runs[0].Result != "running" {
+		h, _ := jobs.History(ctx, j.Service(), true)
+		if runs = jobs.Since(h, saved.Created); len(runs) > 0 && runs[0].Result != "running" {
 			break
 		}
 	}

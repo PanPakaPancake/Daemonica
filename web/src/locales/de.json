@@ -1560,7 +1560,8 @@
       "everyMin_other": "Alle {{count}} Minuten",
       "everyH_one": "Jede Stunde",
       "everyH_other": "Alle {{count}} Stunden",
-      "calendar": "Nach Kalenderausdruck {{expr}}"
+      "calendar": "Nach Kalenderausdruck {{expr}}",
+      "cron": "cron-Ausdruck {{expr}}"
     },
     "timeout": "Zeitlimit (Minuten)",
     "timeoutHelp": "Danach wird der Lauf abgebrochen. Standard 60 Minuten.",
@@ -1639,7 +1640,13 @@
     "cronShell": "cron führt den Befehl über /bin/sh aus. Ein % wird als normales Zeichen gespeichert.",
     "fromLibrary": "Aus der Skriptsammlung",
     "fromLibraryHelp": "Setzt den Pfad und bei nicht ausführbaren Dateien den passenden Interpreter.",
-    "fromLibraryPick": "Skript wählen …"
+    "fromLibraryPick": "Skript wählen …",
+    "cronKinds": {
+      "reboot": "Beim Systemstart",
+      "custom": "Eigener cron-Ausdruck"
+    },
+    "atMinute": "zur Minute {{minute}}",
+    "cronServerTime": "cron rechnet in der Zeitzone des Servers. Verpasste Läufe holt cron nicht nach."
   },
   "scripts": {
     "local": "Lokal",

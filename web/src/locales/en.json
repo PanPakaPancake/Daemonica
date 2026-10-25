@@ -1560,7 +1560,8 @@
       "everyMin_other": "Every {{count}} minutes",
       "everyH_one": "Every hour",
       "everyH_other": "Every {{count}} hours",
-      "calendar": "By calendar expression {{expr}}"
+      "calendar": "By calendar expression {{expr}}",
+      "cron": "cron expression {{expr}}"
     },
     "timeout": "Time limit (minutes)",
     "timeoutHelp": "The run is stopped after this. Default 60 minutes.",
@@ -1639,7 +1640,13 @@
     "cronShell": "cron runs the command through /bin/sh. A % is stored as a plain character.",
     "fromLibrary": "From the script library",
     "fromLibraryHelp": "Sets the path and, for files that are not executable, a matching interpreter.",
-    "fromLibraryPick": "Choose a script …"
+    "fromLibraryPick": "Choose a script …",
+    "cronKinds": {
+      "reboot": "At system start",
+      "custom": "Own cron expression"
+    },
+    "atMinute": "at minute {{minute}}",
+    "cronServerTime": "cron uses the server's time zone. It does not catch up on missed runs."
   },
   "scripts": {
     "local": "Local",

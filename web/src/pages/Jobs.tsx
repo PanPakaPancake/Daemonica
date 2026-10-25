@@ -36,6 +36,7 @@ import {
   type Timer,
 } from "../lib/jobs";
 import { useSession } from "../lib/session";
+import { cronErrors, cronKinds, fromCron, hourSteps, minuteSteps, toCron, type CronDraft, type CronKind } from "../lib/cron";
 import { interpreterFor } from "../lib/scripts";
 import { Scripts, useLibrary } from "./Scripts";
 
@@ -1370,8 +1371,8 @@ function EnvEditor({
 function Timers({ data, loading, refresh }: { data?: Overview; loading: boolean; refresh: () => void }) {
   const { t, i18n } = useTranslation();
   const items = (x: Timer): MenuItem[] => [
-    { label: t("jobs.copyName"), icon: "copy", onSelect: () => void navigator.clipboard?.writeText(x.name) },
-    { label: t("jobs.copyUnit"), icon: "copy", disabled: !x.unit, onSelect: () => void navigator.clipboard?.writeText(x.unit) },
+    { label: t("jobs.copyName"), icon: "copy", onSelect: () => void navigator.clipboard?.writeText(x.name).catch(() => undefined) },
+    { label: t("jobs.copyUnit"), icon: "copy", disabled: !x.unit, onSelect: () => void navigator.clipboard?.writeText(x.unit).catch(() => undefined) },
   ];
   const cols: Column<Timer>[] = [
     {
@@ -1471,8 +1472,6 @@ function Timers({ data, loading, refresh }: { data?: Overview; loading: boolean;
 
 // ---------- cron ----------
 
-const cronPresets = ["@hourly", "@daily", "@weekly", "@monthly", "@reboot", "*/15 * * * *", "0 3 * * *", "30 6 * * 1-5"];
-
 function Cron({
   data,
   loading,
@@ -1505,7 +1504,7 @@ function Cron({
     }
   };
   const items = (e: CronEntry): MenuItem[] => [
-    { label: t("jobs.copyCommand"), icon: "copy", onSelect: () => void navigator.clipboard?.writeText(e.command) },
+    { label: t("jobs.copyCommand"), icon: "copy", onSelect: () => void navigator.clipboard?.writeText(e.command).catch(() => undefined) },
     { label: t("common.edit"), icon: "edit", disabled: !isAdmin || !e.editable, onSelect: () => setEdit({ entry: e, user: e.user ?? "" }) },
     { label: t("common.delete"), icon: "trash", danger: true, disabled: !isAdmin || !e.editable, onSelect: () => setDel(e) },
   ];
@@ -1631,11 +1630,127 @@ function Cron({
   );
 }
 
+function CronScheduleBuilder({
+  d,
+  set,
+  errs,
+  exprError,
+}: {
+  d: CronDraft;
+  set: (p: Partial<CronDraft>) => void;
+  errs: ReturnType<typeof cronErrors>;
+  exprError: boolean;
+}) {
+  const { t, i18n } = useTranslation();
+  const err = (k?: string) => (k ? t(`jobs.err.${k}`) : undefined);
+  const number = (label: string, v: number, on: (n: number) => void, min: number, max: number, error?: string) => (
+    <Field label={label} error={error}>
+      {(p) => <input {...p} type="number" className="input" min={min} max={max} value={v} onChange={(e) => on(e.target.valueAsNumber)} />}
+    </Field>
+  );
+  const plain =
+    d.kind === "reboot"
+      ? t("jobs.atBoot")
+      : d.kind === "custom"
+        ? t("jobs.describe.cron", { expr: toCron(d) })
+        : describe(t, { kind: d.kind, minute: d.minute, time: d.time, weekdays: d.weekdays, day: d.day, every: d.every, unit: d.unit }, i18n.language) +
+          (d.kind === "interval" && d.unit === "h" ? ` (${t("jobs.atMinute", { minute: String(d.minute).padStart(2, "0") })})` : "");
+  return (
+    <>
+      <Field label={t("jobs.kind")}>
+        {(p) => (
+          <select {...p} className="input" value={d.kind} onChange={(e) => set({ kind: e.target.value as CronKind, expr: toCron(d) })}>
+            {cronKinds.map((k) => (
+              <option key={k} value={k}>
+                {k === "reboot" || k === "custom" ? t(`jobs.cronKinds.${k}`) : t(`jobs.kinds.${k}`)}
+              </option>
+            ))}
+          </select>
+        )}
+      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {d.kind === "hourly" && number(t("jobs.minute"), d.minute, (v) => set({ minute: v }), 0, 59, err(errs.minute))}
+        {["daily", "weekly", "monthly"].includes(d.kind) && (
+          <Field label={t("jobs.time")} error={err(errs.time)}>
+            {(p) => <input {...p} type="time" className="input" value={d.time} onChange={(e) => set({ time: e.target.value })} />}
+          </Field>
+        )}
+        {d.kind === "monthly" && number(t("jobs.day"), d.day, (v) => set({ day: v }), 1, 31, err(errs.day))}
+        {d.kind === "interval" && (
+          <>
+            <Field label={t("jobs.every")}>
+              {(p) => (
+                <select {...p} className="input" value={d.every} onChange={(e) => set({ every: Number(e.target.value) })}>
+                  {(d.unit === "h" ? hourSteps : minuteSteps).map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+            <Field label={t("jobs.unit")}>
+              {(p) => (
+                <select
+                  {...p}
+                  className="input"
+                  value={d.unit}
+                  onChange={(e) => {
+                    const unit = e.target.value as "min" | "h";
+                    const steps = unit === "h" ? hourSteps : minuteSteps;
+                    set({ unit, every: steps.includes(d.every) ? d.every : (steps[0] ?? 1) });
+                  }}
+                >
+                  <option value="min">{t("jobs.minutes")}</option>
+                  <option value="h">{t("jobs.hours")}</option>
+                </select>
+              )}
+            </Field>
+            {d.unit === "h" && number(t("jobs.minute"), d.minute, (v) => set({ minute: v }), 0, 59, err(errs.minute))}
+          </>
+        )}
+        {d.kind === "custom" && (
+          <div className="sm:col-span-2">
+            <Field label={t("jobs.cronSchedule")} help={t("jobs.cronScheduleHelp")} error={exprError ? t("jobs.err.cron") : undefined}>
+              {(p) => <input {...p} className="input font-mono" value={d.expr} spellCheck={false} onChange={(e) => set({ expr: e.target.value })} />}
+            </Field>
+          </div>
+        )}
+      </div>
+      {d.kind === "weekly" && (
+        <fieldset>
+          <legend className="mb-1 font-medium">{t("jobs.weekdays")}</legend>
+          <div className="flex flex-wrap gap-3">
+            {weekdays.map((w, i) => (
+              <label key={w} className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={d.weekdays.includes(w)}
+                  onChange={(e) => set({ weekdays: e.target.checked ? [...d.weekdays, w] : d.weekdays.filter((x) => x !== w) })}
+                />
+                {new Date(Date.UTC(2024, 0, 1 + i)).toLocaleDateString(i18n.language, { weekday: "short", timeZone: "UTC" })}
+              </label>
+            ))}
+          </div>
+          {errs.weekdays && <p className="mt-1 text-sm text-bad">✖ {t("jobs.err.weekdays")}</p>}
+        </fieldset>
+      )}
+      <p className="font-medium">
+        {plain} <span className="ml-2 font-mono text-sm text-faint">{toCron(d)}</span>
+      </p>
+      {d.kind !== "custom" && d.kind !== "reboot" && <p className="text-sm text-muted">{t("jobs.cronServerTime")}</p>}
+    </>
+  );
+}
+
 function CronEditor({ entry, user: initialUser, onClose, onSaved }: { entry?: CronEntry; user: string; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation();
   const { me, withStepUp } = useSession();
   const [user, setUser] = useState(initialUser || me?.linux_user || "");
-  const [schedule, setSchedule] = useState(entry?.schedule ?? "0 3 * * *");
+  const [cd, setCd] = useState<CronDraft>(() => fromCron(entry?.schedule ?? "0 3 * * *"));
+  const schedule = toCron(cd);
+  const fieldErrs = cronErrors(cd);
+  const setC = (p: Partial<CronDraft>) => setCd((x) => ({ ...x, ...p }));
   // Cron runs commands through /bin/sh; % is written escaped (literal).
   const [command, setCommand] = useState(entry?.command.replace(/\\%/g, "%") ?? "");
   const [err, setErr] = useState<string>();
@@ -1652,7 +1767,7 @@ function CronEditor({ entry, user: initialUser, onClose, onSaved }: { entry?: Cr
     staleTime: 60_000,
   });
   const cmdBad = !command.trim() || !noControl(command) || command.length > 1000;
-  const schedBad = !!pv.data?.error;
+  const schedBad = !!pv.data?.error || Object.keys(fieldErrs).length > 0 || !schedule;
   const save = async () => {
     setBusy(true);
     setErr(undefined);
@@ -1667,8 +1782,8 @@ function CronEditor({ entry, user: initialUser, onClose, onSaved }: { entry?: Cr
     }
   };
   let previewNode: ReactNode;
-  if (schedule.trim() === "@reboot") previewNode = <p className="text-sm">{t("jobs.atBoot")}</p>;
-  else previewNode = <NextRuns preview={pv.data?.preview} error={schedBad ? t("jobs.err.cron") : undefined} />;
+  if (schedule === "@reboot") previewNode = <p className="text-sm">{t("jobs.atBoot")}</p>;
+  else previewNode = <NextRuns preview={pv.data?.preview} error={pv.data?.error ? t("jobs.err.cron") : undefined} />;
   return (
     <Modal title={entry ? t("jobs.cronEdit") : t("jobs.cronNew")} onClose={onClose} wide>
       <div className="flex flex-col gap-4">
@@ -1683,23 +1798,7 @@ function CronEditor({ entry, user: initialUser, onClose, onSaved }: { entry?: Cr
             </select>
           )}
         </Field>
-        <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
-          <Field label={t("jobs.cronSchedule")} help={t("jobs.cronScheduleHelp")} error={schedBad ? t("jobs.err.cron") : undefined}>
-            {(p) => <input {...p} className="input font-mono" value={schedule} spellCheck={false} onChange={(e) => setSchedule(e.target.value)} />}
-          </Field>
-          <Field label={t("jobs.presets")}>
-            {(p) => (
-              <select {...p} className="input font-mono" value="" onChange={(e) => e.target.value && setSchedule(e.target.value)}>
-                <option value="">…</option>
-                {cronPresets.map((x) => (
-                  <option key={x} value={x}>
-                    {x}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
-        </div>
+        <CronScheduleBuilder d={cd} set={setC} errs={fieldErrs} exprError={cd.kind === "custom" && !!pv.data?.error} />
         {previewNode}
         <Notice tone="info">{t("jobs.cronShell")}</Notice>
         <Field label={t("jobs.col.command")} error={command && cmdBad ? t("jobs.err.shell") : undefined}>

@@ -207,7 +207,7 @@ _Last updated: 2026-10-25_
 | Schedule builder (hourly/daily/weekly/monthly/interval/calendar), plain-language preview, next 5 runs via `systemd-analyze calendar`, time zone, `Persistent`, `RandomizedDelaySec` | ✓ | `TestOnCalendar`, `TestParseAnalyze`, `TestNextRunsRealSystemd` |
 | Timeout (default 1 h), environment, working directory, "standard secure" hardening with writable paths, resource limits | ✓ | `TestUnitModesAndTimer`, `TestUnitInjection` |
 | Output to journald; actions run now, enable/disable, edit, duplicate, delete; history of the last 20 runs (start, duration, exit code, journal excerpt) | ✓ | `TestParseHistory`, `Jobs.tsx` |
-| Cron (SOLL): create/edit/delete user crontab entries with syntax check and next runs | ✓ | `TestCronExpr`, `TestCronFiles`, `cron.save` |
+| Cron (SOLL): create/edit/delete user crontab entries with syntax check and next runs; the same schedule builder as the jobs (hourly to interval, at boot, own expression) | ✓ | `TestCronExpr`, `TestCronFiles`, `cron.save`, `cron.test.ts` |
 | "Convert to systemd timer" (KANN) | ✖ | not implemented |
 | Security: commands never in the web process; unit names allowlisted; unit-file injection (line breaks, `%` specifiers) masked; arguments not interpreted by a shell | ✓ | DEC-029; `TestUnitInjection`; programs must be trusted files (`TestTrusted`) |
 | Roles: operator runs and enables/disables; admin everything; read-only views | ✓ | policy table; `TestJobOpsRoles` |

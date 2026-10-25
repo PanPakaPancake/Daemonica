@@ -128,7 +128,7 @@ _Last updated: 2026-10-25_
 | Requirement | Status | Evidence |
 |---|---|---|
 | View: tree + list, breadcrumbs, sort/filter, search in folder, properties (owner, group, rwx + octal, size, times, symlink target), hidden files toggle, server-side pagination | ✓ | `files.List/Stat`, UI `/files`; `TestListSortFilterPage` |
-| Views details/compact/tiles (remembered per browser); sortable column headers (name, type, size, mode, owner, modified) and filter row (name, owner, type), server-side | ✓ | DEC-022; `files.ListArgs` `owner`/`kind`, sort `mode`/`owner`; `TestListSortFilterPage` |
+| Views details/compact/tiles (remembered per browser); sortable column headers (name, type, size, mode, owner, modified) and filter row for every column (name, type, size, mode, owner, modified), server-side; right-click menu | ✓ | DEC-022; `files.ListArgs` `owner`/`kind`/`size`/`mode`/`mtime`, sort `mode`/`owner`; `TestListSortFilterPage`, `TestParseNumFilter`, `TestModeMatches` |
 | New file/folder, rename, move/copy (cross-device move = copy + delete), delete (recursive only with typed name), chmod (Linux rules), chown (admin + step-up root mode only) | ✓ | `internal/files`; `TestCreateRenameRawDelete`, `TestTransfer`; `TestFileManagerEndToEnd` |
 | All operations in a worker under the mapped Linux user; Linux permissions are the boundary | ✓ | integration: create in `/etc` → `permission_denied`, upload owned by the user |
 | Root mode: admin only, step-up, 10 min, red bar, every write audited | ✓ | `fs.root_enable` (files.root, step-up), session-bound; `RootBar`; integration test |

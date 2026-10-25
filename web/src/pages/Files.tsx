@@ -3,8 +3,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router";
 import { Icon, type IconName } from "../components/icons";
-import { DataTable } from "../components/DataTable";
-import { Menu, Modal, type MenuItem } from "../components/Modal";
+import { DataTable, parseNumFilter, type Filters } from "../components/DataTable";
+import { Menu, Modal, useContextMenu, type MenuItem } from "../components/Modal";
 import { Explain, Field, Notice, Panel } from "../components/ui";
 import { api, ApiError } from "../lib/api";
 import { errorText } from "../lib/errors";
@@ -51,6 +51,21 @@ function kindOf(e: FsEntry): Exclude<Kind, ""> {
   return e.type === "dir" || e.type === "file" || e.type === "symlink" ? e.type : "other";
 }
 
+/** The listing's server-side filters (fs.list) from the column filters; an invalid size expression is left out. */
+function listFilters(f: Filters): Record<string, string> {
+  const out: Record<string, string> = {};
+  const put = (arg: string, v: string | undefined) => {
+    if (v?.trim()) out[arg] = v.trim();
+  };
+  put("filter", f.name);
+  put("owner", f.owner);
+  put("kind", f.type);
+  put("mode", f.mode);
+  put("mtime", f.mtime);
+  if (f.size && parseNumFilter(f.size, true)) put("size", f.size);
+  return out;
+}
+
 type View = "details" | "compact" | "grid";
 const views: { v: View; icon: IconName }[] = [
   { v: "details", icon: "viewList" },
@@ -90,11 +105,10 @@ export function Files() {
   const [params, setParams] = useSearchParams();
   const path = params.get("path") ?? info.data?.home ?? "";
   const [hidden, setHidden] = useState(false);
-  const [filterInput, setFilterInput] = useState("");
-  const [filter, setFilter] = useState("");
-  const [ownerInput, setOwnerInput] = useState("");
-  const [owner, setOwner] = useState("");
-  const [kind, setKind] = useState<Kind>("");
+  // Column filters as typed (name = folder search); the listing uses a debounced copy.
+  const [filterInputs, setFilterInputs] = useState<Filters>({});
+  const [filters, setFilters] = useState<Filters>({});
+  const kind = (filterInputs.type ?? "") as Kind;
   const [view, setViewState] = useState<View>(loadView);
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "name", desc: false });
   const [offset, setOffset] = useState(0);
@@ -105,13 +119,14 @@ export function Files() {
   const uploads = useUploads(asRoot, () => void qc.invalidateQueries({ queryKey: ["fs-list"] }));
 
   useEffect(() => {
-    const id = setTimeout(() => setFilter(filterInput.trim()), 300);
+    const id = setTimeout(() => setFilters(filterInputs), 300);
     return () => clearTimeout(id);
-  }, [filterInput]);
-  useEffect(() => {
-    const id = setTimeout(() => setOwner(ownerInput.trim()), 300);
-    return () => clearTimeout(id);
-  }, [ownerInput]);
+  }, [filterInputs]);
+  const setFilterInput = (key: string, v: string) => {
+    setOffset(0);
+    setFilterInputs((f) => ({ ...f, [key]: v }));
+  };
+  const ctx = useContextMenu();
 
   const setView = (v: View) => {
     setViewState(v);
@@ -123,13 +138,9 @@ export function Files() {
   };
 
   const list = useQuery({
-    queryKey: ["fs-list", path, hidden, filter, owner, kind, sort, offset, asRoot],
+    queryKey: ["fs-list", path, hidden, listFilters(filters), sort, offset, asRoot],
     queryFn: () =>
-      fsCall<FsListing>(
-        "list",
-        { path, hidden, filter, owner, ...(kind && { kind }), sort: sort.key, desc: sort.desc, offset, limit: PAGE },
-        { as_root: asRoot },
-      ),
+      fsCall<FsListing>("list", { path, hidden, ...listFilters(filters), sort: sort.key, desc: sort.desc, offset, limit: PAGE }, { as_root: asRoot }),
     enabled: !!path,
     retry: false,
   });
@@ -143,11 +154,8 @@ export function Files() {
 
   const go = (p: string) => {
     setOffset(0);
-    setFilterInput("");
-    setFilter("");
-    setOwnerInput("");
-    setOwner("");
-    setKind("");
+    setFilterInputs({});
+    setFilters({});
     setMsg(undefined);
     setParams({ path: p });
   };
@@ -231,7 +239,7 @@ export function Files() {
 
   if (me?.role === "readonly") return <Notice tone="info">{t("files.readonly")}</Notice>;
 
-  const filtered = !!(filter || owner || kind);
+  const filtered = Object.keys(listFilters(filters)).length > 0;
   const listErr = list.error instanceof ApiError ? list.error.code : undefined;
   const crumbs = dir.split("/").filter(Boolean);
   const from = data && data.total > 0 ? offset + 1 : 0;
@@ -289,7 +297,7 @@ export function Files() {
           onDragLeave={() => setDrag(false)}
           onDrop={onDrop}
         >
-          <Panel className="flex flex-col gap-3 p-3">
+          <Panel className="@container flex flex-col gap-3 p-3">
             <nav aria-label={t("files.breadcrumbs")} className="flex flex-wrap items-center gap-1 font-mono text-sm">
               <button type="button" className="rounded px-1 hover:bg-bg-2" onClick={() => go("/")}>
                 /
@@ -311,28 +319,9 @@ export function Files() {
                 <Icon name="arrowUp" className="h-4 w-4" />
                 <span className="sr-only">{t("files.up")}</span>
               </button>
-              <button
-                type="button"
-                className="btn btn-secondary min-h-9 px-3"
-                onClick={() => setDlg({ kind: "new", dirKind: "file" })}
-                disabled={!data?.writable}
-              >
-                <Icon name="filePlus" className="h-4 w-4" />
-                {t("files.newFile")}
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary min-h-9 px-3"
-                onClick={() => setDlg({ kind: "new", dirKind: "dir" })}
-                disabled={!data?.writable}
-              >
-                <Icon name="folderPlus" className="h-4 w-4" />
-                {t("files.newFolder")}
-              </button>
-              <button type="button" className="btn btn-primary min-h-9 px-3" onClick={() => fileInput.current?.click()} disabled={!data?.writable}>
-                <Icon name="upload" className="h-4 w-4" />
-                {t("files.upload.button")}
-              </button>
+              <ToolButton icon="filePlus" label={t("files.newFile")} onClick={() => setDlg({ kind: "new", dirKind: "file" })} disabled={!data?.writable} />
+              <ToolButton icon="folderPlus" label={t("files.newFolder")} onClick={() => setDlg({ kind: "new", dirKind: "dir" })} disabled={!data?.writable} />
+              <ToolButton icon="upload" label={t("files.upload.button")} primary onClick={() => fileInput.current?.click()} disabled={!data?.writable} />
               <input
                 ref={fileInput}
                 type="file"
@@ -343,53 +332,48 @@ export function Files() {
                   e.target.value = "";
                 }}
               />
-              <div className="ml-auto flex flex-wrap items-center gap-2">
-                <div className="flex rounded-[8px] border border-line" role="group" aria-label={t("files.view.label")}>
-                  {views.map(({ v, icon }) => (
-                    <button
-                      key={v}
-                      type="button"
-                      className={`min-h-9 px-2 first:rounded-l-[7px] last:rounded-r-[7px] ${view === v ? "bg-bg-2 text-violet" : "text-muted hover:text-fg"}`}
-                      aria-pressed={view === v}
-                      title={t(`files.view.${v}`)}
-                      onClick={() => setView(v)}
-                    >
-                      <Icon name={icon} className="h-4 w-4" />
-                      <span className="sr-only">{t(`files.view.${v}`)}</span>
-                    </button>
-                  ))}
-                </div>
-                <label className="relative">
-                  <span className="sr-only">{t("files.search")}</span>
-                  <Icon name="search" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
-                  <input
-                    className="input min-h-9 w-48 pl-8"
-                    value={filterInput}
-                    placeholder={t("files.search")}
-                    onChange={(e) => {
-                      setOffset(0);
-                      setFilterInput(e.target.value);
-                    }}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="btn btn-secondary min-h-9 px-2"
-                  aria-pressed={hidden}
-                  title={t(hidden ? "files.hideHidden" : "files.showHidden")}
-                  onClick={() => {
-                    setOffset(0);
-                    setHidden(!hidden);
-                  }}
-                >
-                  <Icon name={hidden ? "eye" : "eyeOff"} className="h-4 w-4" />
-                  <span className="sr-only">{t("files.showHidden")}</span>
-                </button>
-                <button type="button" className="btn btn-secondary min-h-9 px-2" onClick={refresh} title={t("common.refresh")}>
-                  <Icon name="restart" className="h-4 w-4" />
-                  <span className="sr-only">{t("common.refresh")}</span>
-                </button>
+              <label className="relative ml-auto min-w-36 max-w-xs flex-1">
+                <span className="sr-only">{t("files.search")}</span>
+                <Icon name="search" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
+                <input
+                  className="input min-h-9 w-full pl-8"
+                  value={filterInputs.name ?? ""}
+                  placeholder={t("files.search")}
+                  onChange={(e) => setFilterInput("name", e.target.value)}
+                />
+              </label>
+              <div className="flex rounded-[8px] border border-line" role="group" aria-label={t("files.view.label")}>
+                {views.map(({ v, icon }) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={`min-h-9 px-2 first:rounded-l-[7px] last:rounded-r-[7px] ${view === v ? "bg-bg-2 text-violet" : "text-muted hover:text-fg"}`}
+                    aria-pressed={view === v}
+                    title={t(`files.view.${v}`)}
+                    onClick={() => setView(v)}
+                  >
+                    <Icon name={icon} className="h-4 w-4" />
+                    <span className="sr-only">{t(`files.view.${v}`)}</span>
+                  </button>
+                ))}
               </div>
+              <button
+                type="button"
+                className="btn btn-secondary min-h-9 px-2"
+                aria-pressed={hidden}
+                title={t(hidden ? "files.hideHidden" : "files.showHidden")}
+                onClick={() => {
+                  setOffset(0);
+                  setHidden(!hidden);
+                }}
+              >
+                <Icon name={hidden ? "eye" : "eyeOff"} className="h-4 w-4" />
+                <span className="sr-only">{t("files.showHidden")}</span>
+              </button>
+              <button type="button" className="btn btn-secondary min-h-9 px-2" onClick={refresh} title={t("common.refresh")}>
+                <Icon name="restart" className="h-4 w-4" />
+                <span className="sr-only">{t("common.refresh")}</span>
+              </button>
             </div>
             {data && !data.writable && <p className="text-sm text-faint">{t(isAdmin && !asRoot ? "files.notWritableAdmin" : "files.notWritable")}</p>}
           </Panel>
@@ -418,24 +402,24 @@ export function Files() {
                   setOffset(0);
                   setSort((s as { key: SortKey; desc: boolean } | null) ?? { key: "name", desc: false });
                 }}
-                filters={{ name: filterInput, owner: ownerInput, kind }}
+                filters={filterInputs}
                 onFilters={(f) => {
                   setOffset(0);
-                  setFilterInput(f.name ?? "");
-                  setOwnerInput(f.owner ?? "");
-                  setKind((f.kind ?? "") as Kind);
+                  setFilterInputs(f);
                 }}
+                rowMenu={(e) => ({ label: t("files.actionsFor", { name: shownName(e) }), items: items(e) })}
                 columns={[
                   {
                     key: "name",
                     label: t("files.col.name"),
+                    thClass: "min-w-48",
                     sortValue: (e) => e.name,
                     filter: "text",
                     cell: (e) => (
                       <button type="button" className="flex min-w-0 items-center gap-2 text-left" onClick={() => open(e)}>
                         <Icon name={iconFor(e)} className={`h-4 w-4 ${isDir(e) ? "text-violet" : "text-faint"}`} />
-                        <span className={`break-all font-mono ${e.display || e.raw ? "text-warn" : ""}`}>{shownName(e)}</span>
-                        {e.type === "symlink" && <span className="break-all text-xs text-faint">→ {e.target ?? "?"}</span>}
+                        <span className={`break-words font-mono ${e.display || e.raw ? "text-warn" : ""}`}>{shownName(e)}</span>
+                        {e.type === "symlink" && <span className="break-words text-xs text-faint">→ {e.target ?? "?"}</span>}
                         {e.blocked && <span className="rounded-full border border-line px-1.5 text-[10px] text-bad">{t("files.blocked")}</span>}
                       </button>
                     ),
@@ -455,15 +439,17 @@ export function Files() {
                     thClass: "w-24 text-right",
                     tdClass: "text-right tabular-nums text-muted",
                     sortValue: (e) => e.size,
+                    filter: "bytes",
                     cell: (e) => <>{e.type === "file" ? bytes(e.size, lang) : "–"}</>,
                   },
                   {
                     key: "mode",
                     label: t("files.col.mode"),
                     thClass: "w-32",
-                    tdClass: "font-mono text-xs",
+                    tdClass: "whitespace-nowrap font-mono text-xs",
                     tdTitle: (e) => octal(e.mode),
                     sortValue: (e) => e.mode,
+                    filter: "text",
                     cell: (e) => <>{modeString(e.mode)}</>,
                   },
                   {
@@ -483,8 +469,9 @@ export function Files() {
                     key: "mtime",
                     label: t("files.col.mtime"),
                     thClass: "w-44",
-                    tdClass: "text-muted",
+                    tdClass: "whitespace-nowrap text-muted",
                     sortValue: (e) => e.mtime,
+                    filter: "date",
                     cell: (e) => <>{dateTime(e.mtime, lang)}</>,
                   },
                   {
@@ -492,6 +479,7 @@ export function Files() {
                     label: t("common.actions"),
                     srOnly: true,
                     thClass: "w-12",
+                    filter: false,
                     cell: (e) => <Menu label={t("files.actionsFor", { name: shownName(e) })} items={items(e)} />,
                   },
                 ]}
@@ -530,14 +518,7 @@ export function Files() {
                   </button>
                   <label className="flex items-center gap-1.5">
                     <span className="text-muted">{t("files.col.type")}</span>
-                    <select
-                      className="input header-select min-h-8 py-1 text-sm"
-                      value={kind}
-                      onChange={(e) => {
-                        setOffset(0);
-                        setKind(e.target.value as Kind);
-                      }}
-                    >
+                    <select className="input header-select min-h-8 py-1 text-sm" value={kind} onChange={(e) => setFilterInput("type", e.target.value)}>
                       <option value="">{t("table.all")}</option>
                       {kinds.map((k) => (
                         <option key={k} value={k}>
@@ -559,7 +540,11 @@ export function Files() {
                   >
                     {data.entries.map((e) =>
                       view === "grid" ? (
-                        <li key={e.raw ?? e.name} className="relative rounded-[8px] border border-transparent hover:border-line hover:bg-bg-2/50">
+                        <li
+                          key={e.raw ?? e.name}
+                          className="relative rounded-[8px] border border-transparent hover:border-line hover:bg-bg-2/50"
+                          onContextMenu={(ev) => ctx.onContextMenu(ev, t("files.actionsFor", { name: shownName(e) }), items(e))}
+                        >
                           <button
                             type="button"
                             className="flex w-full flex-col items-center gap-1.5 px-2 pb-2 pt-3 text-center"
@@ -575,7 +560,11 @@ export function Files() {
                           </div>
                         </li>
                       ) : (
-                        <li key={e.raw ?? e.name} className="flex min-w-0 items-center gap-1 rounded-[6px] hover:bg-bg-2/50">
+                        <li
+                          key={e.raw ?? e.name}
+                          className="flex min-w-0 items-center gap-1 rounded-[6px] hover:bg-bg-2/50"
+                          onContextMenu={(ev) => ctx.onContextMenu(ev, t("files.actionsFor", { name: shownName(e) }), items(e))}
+                        >
                           <button
                             type="button"
                             className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1 text-left"
@@ -619,6 +608,7 @@ export function Files() {
       </div>
 
       {dialog}
+      {ctx.menu}
       {dlg?.kind === "root" && (
         <Modal title={t("files.root.title")} onClose={() => setDlg(undefined)}>
           <Notice tone="warn">{t("files.root.warning")}</Notice>
@@ -796,6 +786,34 @@ function TreeNode({
             />
           ))}
     </div>
+  );
+}
+
+/** Toolbar button: icon with label, icon only (with tooltip) when the toolbar is narrow. */
+function ToolButton({
+  icon,
+  label,
+  onClick,
+  disabled,
+  primary,
+}: {
+  icon: IconName;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className={`btn ${primary ? "btn-primary" : "btn-secondary"} min-h-9 px-2 @3xl:px-3`}
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+    >
+      <Icon name={icon} className="h-4 w-4" />
+      <span className="sr-only @3xl:not-sr-only">{label}</span>
+    </button>
   );
 }
 

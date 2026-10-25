@@ -90,8 +90,8 @@ export function Passkeys() {
                     <p className="font-semibold">{p.name}</p>
                   )}
                   <p className="text-sm text-muted">
-                    {p.backup_state ? t("passkeys.synced") : t("passkeys.deviceBound")} · {t("passkeys.created")} {fmt(p.created_at)} ·{" "}
-                    {t("passkeys.lastUsed")} {fmt(p.last_used_at)}
+                    {p.backup_state ? t("passkeys.synced") : t("passkeys.deviceBound")} · {t("passkeys.created")} {fmt(p.created_at)} · {t("passkeys.lastUsed")}{" "}
+                    {fmt(p.last_used_at)}
                   </p>
                 </div>
                 <div className="flex gap-2">

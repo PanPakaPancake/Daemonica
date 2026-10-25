@@ -410,7 +410,8 @@
       "service": "Dienste (.service)",
       "timer": "Timer (.timer)",
       "socket": "Sockets (.socket)"
-    }
+    },
+    "details": "Details anzeigen"
   },
   "logs": {
     "title": "Logs",
@@ -783,6 +784,17 @@
     "all": "Alle",
     "reset": "Filter zurücksetzen",
     "noMatch": "Kein Eintrag passt zu den Filtern.",
-    "empty": "Keine Einträge."
+    "empty": "Keine Einträge.",
+    "filterNumber": "z. B. >10",
+    "filterBytes": "z. B. >1M",
+    "numberHelp": "Zahl (mindestens), >, >=, <, <=, = oder Bereich a-b. Größen mit K, M, G, T (z. B. <500K, 1M-2G).",
+    "age": {
+      "1d": "Letzte 24 Stunden",
+      "7d": "Letzte 7 Tage",
+      "30d": "Letzte 30 Tage",
+      "365d": "Letztes Jahr",
+      "-30d": "Älter als 30 Tage",
+      "-365d": "Älter als 1 Jahr"
+    }
   }
 }

@@ -7,6 +7,7 @@ import { api, type Account } from "../lib/api";
 import { errorText } from "../lib/errors";
 import { useSession } from "../lib/session";
 import { DataTable } from "../components/DataTable";
+import type { MenuItem } from "../components/Modal";
 
 interface AccountView extends Account {
   disabled: boolean;
@@ -56,6 +57,36 @@ export function Accounts() {
       setBusy(false);
     }
   };
+
+  // Same actions as the row buttons, for the right-click menu.
+  const accountItems = (a: AccountView): MenuItem[] => [
+    ...(a.invited && !a.disabled
+      ? [
+          {
+            label: t("accounts.reinvite"),
+            icon: "passkey" as const,
+            disabled: busy,
+            onSelect: () => void act(async () => showInvite(await withStepUp(() => api<InviteResult>("POST", `/accounts/${id(a)}/reinvite`)))),
+          },
+        ]
+      : []),
+    {
+      label: a.disabled ? t("accounts.enable") : t("accounts.disable"),
+      icon: "lock",
+      disabled: busy,
+      onSelect: () => void act(() => withStepUp(() => api("PATCH", `/accounts/${id(a)}/disabled`, { disabled: !a.disabled }))),
+    },
+    {
+      label: t("common.remove"),
+      icon: "trash",
+      danger: true,
+      disabled: busy,
+      onSelect: () => {
+        setDeleting(a.id);
+        setConfirm("");
+      },
+    },
+  ];
 
   const showInvite = (r: InviteResult) => {
     setInvite(r);
@@ -162,6 +193,7 @@ export function Accounts() {
               rowKey={(a) => a.id}
               label={t("accounts.title")}
               defaultSort={{ key: "name", desc: false }}
+              rowMenu={(a) => ({ label: a.name, items: a.self ? [] : accountItems(a) })}
               columns={[
                 {
                   key: "name",

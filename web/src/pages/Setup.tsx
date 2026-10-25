@@ -127,7 +127,15 @@ export function Setup() {
             >
               <Field label={t("setup.token.label")} help={t("setup.token.help")}>
                 {(p) => (
-                  <input {...p} className="input font-mono" autoComplete="off" spellCheck={false} value={token} onChange={(e) => setToken(e.target.value.trim())} required />
+                  <input
+                    {...p}
+                    className="input font-mono"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={token}
+                    onChange={(e) => setToken(e.target.value.trim())}
+                    required
+                  />
                 )}
               </Field>
               <Explain>{t("setup.token.explain")}</Explain>
@@ -152,7 +160,9 @@ export function Setup() {
                   {(p) => <input {...p} className="input" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="dash.example.org" required />}
                 </Field>
                 <Field label={t("setup.domain.port")}>
-                  {(p) => <input {...p} className="input" inputMode="numeric" value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))} required />}
+                  {(p) => (
+                    <input {...p} className="input" inputMode="numeric" value={port} onChange={(e) => setPort(e.target.value.replace(/\D/g, ""))} required />
+                  )}
                 </Field>
               </div>
               <Explain>{t("setup.domain.explain")}</Explain>
@@ -169,7 +179,16 @@ export function Setup() {
               }}
             >
               <Field label={t("setup.allowlist.label")} help={t("setup.allowlist.help")}>
-                {(p) => <textarea {...p} className="input" value={allow} onChange={(e) => setAllow(e.target.value)} disabled={isPublic} placeholder="203.0.113.7/32" />}
+                {(p) => (
+                  <textarea
+                    {...p}
+                    className="input"
+                    value={allow}
+                    onChange={(e) => setAllow(e.target.value)}
+                    disabled={isPublic}
+                    placeholder="203.0.113.7/32"
+                  />
+                )}
               </Field>
               <label className="flex items-start gap-2">
                 <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="mt-1" />
@@ -232,11 +251,17 @@ export function Setup() {
                     {(p) => <textarea {...p} className="input" value={certPem} onChange={(e) => setCertPem(e.target.value)} spellCheck={false} />}
                   </Field>
                   <Field label={t("setup.certificate.keyPem")}>
-                    {(p) => <textarea {...p} className="input" value={keyPem} onChange={(e) => setKeyPem(e.target.value)} spellCheck={false} autoComplete="off" />}
+                    {(p) => (
+                      <textarea {...p} className="input" value={keyPem} onChange={(e) => setKeyPem(e.target.value)} spellCheck={false} autoComplete="off" />
+                    )}
                   </Field>
                 </>
               )}
-              {busy && <Notice tone="info" live>{t("setup.certificate.working")}</Notice>}
+              {busy && (
+                <Notice tone="info" live>
+                  {t("setup.certificate.working")}
+                </Notice>
+              )}
               <Explain>{t("setup.certificate.explain")}</Explain>
               <Nav
                 onBack={() => setStep("allowlist")}

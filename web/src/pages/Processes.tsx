@@ -90,6 +90,21 @@ export function Processes() {
             loading={q.isLoading}
             label={t("processes.title")}
             defaultSort={{ key: "cpu", desc: true }}
+            rowMenu={(p) => ({
+              label: t("processes.signal", { pid: p.pid }),
+              items: canSignal(p)
+                ? [
+                    {
+                      label: t("processes.signal", { pid: p.pid }),
+                      icon: "signal",
+                      onSelect: () => {
+                        setSig("TERM");
+                        setTarget(p);
+                      },
+                    },
+                  ]
+                : [],
+            })}
             columns={[
               {
                 key: "pid",

@@ -10,6 +10,7 @@ import { api } from "../lib/api";
 import { errorText } from "../lib/errors";
 import { useSession } from "../lib/session";
 import { DataTable } from "../components/DataTable";
+import type { MenuItem } from "../components/Modal";
 
 interface LinuxUser {
   name: string;
@@ -87,6 +88,30 @@ export function Users() {
     void change(op, { name: u.name, ...body, ...(u.admin_mapped && { confirm_mapped: true }) }, done);
   };
 
+  // Same actions as the row buttons, for the right-click menu.
+  const userItems = (u: LinuxUser): MenuItem[] => [
+    { label: t("users.edit"), icon: "edit", onSelect: () => setDlg({ kind: "edit", user: u }) },
+    ...(u.uid !== 0
+      ? [
+          {
+            label: u.sudo ? t("users.revokeSudo") : t("users.grantSudo"),
+            icon: "shield" as const,
+            onSelect: () => {
+              if (!window.confirm(u.sudo ? t("users.revokeSudoConfirm", { name: u.name }) : t("users.grantSudoConfirm", { name: u.name }))) return;
+              guarded(u, "set_sudo", { sudo: !u.sudo }, t("users.done"));
+            },
+          },
+          {
+            label: isLocked(u) ? t("users.unlock") : t("users.lock"),
+            icon: "lock" as const,
+            onSelect: () => guarded(u, "set_locked", { locked: !isLocked(u) }, t("users.done")),
+          },
+        ]
+      : []),
+    { label: t("users.password"), icon: "key", onSelect: () => setDlg({ kind: "password", user: u }) },
+    ...(u.uid !== 0 ? [{ label: t("common.remove"), icon: "trash" as const, danger: true, onSelect: () => setDlg({ kind: "delete", user: u }) }] : []),
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -141,6 +166,7 @@ export function Users() {
               loading={q.isLoading}
               label={t("users.title")}
               defaultSort={{ key: "uid", desc: false }}
+              rowMenu={(u) => ({ label: u.name, items: isAdmin ? userItems(u) : [] })}
               columns={[
                 {
                   key: "name",
@@ -276,6 +302,13 @@ export function Users() {
             rowKey={(g) => g.name}
             label={t("users.group")}
             defaultSort={{ key: "name", desc: false }}
+            rowMenu={(g) => ({
+              label: g.name,
+              items:
+                isAdmin && g.name !== "sudo" && g.name !== "admin"
+                  ? [{ label: t("users.edit"), icon: "edit", onSelect: () => setDlg({ kind: "group", group: g }) }]
+                  : [],
+            })}
             columns={[
               {
                 key: "name",

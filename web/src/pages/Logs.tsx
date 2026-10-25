@@ -121,7 +121,12 @@ export function Logs() {
         >
           <label className="flex flex-col gap-1 lg:col-span-2">
             <span className="text-sm font-medium">{t("logs.unit")}</span>
-            <input className="input font-mono" value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value.trim() })} placeholder="ssh.service" />
+            <input
+              className="input font-mono"
+              value={draft.unit}
+              onChange={(e) => setDraft({ ...draft, unit: e.target.value.trim() })}
+              placeholder="ssh.service"
+            />
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">{t("logs.priority")}</span>
@@ -198,7 +203,12 @@ export function Logs() {
               <span className="shrink-0 text-faint tabular-nums">{fmtTime(e.time)}</span>
               <span className="w-14 shrink-0 text-faint">{prioLabel[e.priority]}</span>
               <span className="min-w-0">
-                {e.identifier && <span className="text-violet">{e.identifier}{e.pid ? `[${e.pid}]` : ""}: </span>}
+                {e.identifier && (
+                  <span className="text-violet">
+                    {e.identifier}
+                    {e.pid ? `[${e.pid}]` : ""}:{" "}
+                  </span>
+                )}
                 {e.message}
               </span>
             </div>

@@ -209,7 +209,12 @@ export function FileEditor() {
               <input type="checkbox" checked={wrap} onChange={(e) => setWrap(e.target.checked)} />
               {t("files.editor.wrap")}
             </label>
-            <select className="input header-select min-h-9 py-1 text-sm" value={tabSize} onChange={(e) => setTabSize(Number(e.target.value))} aria-label={t("files.editor.indent")}>
+            <select
+              className="input header-select min-h-9 py-1 text-sm"
+              value={tabSize}
+              onChange={(e) => setTabSize(Number(e.target.value))}
+              aria-label={t("files.editor.indent")}
+            >
               {[2, 4, 8].map((n) => (
                 <option key={n} value={n}>
                   {t("files.editor.spaces", { count: n })}
@@ -325,13 +330,7 @@ export function FileEditor() {
         />
       )}
       {versionsFor !== null && file && (
-        <VersionsDialog
-          target={saveTarget(file)}
-          current={versionsFor}
-          run={run}
-          onClose={() => setVersionsFor(null)}
-          onLoad={loadVersion}
-        />
+        <VersionsDialog target={saveTarget(file)} current={versionsFor} run={run} onClose={() => setVersionsFor(null)} onLoad={loadVersion} />
       )}
       {leave && (
         <Modal title={t("files.editor.leaveTitle")} onClose={() => setLeave(null)}>
@@ -366,7 +365,9 @@ function ValidationDialog({ v, onClose, onForce }: { v: Validation; onClose: () 
     <Modal title={t("files.editor.checkFailedTitle")} onClose={onClose} wide>
       <Notice tone="bad">{t(text, { tool: v.tool })}</Notice>
       {v.output && (
-        <pre className="mt-3 max-h-[40vh] overflow-auto whitespace-pre-wrap break-all rounded-[8px] border border-line bg-bg-0 p-3 font-mono text-xs">{v.output}</pre>
+        <pre className="mt-3 max-h-[40vh] overflow-auto whitespace-pre-wrap break-all rounded-[8px] border border-line bg-bg-0 p-3 font-mono text-xs">
+          {v.output}
+        </pre>
       )}
       <div className="mt-5 flex flex-wrap justify-end gap-2">
         <button type="button" className="btn btn-primary" onClick={onClose}>

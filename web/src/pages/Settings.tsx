@@ -84,7 +84,6 @@ export function Settings() {
     .map((x) => x.trim())
     .filter(Boolean);
 
-
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
     setErr(undefined);

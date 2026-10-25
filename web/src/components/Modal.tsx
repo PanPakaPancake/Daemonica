@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Icon, type IconName } from "./icons";
@@ -39,53 +39,63 @@ export interface MenuItem {
  * rendered in a portal with fixed positioning so that scroll containers
  * (tables with overflow) never clip it; it opens upwards when there is no
  * room below. */
-export function Menu({ label, items }: { label: string; items: MenuItem[] }) {
-  const [pos, setPos] = useState<{ right: number; top?: number; bottom?: number } | null>(null);
-  const open = pos !== null;
-  const id = useId();
-  const btn = useRef<HTMLButtonElement>(null);
+type MenuPos = { left?: number; right?: number; top?: number; bottom?: number };
+
+const menuWidth = 224;
+const menuHeight = (n: number) => n * 34 + 12;
+
+/** The menu list itself, rendered into document.body (no scroll container clips it). */
+function MenuPopup({
+  id,
+  label,
+  items,
+  pos,
+  onClose,
+  keep,
+}: {
+  id?: string;
+  label: string;
+  items: MenuItem[];
+  pos: MenuPos;
+  onClose: (refocus: boolean) => void;
+  /** Clicks inside this element do not close the menu (its toggle button). */
+  keep?: RefObject<HTMLElement | null>;
+}) {
   const menu = useRef<HTMLDivElement>(null);
-  const first = useRef<HTMLButtonElement>(null);
-
-  const toggle = () => {
-    if (open || !btn.current) {
-      setPos(null);
-      return;
-    }
-    const r = btn.current.getBoundingClientRect();
-    const need = items.length * 34 + 12;
-    const right = Math.max(8, window.innerWidth - r.right);
-    if (window.innerHeight - r.bottom < need && r.top > window.innerHeight - r.bottom) setPos({ right, bottom: window.innerHeight - r.top + 4 });
-    else setPos({ right, top: r.bottom + 4 });
-  };
-
   useEffect(() => {
-    if (!open) return;
-    first.current?.focus();
+    menu.current?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus();
     const onDown = (e: MouseEvent) => {
       const n = e.target as Node;
-      if (!menu.current?.contains(n) && !btn.current?.contains(n)) setPos(null);
+      if (!menu.current?.contains(n) && !keep?.current?.contains(n)) onClose(false);
     };
-    const close = () => setPos(null);
+    const close = () => onClose(false);
     document.addEventListener("mousedown", onDown);
     window.addEventListener("resize", close);
     window.addEventListener("scroll", close, true);
+    window.addEventListener("blur", close);
     return () => {
       document.removeEventListener("mousedown", onDown);
       window.removeEventListener("resize", close);
       window.removeEventListener("scroll", close, true);
+      window.removeEventListener("blur", close);
     };
-  }, [open]);
+  }, [onClose, keep]);
 
-  return (
+  return createPortal(
     <div
-      className="relative"
+      ref={menu}
+      id={id}
+      role="menu"
+      aria-label={label}
+      className="menu-pop fixed z-[55] min-w-52 py-1"
+      style={pos}
+      onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
-        if (e.key === "Escape" && open) {
-          setPos(null);
-          btn.current?.focus();
+        if (e.key === "Escape" || e.key === "Tab") {
+          e.preventDefault();
+          onClose(true);
         }
-        if (open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
           const btns = Array.from(menu.current?.querySelectorAll<HTMLButtonElement>("[role=menuitem]:not(:disabled)") ?? []);
           const i = btns.indexOf(document.activeElement as HTMLButtonElement);
@@ -93,48 +103,104 @@ export function Menu({ label, items }: { label: string; items: MenuItem[] }) {
         }
       }}
     >
+      {items.map((it) => (
+        <button
+          key={it.label}
+          type="button"
+          role="menuitem"
+          disabled={it.disabled}
+          className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-bg-2 focus:bg-bg-2 focus:outline-none disabled:opacity-50 ${it.danger ? "text-bad" : ""}`}
+          onClick={() => {
+            onClose(false);
+            it.onSelect();
+          }}
+        >
+          {it.icon && <Icon name={it.icon} className="h-4 w-4" />}
+          {it.label}
+        </button>
+      ))}
+    </div>,
+    document.body,
+  );
+}
+
+export function Menu({ label, items }: { label: string; items: MenuItem[] }) {
+  const [pos, setPos] = useState<MenuPos | null>(null);
+  const id = useId();
+  const btn = useRef<HTMLButtonElement>(null);
+  const close = useCallback((refocus: boolean) => {
+    setPos(null);
+    if (refocus) btn.current?.focus();
+  }, []);
+
+  const toggle = () => {
+    if (pos || !btn.current) {
+      setPos(null);
+      return;
+    }
+    const r = btn.current.getBoundingClientRect();
+    const right = Math.max(8, window.innerWidth - r.right);
+    if (window.innerHeight - r.bottom < menuHeight(items.length) && r.top > window.innerHeight - r.bottom)
+      setPos({ right, bottom: window.innerHeight - r.top + 4 });
+    else setPos({ right, top: r.bottom + 4 });
+  };
+
+  return (
+    <div className="relative">
       <button
         ref={btn}
         type="button"
         className="btn btn-ghost min-h-8 px-2"
         aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={id}
+        aria-expanded={!!pos}
+        aria-controls={pos ? id : undefined}
         aria-label={label}
         title={label}
         onClick={toggle}
       >
         <Icon name="more" className="h-5 w-5" />
       </button>
-      {pos &&
-        createPortal(
-          <div
-            ref={menu}
-            id={id}
-            role="menu"
-            className="menu-pop fixed z-[55] min-w-52 py-1"
-            style={{ right: pos.right, top: pos.top, bottom: pos.bottom }}
-          >
-            {items.map((it, i) => (
-              <button
-                key={it.label}
-                ref={i === 0 ? first : undefined}
-                type="button"
-                role="menuitem"
-                disabled={it.disabled}
-                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-bg-2 focus:bg-bg-2 focus:outline-none disabled:opacity-50 ${it.danger ? "text-bad" : ""}`}
-                onClick={() => {
-                  setPos(null);
-                  it.onSelect();
-                }}
-              >
-                {it.icon && <Icon name={it.icon} className="h-4 w-4" />}
-                {it.label}
-              </button>
-            ))}
-          </div>,
-          document.body,
-        )}
+      {pos && <MenuPopup id={id} label={label} items={items} pos={pos} onClose={close} keep={btn} />}
     </div>
   );
+}
+
+/**
+ * Right-click menus: call onContextMenu(event, label, items) from an element's
+ * contextmenu handler and render `menu`. The browser's own menu stays
+ * available with Shift+right-click, on form fields, links and selected text.
+ */
+export function useContextMenu() {
+  const [state, setState] = useState<{ label: string; items: MenuItem[]; pos: MenuPos } | null>(null);
+  const from = useRef<HTMLElement | null>(null);
+  const close = useCallback((refocus: boolean) => {
+    setState(null);
+    if (refocus) from.current?.focus();
+  }, []);
+
+  const onContextMenu = useCallback((e: ReactMouseEvent, label: string, items: MenuItem[]) => {
+    const target = e.target as HTMLElement;
+    if (e.shiftKey || items.length === 0) return;
+    if (target.closest("input, textarea, select, a[href], [contenteditable=true]")) return;
+    if (window.getSelection()?.toString()) return;
+    e.preventDefault();
+    let x = e.clientX;
+    let y = e.clientY;
+    if (x === 0 && y === 0) {
+      // keyboard (context-menu key / Shift+F10): open at the element
+      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      x = r.left + 16;
+      y = r.bottom;
+    }
+    const pos: MenuPos = {};
+    if (x + menuWidth > window.innerWidth - 8) pos.right = Math.max(8, window.innerWidth - x);
+    else pos.left = x;
+    if (y + menuHeight(items.length) > window.innerHeight - 8 && y > window.innerHeight / 2) pos.bottom = window.innerHeight - y;
+    else pos.top = y;
+    from.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setState({ label, items, pos });
+  }, []);
+
+  const menu = state && <MenuPopup label={state.label} items={state.items} pos={state.pos} onClose={close} />;
+  return { onContextMenu, menu };
 }

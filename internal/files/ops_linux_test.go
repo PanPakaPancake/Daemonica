@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/PanPakaPancake/daemonica/internal/rpc"
 	"github.com/PanPakaPancake/daemonica/internal/worker"
@@ -103,6 +104,34 @@ func TestListSortFilterPage(t *testing.T) {
 	r, _ = List(ListArgs{Path: d, Kind: "file", Sort: "mode", Desc: true})
 	if r.Entries[0].Name != "c.log" {
 		t.Fatalf("mode sort: %s", r.Entries[0].Name)
+	}
+	r, _ = List(ListArgs{Path: d, Mode: "644"})
+	if r.Total != 1 || r.Entries[0].Name != "c.log" {
+		t.Fatalf("mode filter (octal): %+v", r)
+	}
+	r, _ = List(ListArgs{Path: d, Kind: "file", Mode: "r--"})
+	if r.Total != 1 {
+		t.Fatalf("mode filter (rwx): %d", r.Total)
+	}
+	_ = os.WriteFile(filepath.Join(d, "big.bin"), make([]byte, 3<<10), 0o600)
+	r, _ = List(ListArgs{Path: d, Size: ">2K"})
+	if r.Total != 1 || r.Entries[0].Name != "big.bin" {
+		t.Fatalf("size filter: %+v", r)
+	}
+	old := time.Now().Add(-40 * 24 * time.Hour)
+	_ = os.Chtimes(filepath.Join(d, "b.txt"), old, old)
+	r, _ = List(ListArgs{Path: d, MTime: "-30d"})
+	if r.Total != 1 || r.Entries[0].Name != "b.txt" {
+		t.Fatalf("mtime filter (older): %+v", r)
+	}
+	r, _ = List(ListArgs{Path: d, MTime: "7d", Kind: "file"})
+	if r.Total != 4 {
+		t.Fatalf("mtime filter (within): %d", r.Total)
+	}
+	for _, bad := range []ListArgs{{Path: d, Size: "abc"}, {Path: d, MTime: "7"}} {
+		if _, err := List(bad); code(err) != CodeInvalid {
+			t.Fatalf("bad filter %+v: %v", bad, err)
+		}
 	}
 	r, _ = List(ListArgs{Path: d, DirsOnly: true})
 	if r.Total != 2 {

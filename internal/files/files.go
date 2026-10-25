@@ -17,7 +17,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -253,6 +255,97 @@ func ModeString(m uint32) string {
 	special(0o2000, 5, 's', 'S')
 	special(0o1000, 8, 't', 'T')
 	return string(b)
+}
+
+// NumFilter is a parsed number filter: "10", ">10", "<=1.5M", "1K-2M".
+// Units K/M/G/T are binary (KiB …); a trailing "B" or "iB" is allowed. A bare
+// number means "at least".
+type NumFilter struct{ Min, Max float64 }
+
+// Match reports whether v passes the filter.
+func (f NumFilter) Match(v float64) bool { return v >= f.Min && v <= f.Max }
+
+// ParseNumFilter parses a filter expression; an empty one is (nil, nil).
+func ParseNumFilter(s string) (*NumFilter, error) {
+	s = strings.ReplaceAll(strings.TrimSpace(s), " ", "")
+	if s == "" {
+		return nil, nil
+	}
+	inf := 1e308
+	if a, b, ok := strings.Cut(s, "-"); ok && a != "" {
+		lo, err1 := parseNum(a)
+		hi, err2 := parseNum(b)
+		if err1 != nil || err2 != nil || lo > hi {
+			return nil, opErr(CodeInvalid, "filter")
+		}
+		return &NumFilter{lo, hi}, nil
+	}
+	op := ""
+	for _, o := range []string{">=", "<=", ">", "<", "="} {
+		if strings.HasPrefix(s, o) {
+			op, s = o, s[len(o):]
+			break
+		}
+	}
+	n, err := parseNum(s)
+	if err != nil {
+		return nil, opErr(CodeInvalid, "filter")
+	}
+	switch op {
+	case ">":
+		return &NumFilter{n + 1e-9, inf}, nil
+	case "<":
+		return &NumFilter{-inf, n - 1e-9}, nil
+	case "<=":
+		return &NumFilter{-inf, n}, nil
+	case "=":
+		return &NumFilter{n, n}, nil
+	}
+	return &NumFilter{n, inf}, nil
+}
+
+func parseNum(s string) (float64, error) {
+	l := strings.ToLower(s)
+	l = strings.TrimSuffix(strings.TrimSuffix(l, "ib"), "b")
+	mul := 1.0
+	if l != "" {
+		if i := strings.IndexByte("kmgt", l[len(l)-1]); i >= 0 {
+			mul = float64(uint64(1) << (10 * (i + 1)))
+			l = l[:len(l)-1]
+		}
+	}
+	n, err := strconv.ParseFloat(strings.Replace(l, ",", ".", 1), 64)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("files: bad number %q", s)
+	}
+	return n * mul, nil
+}
+
+// ParseAge parses a modification-time filter: "1d", "7d", "30d", "365d"
+// (changed within) or "-30d", "-365d" (older than). It returns the cutoff
+// and whether entries must be older than it.
+func ParseAge(s string, now time.Time) (cutoff time.Time, older bool, err error) {
+	s = strings.TrimSpace(s)
+	older = strings.HasPrefix(s, "-")
+	d, perr := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(s, "-"), "d"))
+	if perr != nil || d <= 0 || d > 36500 || !strings.HasSuffix(s, "d") {
+		return time.Time{}, false, opErr(CodeInvalid, "filter")
+	}
+	return now.Add(-time.Duration(d) * 24 * time.Hour), older, nil
+}
+
+// ModeMatches reports whether permission bits m match q: an octal number
+// ("644", "0755") compares exactly, anything else is a substring of the ls
+// form ("rwx", "r-x", "s").
+func ModeMatches(m uint32, q string) bool {
+	q = strings.ToLower(strings.TrimSpace(q))
+	if q == "" {
+		return true
+	}
+	if v, err := strconv.ParseUint(q, 8, 32); err == nil && len(q) >= 3 {
+		return uint32(v) == m&0o7777
+	}
+	return strings.Contains(strings.ToLower(ModeString(m)), q)
 }
 
 func opErr(code, msg string) error { return &worker.OpError{Code: code, Msg: msg} }

@@ -132,3 +132,47 @@ func FuzzTargetResolve(f *testing.F) {
 		}
 	})
 }
+
+func TestParseNumFilter(t *testing.T) {
+	for _, c := range []struct {
+		in      string
+		yes, no []float64
+		bad     bool
+	}{
+		{in: "10", yes: []float64{10, 11}, no: []float64{9}},
+		{in: ">1K", yes: []float64{1025}, no: []float64{1024}},
+		{in: "<= 1,5 MiB", yes: []float64{1.5 * (1 << 20)}, no: []float64{1.5*(1<<20) + 1}},
+		{in: "=0", yes: []float64{0}, no: []float64{1}},
+		{in: "1K-2K", yes: []float64{1024, 2048}, no: []float64{1023, 2049}},
+		{in: "2K-1K", bad: true},
+		{in: ">x", bad: true},
+		{in: "-5", bad: true},
+	} {
+		f, err := ParseNumFilter(c.in)
+		if (err != nil) != c.bad {
+			t.Fatalf("%q: err %v", c.in, err)
+		}
+		for _, v := range c.yes {
+			if !f.Match(v) {
+				t.Errorf("%q should match %v", c.in, v)
+			}
+		}
+		for _, v := range c.no {
+			if f.Match(v) {
+				t.Errorf("%q should not match %v", c.in, v)
+			}
+		}
+	}
+	if f, err := ParseNumFilter(" "); f != nil || err != nil {
+		t.Fatal("empty filter")
+	}
+}
+
+func TestModeMatches(t *testing.T) {
+	if !ModeMatches(0o644, "644") || !ModeMatches(0o644, "0644") || ModeMatches(0o640, "644") {
+		t.Fatal("octal")
+	}
+	if !ModeMatches(0o4755, "rws") || !ModeMatches(0o755, "R-X") || ModeMatches(0o700, "r-x") || !ModeMatches(0o700, "") {
+		t.Fatal("ls form")
+	}
+}

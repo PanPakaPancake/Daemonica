@@ -163,6 +163,20 @@ export function Services() {
             empty={t("services.empty")}
             label={t("services.title")}
             defaultSort={{ key: "unit", desc: false }}
+            rowMenu={(u) => ({
+              label: u.name,
+              items: [
+                { label: t("services.details"), icon: "info", onSelect: () => setSelected(u.name) },
+                ...(canControl
+                  ? [
+                      isRunning(u)
+                        ? { label: t("services.stop"), icon: "stop" as const, onSelect: () => request(u, "stop") }
+                        : { label: t("services.start"), icon: "play" as const, onSelect: () => request(u, "start") },
+                      { label: t("services.restart"), icon: "restart" as const, onSelect: () => request(u, "restart") },
+                    ]
+                  : []),
+              ],
+            })}
             columns={[
               {
                 key: "unit",

@@ -280,6 +280,9 @@ type ListArgs struct {
 	Sort     string `json:"sort,omitempty"`  // name (default), size, mtime, type, mode, owner
 	Owner    string `json:"owner,omitempty"` // substring of "user:group" (or numeric ids)
 	Kind     string `json:"kind,omitempty"`  // dir, file, symlink, other
+	Size     string `json:"size,omitempty"`  // NumFilter on regular files ("<1M", "10K-2M")
+	Mode     string `json:"mode,omitempty"`  // see ModeMatches
+	MTime    string `json:"mtime,omitempty"` // see ParseAge
 	Desc     bool   `json:"desc,omitempty"`
 	Offset   int    `json:"offset,omitempty"`
 	Limit    int    `json:"limit,omitempty"`
@@ -302,6 +305,17 @@ func isDirEntry(e Entry) bool {
 
 // List returns a sorted, filtered page of directory a.Path.
 func List(a ListArgs) (ListResult, error) {
+	size, err := ParseNumFilter(a.Size)
+	if err != nil {
+		return ListResult{}, err
+	}
+	var cutoff time.Time
+	var older bool
+	if a.MTime != "" {
+		if cutoff, older, err = ParseAge(a.MTime, time.Now()); err != nil {
+			return ListResult{}, err
+		}
+	}
 	d, err := openDir(a.Path, false)
 	if err != nil {
 		return ListResult{}, err
@@ -356,6 +370,15 @@ func List(a ListArgs) (ListResult, error) {
 			continue
 		}
 		if owner != "" && !strings.Contains(strings.ToLower(ownerOf(e))+" "+strconv.FormatUint(uint64(e.UID), 10)+":"+strconv.FormatUint(uint64(e.GID), 10), owner) {
+			continue
+		}
+		if size != nil && (e.Type != "file" || !size.Match(float64(e.Size))) {
+			continue
+		}
+		if !ModeMatches(e.Mode, a.Mode) {
+			continue
+		}
+		if !cutoff.IsZero() && e.MTime.Before(cutoff) != older {
 			continue
 		}
 		e.Blocked = Blocked(Join(d.path, n))

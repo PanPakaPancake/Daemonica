@@ -272,18 +272,31 @@ func spec(t *testing.T, mod func(*Spec)) Spec {
 
 func TestManagerLimits(t *testing.T) {
 	ctx := context.Background()
-	// Packet limit.
-	fs := &fakeStarter{data: stream(50), hold: true}
+	// One capture at a time. The first one holds its stream open and stays
+	// below every limit, so it is still running for the second start (with a
+	// packet limit the first capture may already be done on a busy host).
+	fs := &fakeStarter{data: stream(1), hold: true}
 	m := manager(t, fs)
-	meta, err := m.Start(ctx, spec(t, func(s *Spec) { s.Packets = 20 }), "acc")
+	first, err := m.Start(ctx, spec(t, nil), "acc")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := m.Start(ctx, spec(t, nil), "acc"); !errors.Is(err, ErrBusy) {
 		t.Fatal("second capture must be refused")
 	}
+	if err := m.Stop(first.ID); err != nil {
+		t.Fatal(err)
+	}
+	wait(t, m)
+
+	// Packet limit.
+	fs.set(stream(50), true)
+	meta, err := m.Start(ctx, spec(t, func(s *Spec) { s.Packets = 20 }), "acc")
+	if err != nil {
+		t.Fatal(err)
+	}
 	end := wait(t, m)
-	if end.Reason != "packets" || end.Captured != 20 || end.State != "done" || fs.stops() != 1 {
+	if end.Reason != "packets" || end.Captured != 20 || end.State != "done" || fs.stops() != 2 {
 		t.Fatalf("packets: %+v stopped=%d", end, fs.stops())
 	}
 	st, _ := os.Stat(filepath.Join(m.Dir, meta.ID+".pcap"))
@@ -365,12 +378,12 @@ func TestManagerLimits(t *testing.T) {
 	}
 
 	list, _ := m.List()
-	if len(list) != 6 {
+	if len(list) != 7 { // incl. the busy check
 		t.Fatalf("list: %d", len(list))
 	}
 	// Retention: everything older than 1 h goes; the total limit removes the oldest.
 	m.Now = func() time.Time { return time.Now().Add(2 * time.Hour) }
-	if n := m.Prune(time.Hour, 1<<40); n != 6 {
+	if n := m.Prune(time.Hour, 1<<40); n != 7 {
 		t.Fatalf("pruned %d", n)
 	}
 	if list, _ := m.List(); len(list) != 0 {

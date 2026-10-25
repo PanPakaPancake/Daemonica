@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -113,7 +114,7 @@ func TestTerminalOnHost(t *testing.T) {
 		if err := d.Finish(&end); err != nil {
 			t.Fatalf("finish: %v", err)
 		}
-		return out.String(), end
+		return oscSeq.ReplaceAllString(out.String(), ""), end
 	}
 
 	out, end := run(pty.ModeStandard, "id -un; cat /proc/self/cgroup; sudo -n /usr/bin/true; echo sudo_rc=$?; exit 4\n")
@@ -132,7 +133,7 @@ func TestTerminalOnHost(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	_ = gs.MarkStepUp(g, time.Now().Add(time.Second))
 	out, _ = run(pty.ModeRoot, "id -u; exit\n")
-	if !strings.Contains(out, "\n0\r") {
+	if !regexp.MustCompile(`(^|[\r\n])0\r?\n`).MatchString(out) {
 		t.Fatalf("root mode:\n%s", out)
 	}
 
@@ -167,6 +168,10 @@ func TestTerminalOnHost(t *testing.T) {
 		t.Fatalf("unit still active: %s", out2)
 	}
 }
+
+// oscSeq matches OSC sequences (title, systemd's OSC 3008 context markers
+// written before each command's output), stripped before the checks.
+var oscSeq = regexp.MustCompile("\x1b\\][^\x07\x1b]*(\x07|\x1b\\\\)")
 
 // termOutput collects terminal output for concurrent reads.
 type termOutput struct {

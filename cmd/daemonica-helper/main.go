@@ -22,9 +22,11 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/files"
 	"github.com/PanPakaPancake/daemonica/internal/firewall"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
+	"github.com/PanPakaPancake/daemonica/internal/jobs"
 	"github.com/PanPakaPancake/daemonica/internal/netcfg"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
 	"github.com/PanPakaPancake/daemonica/internal/pty"
+	"github.com/PanPakaPancake/daemonica/internal/scripts"
 	"github.com/PanPakaPancake/daemonica/internal/services"
 	"github.com/PanPakaPancake/daemonica/internal/sshkeys"
 	"github.com/PanPakaPancake/daemonica/internal/sysinfo"
@@ -222,6 +224,18 @@ func main() {
 		return names, err
 	}}
 	capOps.Register(ops)
+
+	jobMgr := &jobs.Manager{Dir: filepath.Join(*stateDir, "jobs"), UnitDir: "/etc/systemd/system",
+		Systemd: helper.JobSystemd{C: sd}, Run: netcfg.ExecRunner, LookupUser: helper.LookupLinuxUser}
+	if err := jobMgr.Init(); err != nil {
+		log.Error("cannot create jobs dir", "err", err)
+	}
+	(&helper.JobOps{M: jobMgr, Timers: sd.Timers, TimerState: sd.TimerState, History: jobs.History}).Register(ops)
+	lib := &scripts.Library{Root: scripts.DefaultRoot, StateFile: filepath.Join(*stateDir, "scripts.json"), GitHub: scripts.NewGitHub()}
+	if err := lib.Init(); err != nil {
+		log.Error("cannot create script library", "err", err)
+	}
+	(&helper.ScriptOps{L: lib, Jobs: jobMgr.List}).Register(ops)
 	go capOps.Janitor(context.Background(), 10*time.Minute)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to

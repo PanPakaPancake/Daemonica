@@ -31,7 +31,7 @@ const groups: NavGroup[] = [
     key: "nav.servicesJobs",
     items: [
       { to: "/services", key: "nav.services", icon: "services" },
-      { key: "nav.jobs", icon: "jobs" },
+      { to: "/jobs", key: "nav.jobs", icon: "jobs" },
     ],
   },
   {

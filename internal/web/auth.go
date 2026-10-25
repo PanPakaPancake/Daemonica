@@ -310,6 +310,20 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	}
 	mux.Handle("GET /api/v1/captures/download/{token}", http.HandlerFunc(s.captureDownload))
 
+	// M1.6: scheduled tasks.
+	mux.Handle("GET /api/v1/jobs", sess("jobs.overview"))
+	for _, op := range []string{"get", "calendar", "check", "save", "delete", "run", "stop", "enable"} {
+		mux.Handle("POST /api/v1/jobs/"+op, sess("jobs."+op))
+	}
+	mux.Handle("POST /api/v1/cron/get", sess("cron.get"))
+	mux.Handle("POST /api/v1/cron/save", sess("cron.save"))
+	mux.Handle("POST /api/v1/cron/preview", sess("cron.preview"))
+	mux.Handle("GET /api/v1/scripts", sess("scripts.list"))
+	for _, op := range []string{"read", "preview", "check", "add", "update", "remove", "delete"} {
+		mux.Handle("POST /api/v1/scripts/"+op, sess("scripts."+op))
+	}
+	mux.Handle("POST /api/v1/scripts/save", s.forward(endpoint{op: "scripts.save", session: true, maxBody: 1 << 20}))
+
 	mux.Handle("GET /api/v1/settings", sess("settings.get"))
 	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))
 	mux.Handle("GET /api/v1/changes/{id}", sess("settings.change_get"))

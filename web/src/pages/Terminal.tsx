@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import "@xterm/xterm/css/xterm.css";
@@ -34,17 +35,30 @@ export function TerminalPage() {
   const tab = tabs.find((x) => x.id === active);
   const full = tabs.length >= MAX_TERMINALS;
 
-  const start = async (mode: TermMode) => {
+  const start = async (mode: TermMode, input?: string) => {
     setErr(undefined);
     setBusy(true);
     try {
-      await open(mode);
+      await open(mode, input);
     } catch (e) {
       setErr(errorText(t, e));
     } finally {
       setBusy(false);
     }
   };
+
+  // "Run in terminal" from the script library: a new standard shell with the
+  // command typed in, waiting for Enter.
+  const loc = useLocation();
+  const nav = useNavigate();
+  const input = (loc.state as { input?: string } | null)?.input;
+  const handled = useRef(false);
+  useEffect(() => {
+    if (!input || handled.current || me?.role === "readonly" || full) return;
+    handled.current = true;
+    void nav(loc.pathname, { replace: true, state: null });
+    void start("standard", input);
+  });
 
   if (me?.role === "readonly") return <Notice tone="info">{t("terminal.readonly")}</Notice>;
 

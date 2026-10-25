@@ -39,7 +39,8 @@ interface Ctx {
   tabs: TermTab[];
   active?: string;
   setActive: (id: string) => void;
-  open: (mode: TermMode) => Promise<void>;
+  /** input is typed into the new shell (not sent with Enter). */
+  open: (mode: TermMode, input?: string) => Promise<void>;
   close: (id: string) => void;
 }
 
@@ -104,7 +105,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
   const update = useCallback((id: string, patch: Partial<TermTab>) => setTabs((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t))), []);
 
   const open = useCallback(
-    async (mode: TermMode) => {
+    async (mode: TermMode, input?: string) => {
       const term = new Terminal({
         cursorBlink: true,
         fontFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
@@ -149,6 +150,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       ws.onopen = () => {
         update(id, { status: "open" });
         send(resizeFrame(term.cols, term.rows));
+        if (input) send(frame("d", enc.encode(input.replace(/[\r\n]/g, ""))));
       };
       ws.onmessage = (ev) => term.write(new Uint8Array(ev.data as ArrayBuffer));
       ws.onclose = (ev) => {

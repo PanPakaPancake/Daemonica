@@ -179,14 +179,26 @@ func TestSearchAndPolicy(t *testing.T) {
 
 func TestCommands(t *testing.T) {
 	c := Commands(KindSelected, []string{"openssl", "libssl3t64"}, []string{"libssl3t64"})
-	if len(c) != 2 || c[0][0] != AptGet || !slices.Contains(c[0], "--only-upgrade") || !slices.Contains(c[0], "Dpkg::Options::=--force-confold") ||
+	// apt-get runs behind the fd-3 wrapper so maintainer scripts keep stdout.
+	if len(c) != 2 || !slices.Equal(c[0][:5], append(slices.Clone(statusFd), AptGet)) || !slices.Contains(c[0], "APT::Status-Fd=3") ||
+		slices.Contains(c[0], "APT::Status-Fd=1") || !slices.Contains(c[0], "--only-upgrade") || !slices.Contains(c[0], "Dpkg::Options::=--force-confold") ||
 		c[0][len(c[0])-1] != "libssl3t64" || !slices.Equal(c[1], []string{AptMark, "auto", "libssl3t64"}) {
 		t.Fatalf("commands: %q", c)
 	}
 	if c := Commands(KindDryRun, nil, nil); len(c) != 1 || c[0][0] != UnattendedBin {
 		t.Fatalf("dry run: %q", c)
 	}
+	if c := Commands(KindRepair, nil, nil); len(c) != 2 || !slices.Equal(c[0], []string{Dpkg, "--force-confdef", "--force-confold", "--configure", "-a"}) ||
+		!slices.Equal(c[1][len(c[1])-2:], []string{"-f", "install"}) {
+		t.Fatalf("repair: %q", c)
+	}
+	if b := ParseBroken("ii \tvim\niF \tdracut\niU \tfoo\nii \tbash\nrc \told\niW \ttrig\n"); !slices.Equal(b, []string{"dracut", "foo", "trig"}) {
+		t.Fatalf("broken: %q", b)
+	}
 	for _, k := range Kinds {
+		if k == KindRepair {
+			continue
+		}
 		if len(Commands(k, []string{"x"}, nil)) != 1 {
 			t.Errorf("kind %s has no command", k)
 		}
@@ -298,5 +310,29 @@ func TestRebootRequired(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(root, "run/reboot-required.pkgs"), []byte("linux-base\nlinux-base\nevil;x\n"), 0o644)
 	if ok, pkgs := RebootRequired(root); !ok || !slices.Equal(pkgs, []string{"linux-base"}) {
 		t.Fatalf("reboot: %v %v", ok, pkgs)
+	}
+}
+
+type activeUnits struct {
+	fakeUnits
+	active []string
+}
+
+func (a *activeUnits) Active(context.Context) ([]string, error) { return a.active, nil }
+
+// A unit systemd still runs blocks a new job even when the job's state file
+// was already finished (as after a failed GetUnit during an upgrade).
+func TestRunnerAsksSystemd(t *testing.T) {
+	au := &activeUnits{fakeUnits: fakeUnits{alive: map[string]bool{}}, active: []string{UnitPrefix + "x.service"}}
+	r := &Runner{Dir: t.TempDir(), Units: au}
+	if err := r.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Start(context.Background(), KindUpgrade, nil, nil, "acc"); err != ErrBusy {
+		t.Fatalf("start while a unit runs: %v", err)
+	}
+	au.active = nil
+	if _, err := r.Start(context.Background(), KindUpgrade, nil, nil, "acc"); err != nil {
+		t.Fatal(err)
 	}
 }

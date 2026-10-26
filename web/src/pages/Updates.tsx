@@ -177,6 +177,26 @@ function StatusBar({ o, isAdmin, busy, onStart }: { o: Overview; isAdmin: boolea
         </button>
       </div>
       {o.sim_error && <Notice tone="bad">{t("updates.simError", { msg: o.sim_error })}</Notice>}
+      {(o.broken ?? []).length > 0 && !busy && (
+        <div role="alert" className="flex flex-nowrap items-center gap-3 overflow-x-auto rounded-[8px] border border-bad bg-bg-2 px-4 py-3">
+          <span aria-hidden="true" className="font-bold text-bad">
+            ✖
+          </span>
+          <span className="min-w-0 flex-1">
+            {t("updates.broken", { count: o.broken.length })} <span className="font-mono text-sm">{o.broken.slice(0, 8).join(", ")}</span>
+            {o.broken.length > 8 && " …"}
+          </span>
+          <button
+            type="button"
+            className="btn btn-primary min-h-9 shrink-0"
+            disabled={!isAdmin}
+            onClick={() => onStart({ kind: "repair", packages: [], title: t("updates.kind.repair") })}
+          >
+            <Icon name="play" className="h-4 w-4" />
+            {t("updates.repair")}
+          </button>
+        </div>
+      )}
       {o.lock && !busy && <Notice tone="warn">{t("updates.locked", { comm: o.lock.comm || "?", pid: o.lock.pid, file: o.lock.file })}</Notice>}
       {(o.reboot || kernelPending) && (
         <Notice tone="warn">
@@ -392,7 +412,8 @@ function PlanModal({
   const [err, setErr] = useState<string>();
   const extra = plan ? extraRemovals(plan, pending.packages) : [];
   const critical = plan?.critical ?? [];
-  const nothing = !!plan && !plan.error && plan.sim.install.length === 0 && plan.sim.remove.length === 0;
+  // Finishing interrupted installs may only configure, which the simulation does not list.
+  const nothing = pending.kind !== "repair" && !!plan && !plan.error && plan.sim.install.length === 0 && plan.sim.remove.length === 0;
   const ready =
     !simulated ||
     (!!plan && !plan.error && !plan.protected && !nothing && (extra.length === 0 || ackExtra) && (critical.length === 0 || typed.trim() === critical[0]));
@@ -427,6 +448,7 @@ function PlanModal({
     <Modal title={pending.title} onClose={onClose} wide>
       <div className="flex flex-col gap-4">
         {!simulated && <p>{t(pending.kind === "update" ? "updates.updateExplain" : "updates.dryRunExplain")}</p>}
+        {pending.kind === "repair" && <p>{t("updates.repairExplain")}</p>}
         {simulated && q.isLoading && <p className="text-muted">{t("updates.simulating")}</p>}
         {q.isError && <Notice tone="bad">{errorText(t, q.error)}</Notice>}
         {plan?.error && <Notice tone="bad">{t("updates.simError", { msg: plan.error })}</Notice>}
@@ -1113,7 +1135,7 @@ function SourcesTab() {
 function History({ onShow }: { onShow: (id: string) => void }) {
   const { t, i18n } = useTranslation();
   const q = useQuery({ queryKey: ["packages", "jobs"], queryFn: () => api<AptJob[]>("GET", "/packages/jobs"), refetchInterval: 10_000 });
-  const kinds: Kind[] = ["update", "upgrade", "selected", "install", "remove", "purge", "autoremove", "dry-run"];
+  const kinds: Kind[] = ["update", "upgrade", "selected", "install", "remove", "purge", "autoremove", "dry-run", "repair"];
   const states: AptJob["state"][] = ["running", "succeeded", "failed", "unknown"];
   const items = (j: AptJob): MenuItem[] => [{ label: t("updates.showLog"), icon: "eye", onSelect: () => onShow(j.id) }];
   const cols: Column<AptJob>[] = [

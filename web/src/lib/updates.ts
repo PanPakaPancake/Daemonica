@@ -1,6 +1,6 @@
 // Types and helpers of the updates page (M1.7a, DEC-031).
 
-export type Kind = "update" | "upgrade" | "selected" | "install" | "remove" | "purge" | "autoremove" | "dry-run";
+export type Kind = "update" | "upgrade" | "selected" | "install" | "remove" | "purge" | "autoremove" | "dry-run" | "repair";
 
 export interface Pkg {
   name: string;
@@ -60,6 +60,8 @@ export interface Overview {
   reboot: boolean;
   reboot_pkgs: string[];
   lock?: Holder;
+  /** Packages whose installation was interrupted (dpkg state U, F, h, W, t). */
+  broken: string[];
   running?: AptJob;
   last?: AptJob;
 }

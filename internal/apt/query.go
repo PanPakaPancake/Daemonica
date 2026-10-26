@@ -52,6 +52,8 @@ func (s System) Simulate(ctx context.Context, k Kind, pkgs []string) (Sim, error
 		args = append([]string{"purge"}, pkgs...)
 	case KindAutoremove:
 		args = []string{"autoremove"}
+	case KindRepair:
+		args = []string{"-f", "install"}
 	default:
 		return Sim{}, fmt.Errorf("apt: no simulation for %s", k)
 	}
@@ -98,6 +100,16 @@ func (s System) Installed(ctx context.Context) ([]Installed, error) {
 		}
 	}
 	return list, nil
+}
+
+// Broken lists packages whose installation was interrupted (unpacked,
+// half-configured, half-installed or waiting for triggers).
+func (s System) Broken(ctx context.Context) ([]string, error) {
+	res, err := s.Run(ctx, time.Minute, DpkgQ, "-W", "-f", "${db:Status-Abbrev}\t${Package}\n")
+	if err != nil {
+		return nil, err
+	}
+	return ParseBroken(string(res.Stdout)), nil
 }
 
 // Auto returns which of names are marked automatically installed.

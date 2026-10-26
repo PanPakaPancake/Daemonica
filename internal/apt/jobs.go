@@ -31,10 +31,11 @@ const (
 	KindPurge      Kind = "purge"      // remove including configuration
 	KindAutoremove Kind = "autoremove" // remove unneeded dependencies
 	KindDryRun     Kind = "dry-run"    // unattended-upgrade --dry-run --debug
+	KindRepair     Kind = "repair"     // finish interrupted installs: dpkg --configure -a, apt-get -f install
 )
 
 // Kinds lists the valid kinds.
-var Kinds = []Kind{KindUpdate, KindUpgrade, KindSelected, KindInstall, KindRemove, KindPurge, KindAutoremove, KindDryRun}
+var Kinds = []Kind{KindUpdate, KindUpgrade, KindSelected, KindInstall, KindRemove, KindPurge, KindAutoremove, KindDryRun, KindRepair}
 
 // NeedsPackages reports whether a kind takes package names.
 func (k Kind) NeedsPackages() bool {
@@ -105,15 +106,24 @@ var Env = []string{
 	"DEBIAN_FRONTEND=noninteractive", "APT_LISTCHANGES_FRONTEND=none", "NEEDRESTART_MODE=l", "UCF_FORCE_CONFFOLD=1",
 }
 
-// aptOpts are the options of every changing apt-get call.
+// aptOpts are the options of every changing apt-get call. The status
+// lines go to fd 3, a copy of stdout made by statusFd: with Status-Fd=1 and
+// no pty apt hands dpkg's maintainer scripts a closed stdout, and every
+// echo in a postinst fails (EIO/EBADF).
 var aptOpts = []string{
-	"-q", "-y", "-o", "APT::Status-Fd=1", "-o", "APT::Color=0", "-o", "Dpkg::Use-Pty=0",
+	"-q", "-y", "-o", "APT::Status-Fd=3", "-o", "APT::Color=0", "-o", "Dpkg::Use-Pty=0",
 	"-o", "DPkg::Lock::Timeout=600", "-o", "Dpkg::Options::=--force-confdef", "-o", "Dpkg::Options::=--force-confold",
 }
 
+// statusFd runs argv with fd 3 as a copy of stdout (argv stays separate
+// arguments, nothing is interpreted by the shell).
+var statusFd = []string{"/bin/sh", "-c", `exec 3>&1 && exec "$@"`, "sh"}
+
 // Commands returns the unit's commands for a job.
 func Commands(k Kind, pkgs, restoreAuto []string) [][]string {
-	ag := func(args ...string) []string { return append(append([]string{AptGet}, aptOpts...), args...) }
+	ag := func(args ...string) []string {
+		return append(append(append(append([]string{}, statusFd...), AptGet), aptOpts...), args...)
+	}
 	var cmds [][]string
 	switch k {
 	case KindUpdate:
@@ -132,6 +142,8 @@ func Commands(k Kind, pkgs, restoreAuto []string) [][]string {
 		cmds = [][]string{ag("autoremove")}
 	case KindDryRun:
 		cmds = [][]string{{UnattendedBin, "--dry-run", "--debug"}}
+	case KindRepair:
+		cmds = [][]string{{Dpkg, "--force-confdef", "--force-confold", "--configure", "-a"}, ag("-f", "install")}
 	}
 	if len(restoreAuto) > 0 {
 		cmds = append(cmds, append([]string{AptMark, "auto"}, restoreAuto...))
@@ -217,6 +229,14 @@ func (r *Runner) Start(ctx context.Context, k Kind, pkgs, restoreAuto []string, 
 	defer r.mu.Unlock()
 	for _, id := range r.ids() {
 		if j, err := r.refresh(ctx, id); err == nil && j.State == StateRunning {
+			return Job{}, ErrBusy
+		}
+	}
+	// Also ask systemd: a job whose state file says otherwise may still run.
+	if a, ok := r.Units.(interface {
+		Active(ctx context.Context) ([]string, error)
+	}); ok {
+		if units, err := a.Active(ctx); err != nil || len(units) > 0 {
 			return Job{}, ErrBusy
 		}
 	}

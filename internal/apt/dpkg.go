@@ -127,3 +127,16 @@ func RebootRequired(root string) (bool, []string) {
 	}
 	return true, sortStrings(pkgs)
 }
+
+// ParseBroken picks the packages in an interrupted state from
+// "${db:Status-Abbrev}\t${Package}" lines (state U, F, h, W or t).
+func ParseBroken(out string) []string {
+	list := []string{}
+	for l := range strings.SplitSeq(out, "\n") {
+		st, name, ok := strings.Cut(l, "\t")
+		if ok && len(st) >= 2 && strings.ContainsRune("UFhWt", rune(st[1])) && len(list) < 100 {
+			list = append(list, clip(strings.TrimSpace(name), 100))
+		}
+	}
+	return list
+}

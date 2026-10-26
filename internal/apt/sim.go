@@ -18,6 +18,7 @@ var (
 	AptMark  = "/usr/bin/apt-mark"
 	AptCfg   = "/usr/bin/apt-config"
 	DpkgQ    = "/usr/bin/dpkg-query"
+	Dpkg     = "/usr/bin/dpkg"
 )
 
 // Pkg is one package in a simulation.

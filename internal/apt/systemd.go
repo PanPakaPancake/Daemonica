@@ -2,6 +2,7 @@ package apt
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/godbus/dbus/v5"
@@ -65,5 +66,34 @@ func (s SystemdUnits) Start(ctx context.Context, u Unit) error {
 // Exists implements Units.
 func (s SystemdUnits) Exists(ctx context.Context, unit string) bool {
 	var p dbus.ObjectPath
-	return s.mgr().CallWithContext(ctx, "org.freedesktop.systemd1.Manager.GetUnit", 0, unit).Store(&p) == nil
+	err := s.mgr().CallWithContext(ctx, "org.freedesktop.systemd1.Manager.GetUnit", 0, unit).Store(&p)
+	var de dbus.Error
+	if errors.As(err, &de) && de.Name == "org.freedesktop.systemd1.NoSuchUnit" {
+		return false
+	}
+	// Any other failure (systemd reloading or re-executing during an
+	// upgrade, a bus timeout) is no proof that the job ended.
+	return true
+}
+
+// Active lists the package job units systemd still runs (also those of
+// jobs this helper lost track of).
+func (s SystemdUnits) Active(ctx context.Context) ([]string, error) {
+	var units []struct {
+		Name, Description, Load, Active, Sub, Following string
+		Path                                            dbus.ObjectPath
+		JobID                                           uint32
+		JobType                                         string
+		JobPath                                         dbus.ObjectPath
+	}
+	err := s.mgr().CallWithContext(ctx, "org.freedesktop.systemd1.Manager.ListUnitsByPatterns", 0,
+		[]string{"active", "activating", "deactivating", "reloading"}, []string{UnitPrefix + "*.service"}).Store(&units)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(units))
+	for _, u := range units {
+		out = append(out, u.Name)
+	}
+	return out, nil
 }

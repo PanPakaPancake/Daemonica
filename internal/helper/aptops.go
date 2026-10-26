@@ -124,8 +124,10 @@ type AptOverview struct {
 	Reboot     bool        `json:"reboot"`
 	RebootPkgs []string    `json:"reboot_pkgs"`
 	Lock       *apt.Holder `json:"lock,omitempty"`
-	Running    *apt.Job    `json:"running,omitempty"`
-	Last       *apt.Job    `json:"last,omitempty"`
+	// Broken are packages left half-installed or half-configured.
+	Broken  []string `json:"broken"`
+	Running *apt.Job `json:"running,omitempty"`
+	Last    *apt.Job `json:"last,omitempty"`
 }
 
 // AptPlan is the packages.simulate result: what a job would change.
@@ -283,6 +285,9 @@ func (o *AptOps) Register(ops map[string]*Op) {
 			jobs := o.Jobs.List(ctx)
 			res := AptOverview{Distro: apt.ReadDistro(o.root("/")), Kernel: o.kernel(), LastUpdate: o.lastUpdate(jobs), Lock: apt.LockHolder()}
 			res.Reboot, res.RebootPkgs = apt.RebootRequired(o.Root)
+			if res.Broken, _ = o.Sys.Broken(ctx); res.Broken == nil {
+				res.Broken = []string{}
+			}
 			if res.RebootPkgs == nil {
 				res.RebootPkgs = []string{}
 			}

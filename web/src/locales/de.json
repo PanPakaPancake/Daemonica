@@ -1814,7 +1814,8 @@
       "remove": "Entfernen: {{packages}}",
       "purge": "Entfernen mit Konfiguration: {{packages}}",
       "autoremove": "Nicht mehr benötigte Pakete entfernen",
-      "dry-run": "Trockenlauf von unattended-upgrades"
+      "dry-run": "Trockenlauf von unattended-upgrades",
+      "repair": "Unterbrochene Installation fortsetzen"
     },
     "kindShort": {
       "update": "apt update",
@@ -1824,7 +1825,8 @@
       "remove": "Entfernen",
       "purge": "Entfernen mit Konfiguration",
       "autoremove": "Aufräumen",
-      "dry-run": "Trockenlauf"
+      "dry-run": "Trockenlauf",
+      "repair": "Fortsetzen"
     },
     "security": "Sicherheit",
     "regular": "Regulär",
@@ -1948,7 +1950,11 @@
       "critical_unconfirmed": "Das Entfernen kritischer Pakete muss bestätigt werden.",
       "protected_package": "Daemonica selbst kann nicht über Daemonica entfernt werden.",
       "simulation_failed": "Die Simulation ist fehlgeschlagen; es wurde nichts geändert."
-    }
+    },
+    "broken_one": "{{count}} Paket ist nur halb installiert, weitere apt-Aufträge scheitern, bis das erledigt ist:",
+    "broken_other": "{{count}} Pakete sind nur halb installiert, weitere apt-Aufträge scheitern, bis das erledigt ist:",
+    "repair": "Installation fortsetzen",
+    "repairExplain": "Führt die unterbrochene Einrichtung zu Ende (dpkg --configure -a) und ergänzt fehlende Abhängigkeiten (apt-get -f install). Die Vorschau zeigt, was dabei installiert oder entfernt wird."
   },
   "disks": {
     "title": "Datenträger und Mounts",

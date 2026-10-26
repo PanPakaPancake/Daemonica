@@ -1814,7 +1814,8 @@
       "remove": "Remove: {{packages}}",
       "purge": "Remove with configuration: {{packages}}",
       "autoremove": "Remove packages no longer needed",
-      "dry-run": "unattended-upgrades dry run"
+      "dry-run": "unattended-upgrades dry run",
+      "repair": "Finish interrupted installation"
     },
     "kindShort": {
       "update": "apt update",
@@ -1824,7 +1825,8 @@
       "remove": "Remove",
       "purge": "Remove with configuration",
       "autoremove": "Clean up",
-      "dry-run": "Dry run"
+      "dry-run": "Dry run",
+      "repair": "Finish"
     },
     "security": "Security",
     "regular": "Regular",
@@ -1948,7 +1950,11 @@
       "critical_unconfirmed": "Removing critical packages must be confirmed.",
       "protected_package": "Daemonica itself cannot be removed through Daemonica.",
       "simulation_failed": "The simulation failed; nothing was changed."
-    }
+    },
+    "broken_one": "{{count}} package is only half installed; further apt jobs fail until this is done:",
+    "broken_other": "{{count}} packages are only half installed; further apt jobs fail until this is done:",
+    "repair": "Finish installation",
+    "repairExplain": "Finishes the interrupted setup (dpkg --configure -a) and adds missing dependencies (apt-get -f install). The preview shows what is installed or removed on the way."
   },
   "disks": {
     "title": "Disks and mounts",

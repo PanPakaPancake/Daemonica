@@ -49,6 +49,8 @@ func TestAptOpsRoles(t *testing.T) {
 			return execx.Result{Stdout: []byte("Inst openssl [3.5.0-1] (3.5.0-1.1 Ubuntu:26.04/resolute-security [amd64])\n")}, nil
 		case path == apt.AptMark:
 			return execx.Result{Stdout: []byte("openssl\nlibfoo\n")}, nil
+		case path == apt.DpkgQ && strings.HasSuffix(a, "${db:Status-Abbrev}\t${Package}\n"):
+			return execx.Result{Stdout: []byte("ii \tvim\niF \tdracut\n")}, nil
 		case path == apt.DpkgQ:
 			return execx.Result{Stdout: []byte("ii \t2.12\n")}, nil
 		case path == apt.AptCfg:
@@ -72,8 +74,15 @@ func TestAptOpsRoles(t *testing.T) {
 	mustOK(t, r, "overview")
 	var ov AptOverview
 	_ = json.Unmarshal(r.Result, &ov)
-	if ov.Distro.ID != "ubuntu" || len(ov.Upgrade.Install) != 2 || ov.Security != 1 || ov.Reboot || ov.Running != nil {
+	if ov.Distro.ID != "ubuntu" || len(ov.Upgrade.Install) != 2 || ov.Security != 1 || ov.Reboot || ov.Running != nil || !slices.Equal(ov.Broken, []string{"dracut"}) {
 		t.Fatalf("overview: %s", r.Result)
+	}
+
+	// Finishing interrupted installs is simulated like any other job.
+	r = e.callFrom(ip, "packages.simulate", ro, map[string]any{"kind": "repair"})
+	mustOK(t, r, "simulate repair")
+	if c := code(e.callFrom(ip, "packages.simulate", ro, map[string]any{"kind": "repair", "packages": []string{"vim"}})); c != rpc.CodeValidation {
+		t.Fatalf("repair with packages: %s", c)
 	}
 
 	// Simulation is open to all roles; bad names never reach apt.

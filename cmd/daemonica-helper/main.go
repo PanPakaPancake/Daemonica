@@ -16,8 +16,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PanPakaPancake/daemonica/internal/apt"
 	"github.com/PanPakaPancake/daemonica/internal/audit"
 	"github.com/PanPakaPancake/daemonica/internal/capture"
+	"github.com/PanPakaPancake/daemonica/internal/disks"
 	"github.com/PanPakaPancake/daemonica/internal/execx"
 	"github.com/PanPakaPancake/daemonica/internal/files"
 	"github.com/PanPakaPancake/daemonica/internal/firewall"
@@ -30,6 +32,7 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/services"
 	"github.com/PanPakaPancake/daemonica/internal/sshkeys"
 	"github.com/PanPakaPancake/daemonica/internal/sysinfo"
+	"github.com/PanPakaPancake/daemonica/internal/timehost"
 	"github.com/PanPakaPancake/daemonica/internal/users"
 	"github.com/PanPakaPancake/daemonica/internal/worker"
 	"golang.org/x/sys/unix"
@@ -112,6 +115,7 @@ func main() {
 	pm.Register(&helper.NetworkHandler{Run: netcfg.ExecRunner, State: (&netcfg.Reader{}).Read})
 	ufw := &firewall.Ufw{Run: netcfg.ExecRunner}
 	pm.Register(&firewall.Handler{Ufw: ufw})
+	pm.Register(&helper.FstabHandler{Path: disks.FstabPath, Reload: disks.ReloadSystemd})
 	pm.OnEvent = func(ch planner.Change, event string, err error) {
 		ev := audit.Event{Action: "change." + event, Target: "change:" + ch.ID, Result: audit.ResultOK,
 			Actor: audit.Actor{AccountID: ch.Owner}, Params: map[string]string{"kind": ch.Kind, "risk": ch.Risk}}
@@ -157,10 +161,11 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() { _ = sd.Close() }()
+	aptOps := &helper.AptOps{Sys: apt.System{Run: apt.ExecRun}, UnattendedPath: apt.UnattendedFile}
 	collector := &sysinfo.Collector{FS: sysinfo.FS{Root: "/"}, Interval: 3 * time.Second, Extras: sysinfo.Extras{
 		FailedUnits: sd.FailedCount,
 		CertDays:    helper.CertDaysFrom(*tlsDir),
-		Updates:     helper.UpdatesFromNotifier("/var/lib/update-notifier/updates-available"),
+		Updates:     updatesFrom(aptOps, helper.UpdatesFromNotifier("/var/lib/update-notifier/updates-available")),
 	}}
 	go collector.Run(ctx)
 	(&helper.SysOps{Collector: collector, SelfPID: os.Getpid()}).Register(ops)
@@ -236,6 +241,18 @@ func main() {
 		log.Error("cannot create script library", "err", err)
 	}
 	(&helper.ScriptOps{L: lib, Jobs: jobMgr.List}).Register(ops)
+	// M1.7a: updates and packages (jobs as transient units).
+	aptOps.Jobs = &apt.Runner{Dir: filepath.Join(*stateDir, "apt"), Units: apt.SystemdUnits{Conn: launcher.Conn}}
+	if err := aptOps.Jobs.Init(); err != nil {
+		log.Error("cannot create apt job dir", "err", err)
+	}
+	aptOps.Register(ops)
+	go aptOps.Watch(ctx, time.Hour)
+	// M1.7b: disks, mounts and fstab (mounts through systemd mount units).
+	(&helper.DiskOps{Run: netcfg.ExecRunner, FstabPath: disks.FstabPath, FS: sysinfo.FS{Root: "/"}, Mounter: disks.Systemd{Conn: launcher.Conn},
+		Planner: pm, Log: helper.JournalTail}).Register(ops)
+	// M1.7c: time zone, NTP, host name, reboot and power-off.
+	(&helper.TimeHostOps{Bus: timehost.Bus{Conn: launcher.Conn}, HostsPath: timehost.HostsPath}).Register(ops)
 	go capOps.Janitor(context.Background(), 10*time.Minute)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to
@@ -281,4 +298,15 @@ func terminalMemoryMax() uint64 {
 		return 0
 	}
 	return si.Totalram * uint64(si.Unit) / 2
+}
+
+// updatesFrom prefers the package view's counts and falls back to the
+// update-notifier file until the first simulation has run.
+func updatesFrom(a *helper.AptOps, fallback func() (sysinfo.Updates, error)) func() (sysinfo.Updates, error) {
+	return func() (sysinfo.Updates, error) {
+		if u, err := a.Updates(); err == nil {
+			return u, nil
+		}
+		return fallback()
+	}
 }

@@ -49,6 +49,9 @@ type Snapshot struct {
 type Updates struct {
 	Total    int `json:"total"`
 	Security int `json:"security"`
+	// AutoSecurity: unattended-upgrades installs security updates (known
+	// only from the package view, M1.7).
+	AutoSecurity *bool `json:"auto_security,omitempty"`
 }
 
 // Login is one entry of the login history.

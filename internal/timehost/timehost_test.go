@@ -49,19 +49,25 @@ func TestCloudInitResets(t *testing.T) {
 	}
 }
 
-func TestCloudInitManagesHosts(t *testing.T) {
+func TestCloudInitHostsMode(t *testing.T) {
 	root := t.TempDir()
-	if CloudInitManagesHosts(root) {
+	if CloudInitHostsMode(root) != "" {
 		t.Fatal("no cloud-init")
 	}
 	_ = os.MkdirAll(filepath.Join(root, "etc/cloud/cloud.cfg.d"), 0o755)
-	_ = os.WriteFile(filepath.Join(root, "etc/cloud/cloud.cfg"), []byte("manage_etc_hosts: True\n"), 0o644)
-	if !CloudInitManagesHosts(root) {
-		t.Fatal("managed")
+	_ = os.WriteFile(filepath.Join(root, "etc/cloud/cloud.cfg"), []byte("manage_etc_hosts: True\npreserve_hostname: false\n"), 0o644)
+	if CloudInitHostsMode(root) != HostsTemplate {
+		t.Fatal("template")
 	}
 	_ = os.WriteFile(filepath.Join(root, "etc/cloud/cloud.cfg.d/99-off.cfg"), []byte("manage_etc_hosts: false\n"), 0o644)
-	if CloudInitManagesHosts(root) {
+	if CloudInitHostsMode(root) != "" {
 		t.Fatal("switched off in cloud.cfg.d")
+	}
+	// The provider's user data (merged config of this boot) wins, as on Hostinger.
+	_ = os.MkdirAll(filepath.Join(root, "run/cloud-init"), 0o755)
+	_ = os.WriteFile(filepath.Join(root, MergedCloudConfig), []byte(`{"manage_etc_hosts":"localhost","preserve_hostname":true}`), 0o644)
+	if CloudInitHostsMode(root) != HostsLocalhost || CloudInitResets(root) {
+		t.Fatal("merged config")
 	}
 }
 

@@ -77,7 +77,7 @@ func TestTimeHostOpsRoles(t *testing.T) {
 	mustOK(t, r, "get")
 	var st TimeHostState
 	_ = json.Unmarshal(r.Result, &st)
-	if st.BootID != "boot-1" || st.Host.Static != "srv1" || st.HostsLine != "127.0.1.1 srv1.example.org srv1" || !st.CloudInit || !st.CloudHosts || len(st.Inhibitors) != 1 {
+	if st.BootID != "boot-1" || st.Host.Static != "srv1" || st.HostsLine != "127.0.1.1 srv1.example.org srv1" || !st.CloudInit || st.CloudHosts != timehost.HostsTemplate || len(st.Inhibitors) != 1 {
 		t.Fatalf("get: %s", r.Result)
 	}
 	for _, op := range []string{"timehost.set_timezone", "timehost.set_ntp", "timehost.set_hostname", "power.schedule", "power.cancel"} {

@@ -1,6 +1,8 @@
 package timehost
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"slices"
 	"strings"
@@ -81,56 +83,66 @@ func containsName(names []string, n string) bool {
 	return false
 }
 
-// CloudInitResets reports whether cloud-init may set the host name back at
-// boot (installed and preserve_hostname not set to true).
-func CloudInitResets(root string) bool {
-	b, err := os.ReadFile(root + "/etc/cloud/cloud.cfg") //nolint:gosec // fixed path
-	if err != nil {
-		return false
+// MergedCloudConfig is cloud-init's merged configuration of the current
+// boot (user data from the provider included).
+const MergedCloudConfig = "/run/cloud-init/combined-cloud-config.json"
+
+// cloudValue returns key from the merged cloud-init configuration, else the
+// last value in /etc/cloud/cloud.cfg and cloud.cfg.d (later files win).
+// installed is false without /etc/cloud/cloud.cfg.
+func cloudValue(root, key string) (val string, installed bool) {
+	if _, err := os.Stat(root + "/etc/cloud/cloud.cfg"); err != nil {
+		return "", false
 	}
-	if preserve(string(b)) {
-		return false
-	}
-	ds, _ := os.ReadDir(root + "/etc/cloud/cloud.cfg.d")
-	for _, d := range ds {
-		if c, err := os.ReadFile(root + "/etc/cloud/cloud.cfg.d/" + d.Name()); err == nil && preserve(string(c)) { //nolint:gosec // fixed dir
-			return false
+	if b, err := os.ReadFile(root + MergedCloudConfig); err == nil { //nolint:gosec // fixed path
+		var m map[string]any
+		if json.Unmarshal(b, &m) == nil {
+			if v, ok := m[key]; ok {
+				return strings.ToLower(fmt.Sprint(v)), true
+			}
 		}
 	}
-	return true
-}
-
-// CloudInitManagesHosts reports whether cloud-init rewrites /etc/hosts from
-// its template at boot (manage_etc_hosts true or localhost).
-func CloudInitManagesHosts(root string) bool {
-	on := false
 	files := []string{root + "/etc/cloud/cloud.cfg"}
 	ds, _ := os.ReadDir(root + "/etc/cloud/cloud.cfg.d")
 	for _, d := range ds {
 		files = append(files, root+"/etc/cloud/cloud.cfg.d/"+d.Name())
 	}
-	for _, f := range files { // later files win, like cloud-init's merge
+	for _, f := range files {
 		b, err := os.ReadFile(f) //nolint:gosec // fixed dir
 		if err != nil {
 			continue
 		}
 		for l := range strings.SplitSeq(string(b), "\n") {
 			k, v, ok := strings.Cut(strings.TrimSpace(l), ":")
-			if ok && strings.TrimSpace(k) == "manage_etc_hosts" {
-				v = strings.ToLower(strings.Trim(strings.TrimSpace(v), `"'`))
-				on = v == "true" || v == "localhost"
+			if ok && strings.TrimSpace(k) == key {
+				val = strings.ToLower(strings.Trim(strings.TrimSpace(v), `"'`))
 			}
 		}
 	}
-	return on
+	return val, true
 }
 
-func preserve(s string) bool {
-	for l := range strings.SplitSeq(s, "\n") {
-		k, v, ok := strings.Cut(strings.TrimSpace(l), ":")
-		if ok && strings.TrimSpace(k) == "preserve_hostname" && strings.EqualFold(strings.TrimSpace(v), "true") {
-			return true
-		}
+// CloudInitResets reports whether cloud-init may set the host name back at
+// boot (installed and preserve_hostname not true).
+func CloudInitResets(root string) bool {
+	v, installed := cloudValue(root, "preserve_hostname")
+	return installed && v != "true"
+}
+
+// Modes of cloud-init's manage_etc_hosts.
+const (
+	HostsTemplate  = "template"  // /etc/hosts rewritten from the template at boot
+	HostsLocalhost = "localhost" // the 127.0.1.1 line for the host name kept up to date at boot
+)
+
+// CloudInitHostsMode returns how cloud-init manages /etc/hosts at boot
+// (HostsTemplate, HostsLocalhost or "" when it leaves it alone).
+func CloudInitHostsMode(root string) string {
+	switch v, _ := cloudValue(root, "manage_etc_hosts"); v {
+	case "true", "template":
+		return HostsTemplate
+	case "localhost":
+		return HostsLocalhost
 	}
-	return false
+	return ""
 }

@@ -363,7 +363,7 @@ function HostPanel({ s, isAdmin, onDone, refresh }: { s?: State; isAdmin: boolea
             <span>{t("timehost.updateHosts")}</span>
           </label>
           {s.cloud_init_resets && <Notice tone="warn">{t("timehost.cloudInit")}</Notice>}
-          {s.cloud_init_hosts && d.hosts && <Notice tone="warn">{t("timehost.cloudInitHosts")}</Notice>}
+          {s.cloud_init_hosts && d.hosts && <Notice tone="warn">{t(`timehost.cloudInitHosts.${s.cloud_init_hosts}`)}</Notice>}
           {plan && d.hosts && (plan.hosts_changed ? <DiffView diff={plan.diff} /> : <Notice tone="info">{t("timehost.hostsUnchanged")}</Notice>)}
           {err && <Notice tone="bad">{err}</Notice>}
           <div className="flex flex-nowrap justify-end gap-2">

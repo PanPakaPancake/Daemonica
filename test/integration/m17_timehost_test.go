@@ -40,7 +40,7 @@ func TestTimeHostOnHost(t *testing.T) {
 	if err != nil || h.Hostname == "" {
 		t.Fatalf("host: %v %+v", err, h)
 	}
-	t.Logf("host %+v cloud-init resets name %v, rewrites hosts %v", h, timehost.CloudInitResets(""), timehost.CloudInitManagesHosts(""))
+	t.Logf("host %+v cloud-init resets name %v, hosts mode %q", h, timehost.CloudInitResets(""), timehost.CloudInitHostsMode(""))
 	if h.Static != "" && !timehost.ValidHostname(h.Static) {
 		t.Errorf("static name %q not accepted by ValidHostname", h.Static)
 	}

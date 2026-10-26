@@ -62,8 +62,8 @@ type TimeHostState struct {
 	Host      *timehost.Host `json:"host"`
 	HostsLine string         `json:"hosts_line"`
 	CloudInit bool           `json:"cloud_init_resets"`
-	// CloudHosts: cloud-init rewrites /etc/hosts from its template at boot.
-	CloudHosts bool                 `json:"cloud_init_hosts"`
+	// CloudHosts is cloud-init's manage_etc_hosts mode ("", template, localhost).
+	CloudHosts string               `json:"cloud_init_hosts"`
 	BootID     string               `json:"boot_id"`
 	Scheduled  *timehost.Scheduled  `json:"scheduled"`
 	Inhibitors []timehost.Inhibitor `json:"inhibitors"`
@@ -74,7 +74,7 @@ type TimeHostState struct {
 type HostnamePlan struct {
 	Diff       string `json:"diff"`
 	CloudInit  bool   `json:"cloud_init_resets"`
-	CloudHosts bool   `json:"cloud_init_hosts"`
+	CloudHosts string `json:"cloud_init_hosts"`
 	Changed    bool   `json:"hosts_changed"`
 }
 
@@ -160,7 +160,7 @@ func (o *TimeHostOps) Register(ops map[string]*Op) {
 	Register(ops, &Op{Name: "timehost.get", Action: policy.ActOverviewRead, NoAudit: true,
 		Handle: func(ctx context.Context, _ Call) (any, error) {
 			res := TimeHostState{BootID: timehost.BootID(o.proc()), CloudInit: timehost.CloudInitResets(o.root()),
-				CloudHosts: timehost.CloudInitManagesHosts(o.root()), Inhibitors: []timehost.Inhibitor{}}
+				CloudHosts: timehost.CloudInitHostsMode(o.root()), Inhibitors: []timehost.Inhibitor{}}
 			if t, err := o.Bus.Time(ctx); err == nil {
 				res.Time = &t
 			} else {
@@ -255,7 +255,7 @@ func (o *TimeHostOps) Register(ops map[string]*Op) {
 			if err != nil {
 				return nil, err
 			}
-			res := HostnamePlan{CloudInit: timehost.CloudInitResets(o.root()), CloudHosts: timehost.CloudInitManagesHosts(o.root()), Changed: cur != nw}
+			res := HostnamePlan{CloudInit: timehost.CloudInitResets(o.root()), CloudHosts: timehost.CloudInitHostsMode(o.root()), Changed: cur != nw}
 			if res.Changed {
 				res.Diff = netcfg.UnifiedDiff(o.HostsPath, &cur, &nw)
 			}

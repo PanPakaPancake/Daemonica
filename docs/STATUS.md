@@ -60,7 +60,7 @@ _Last updated: 2026-10-25_
 | M1.4 | ✓ accepted by owner 2026-10-25 | Web terminal (table below, DEC-023). KANN items (keep background processes, reconnect after short drops) not implemented. |
 | M1.5 | ✓ accepted by owner 2026-10-25 | Network, firewall, firewall logs, packet capture (tables below, DEC-024–DEC-028). Browser acceptance 1–4 passed on the VM 2026-10-25. |
 | M1.6 | ✓ accepted by the owner (2026-10-25) | Tasks and jobs plus script library and cron schedule builder (table below, DEC-029, DEC-030). |
-| M1.7 | ◐ built, acceptance on the VM open | Updates, disks, time and host (table below, DEC-031 – DEC-033). |
+| M1.7 | ✓ accepted by the owner (2026-10-26) | Updates, disks, time and host (table below, DEC-031 – DEC-033). |
 | M1.8 | ✖ open | |
 
 ### M1.0 requirement status
@@ -232,7 +232,7 @@ _Last updated: 2026-10-25_
 | Time zone (list), NTP status and switch | ✓ | `TestTimeHostOpsRoles`; Zeit & Host page |
 | Host name (static/pretty) with consistent `/etc/hosts` | ✓ | `TestRenameHosts`, `TestTimeHostOpsRoles`; DEC-033 |
 | Reboot/power-off (admin + step-up + typed name, delay, cancel); UI waits and reconnects | ✓ | `TestTimeHostOpsRoles`, `timehost.test.ts`; overlay checked with a mocked reboot |
-| Acceptance: security updates installed on the VM; unattended-upgrades set up and dry run; broken fstab rejected before saving; reboot flow reconnects | ◐ | integration tests `TestAptOnHost`, `TestDisksOnHost`, `TestTimeHostOnHost`; browser acceptance on the VM open |
+| Acceptance: security updates installed on the VM; unattended-upgrades set up and dry run; broken fstab rejected before saving; reboot flow reconnects | ✓ | integration tests `TestAptOnHost`, `TestAptMaintainerScripts`, `TestDisksOnHost`, `TestTimeHostOnHost` (19/19 on the VM); browser acceptance by the owner 2026-10-26 |
 
 ### Test results
 

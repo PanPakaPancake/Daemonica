@@ -19,6 +19,7 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/apt"
 	"github.com/PanPakaPancake/daemonica/internal/audit"
 	"github.com/PanPakaPancake/daemonica/internal/capture"
+	"github.com/PanPakaPancake/daemonica/internal/disks"
 	"github.com/PanPakaPancake/daemonica/internal/execx"
 	"github.com/PanPakaPancake/daemonica/internal/files"
 	"github.com/PanPakaPancake/daemonica/internal/firewall"
@@ -113,6 +114,7 @@ func main() {
 	pm.Register(&helper.NetworkHandler{Run: netcfg.ExecRunner, State: (&netcfg.Reader{}).Read})
 	ufw := &firewall.Ufw{Run: netcfg.ExecRunner}
 	pm.Register(&firewall.Handler{Ufw: ufw})
+	pm.Register(&helper.FstabHandler{Path: disks.FstabPath, Reload: disks.ReloadSystemd})
 	pm.OnEvent = func(ch planner.Change, event string, err error) {
 		ev := audit.Event{Action: "change." + event, Target: "change:" + ch.ID, Result: audit.ResultOK,
 			Actor: audit.Actor{AccountID: ch.Owner}, Params: map[string]string{"kind": ch.Kind, "risk": ch.Risk}}
@@ -245,6 +247,9 @@ func main() {
 	}
 	aptOps.Register(ops)
 	go aptOps.Watch(ctx, time.Hour)
+	// M1.7b: disks, mounts and fstab (mounts through systemd mount units).
+	(&helper.DiskOps{Run: netcfg.ExecRunner, FstabPath: disks.FstabPath, FS: sysinfo.FS{Root: "/"}, Mounter: disks.Systemd{Conn: launcher.Conn},
+		Planner: pm, Log: helper.JournalTail}).Register(ops)
 	go capOps.Janitor(context.Background(), 10*time.Minute)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to

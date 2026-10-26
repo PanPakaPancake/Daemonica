@@ -1948,5 +1948,116 @@
       "protected_package": "Daemonica itself cannot be removed through Daemonica.",
       "simulation_failed": "The simulation failed; nothing was changed."
     }
+  },
+  "disks": {
+    "title": "Disks and mounts",
+    "intro": "Block devices, usage, mounting and unmounting and the file /etc/fstab. Partitioning and formatting are not part of it.",
+    "tab": {
+      "devices": "Devices",
+      "mounts": "Usage",
+      "fstab": "fstab"
+    },
+    "lsblkFailed": "The device list could not be read (lsblk).",
+    "devicesIntro": "All block devices with partitions. A device with a file system can be added to fstab from its menu.",
+    "addToFstab": "Add to fstab",
+    "copyUuid": "Copy UUID",
+    "copyPath": "Copy path",
+    "actionsFor": "Actions for {{name}}",
+    "col": {
+      "device": "Device",
+      "type": "Type",
+      "size": "Size",
+      "fstype": "File system",
+      "label": "Label",
+      "mountpoints": "Mounted on",
+      "usage": "Usage",
+      "model": "Model",
+      "flags": "Properties",
+      "mountpoint": "Mount point",
+      "used": "Used",
+      "available": "Free",
+      "inodes": "Inodes",
+      "mode": "Mode",
+      "state": "State",
+      "problems": "Check"
+    },
+    "flag": {
+      "ro": "read only",
+      "rw": "read-write",
+      "rm": "removable",
+      "hdd": "HDD",
+      "ssd": "SSD"
+    },
+    "noDevices": "No block devices found.",
+    "noMounts": "No file systems mounted.",
+    "noEntries": "fstab has no entries.",
+    "swap": "Swap",
+    "unmount": "Unmount",
+    "mount": "Mount",
+    "criticalMount": "System mount, cannot be unmounted",
+    "unmountTitle": "Unmount {{target}}",
+    "unmountConfirm": "{{target}} will be unmounted. Programs using files there lose access. If the mount is busy, Daemonica shows the processes and unmounts nothing.",
+    "mounted": "{{target}} is mounted.",
+    "unmounted": "{{target}} is unmounted.",
+    "mountFailed": "{{target}} could not be mounted.",
+    "unmountFailed": "{{target}} could not be unmounted.",
+    "busy": "{{target}} is busy and was not unmounted.",
+    "busyBy": "Used by:",
+    "why": {
+      "cwd": "working directory",
+      "root": "root directory",
+      "exe": "program",
+      "file": "open file"
+    },
+    "err": {
+      "protected_mount": "This mount belongs to the system and cannot be unmounted through Daemonica."
+    },
+    "field": {
+      "spec": "Device (UUID, LABEL or path)",
+      "file": "Mount point",
+      "type": "File system",
+      "options": "Options",
+      "freq": "Dump",
+      "pass": "Check order"
+    },
+    "problem": {
+      "invalid": "{{field}} is invalid.",
+      "duplicate": "This mount point appears twice.",
+      "prefer_uuid": "Better use UUID= instead of a device name; device names can change on reboot.",
+      "nofail_recommended": "Recommended: set nofail so a missing disk does not block the boot.",
+      "root_missing": "The entry for / must not be removed."
+    },
+    "changedEntry": "Changed, not saved yet",
+    "isMounted": "mounted",
+    "notMounted": "not mounted",
+    "unsaved": "Unsaved changes. Saving checks the file and applies it with a confirmation timer.",
+    "fstabIntro": "Entries of /etc/fstab. Changes are saved only after a check.",
+    "addEntry": "Add entry",
+    "editEntry": "Edit entry {{file}}",
+    "verify": "Check",
+    "discard": "Discard",
+    "saveFstab": "Check and save",
+    "unparsed": "Unreadable lines are kept unchanged: {{lines}}",
+    "rejected": "The fstab is faulty and was not saved. Please fix the marked points.",
+    "verifyOk": "Check passed without errors.",
+    "fstabExplain": "Daemonica checks the new file itself and then with findmnt --verify. Only when both pass is it saved: first a backup /etc/fstab.daemonica-<time> is made, then systemd reloads the mount units. If you do not confirm within 90 seconds, the server restores the old file. Saving mounts or unmounts nothing.",
+    "applyTitle": "Save fstab",
+    "saved": "fstab saved.",
+    "confirmPrompt": "The new fstab is active. Please confirm within {{seconds}} s, otherwise the old file is restored.",
+    "risk": {
+      "low": "Low risk.",
+      "medium": "Medium risk: an error in fstab can hold up the next boot. The file was checked and a backup is made.",
+      "high": "High risk."
+    },
+    "rolledBackTimeout": "No confirmation received – the server restored the previous fstab.",
+    "fileInvalid": "Please enter an absolute path (none for swap).",
+    "specMissing": "Please enter a device.",
+    "specHelp": "Prefer UUID=…; the list shows all devices with a file system.",
+    "preferUuid": "Device names like /dev/sdb1 can change. Better use UUID=.",
+    "optionsHelp": "Comma-separated. Templates add missing options.",
+    "templates": "Option templates",
+    "passHelp": "1 only for /, 2 for other file systems, 0 for no check.",
+    "nofailHint": "Without nofail a missing disk stops the boot.",
+    "takeOver": "Apply"
   }
 }

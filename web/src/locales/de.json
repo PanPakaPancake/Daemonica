@@ -1948,5 +1948,116 @@
       "protected_package": "Daemonica selbst kann nicht über Daemonica entfernt werden.",
       "simulation_failed": "Die Simulation ist fehlgeschlagen; es wurde nichts geändert."
     }
+  },
+  "disks": {
+    "title": "Datenträger und Mounts",
+    "intro": "Blockgeräte, Belegung, Ein- und Aushängen und die Datei /etc/fstab. Partitionieren und Formatieren gehört nicht dazu.",
+    "tab": {
+      "devices": "Geräte",
+      "mounts": "Belegung",
+      "fstab": "fstab"
+    },
+    "lsblkFailed": "Die Geräteliste konnte nicht gelesen werden (lsblk).",
+    "devicesIntro": "Alle Blockgeräte mit Partitionen. Ein Gerät mit Dateisystem kannst du über das Menü in die fstab eintragen.",
+    "addToFstab": "In fstab eintragen",
+    "copyUuid": "UUID kopieren",
+    "copyPath": "Pfad kopieren",
+    "actionsFor": "Aktionen für {{name}}",
+    "col": {
+      "device": "Gerät",
+      "type": "Typ",
+      "size": "Größe",
+      "fstype": "Dateisystem",
+      "label": "Bezeichnung",
+      "mountpoints": "Eingehängt in",
+      "usage": "Belegung",
+      "model": "Modell",
+      "flags": "Eigenschaften",
+      "mountpoint": "Mountpunkt",
+      "used": "Belegt",
+      "available": "Frei",
+      "inodes": "Inodes",
+      "mode": "Modus",
+      "state": "Zustand",
+      "problems": "Prüfung"
+    },
+    "flag": {
+      "ro": "nur lesen",
+      "rw": "lesen und schreiben",
+      "rm": "wechselbar",
+      "hdd": "HDD",
+      "ssd": "SSD"
+    },
+    "noDevices": "Keine Blockgeräte gefunden.",
+    "noMounts": "Keine Dateisysteme eingehängt.",
+    "noEntries": "Die fstab hat keine Einträge.",
+    "swap": "Swap",
+    "unmount": "Aushängen",
+    "mount": "Einhängen",
+    "criticalMount": "Systemmount, kann nicht ausgehängt werden",
+    "unmountTitle": "{{target}} aushängen",
+    "unmountConfirm": "{{target}} wird ausgehängt. Programme, die dort Dateien nutzen, verlieren den Zugriff. Ist der Mount belegt, zeigt Daemonica die Prozesse und hängt nichts aus.",
+    "mounted": "{{target}} ist eingehängt.",
+    "unmounted": "{{target}} ist ausgehängt.",
+    "mountFailed": "{{target}} konnte nicht eingehängt werden.",
+    "unmountFailed": "{{target}} konnte nicht ausgehängt werden.",
+    "busy": "{{target}} ist belegt und wurde nicht ausgehängt.",
+    "busyBy": "Benutzt von:",
+    "why": {
+      "cwd": "Arbeitsverzeichnis",
+      "root": "Wurzelverzeichnis",
+      "exe": "Programm",
+      "file": "offene Datei"
+    },
+    "err": {
+      "protected_mount": "Dieser Mount gehört zum System und kann nicht über Daemonica ausgehängt werden."
+    },
+    "field": {
+      "spec": "Gerät (UUID, LABEL oder Pfad)",
+      "file": "Mountpunkt",
+      "type": "Dateisystem",
+      "options": "Optionen",
+      "freq": "Dump",
+      "pass": "Prüfreihenfolge"
+    },
+    "problem": {
+      "invalid": "{{field}} ist ungültig.",
+      "duplicate": "Dieser Mountpunkt kommt doppelt vor.",
+      "prefer_uuid": "Besser UUID= statt Gerätenamen verwenden; Gerätenamen können sich beim Neustart ändern.",
+      "nofail_recommended": "Empfehlung: nofail setzen, damit ein fehlender Datenträger den Start nicht blockiert.",
+      "root_missing": "Der Eintrag für / darf nicht entfernt werden."
+    },
+    "changedEntry": "Geändert, noch nicht gespeichert",
+    "isMounted": "eingehängt",
+    "notMounted": "nicht eingehängt",
+    "unsaved": "Ungespeicherte Änderungen. Speichern prüft die Datei und wendet sie mit Bestätigungs-Timer an.",
+    "fstabIntro": "Einträge der /etc/fstab. Änderungen werden erst nach Prüfung gespeichert.",
+    "addEntry": "Eintrag hinzufügen",
+    "editEntry": "Eintrag {{file}} bearbeiten",
+    "verify": "Prüfen",
+    "discard": "Verwerfen",
+    "saveFstab": "Prüfen und speichern",
+    "unparsed": "Nicht lesbare Zeilen bleiben unverändert erhalten: {{lines}}",
+    "rejected": "Die fstab ist fehlerhaft und wurde nicht gespeichert. Bitte die markierten Punkte beheben.",
+    "verifyOk": "Prüfung ohne Fehler.",
+    "fstabExplain": "Daemonica prüft die neue Datei zuerst selbst und dann mit findmnt --verify. Erst wenn beides fehlerfrei ist, wird sie gespeichert: vorher wird eine Sicherung /etc/fstab.daemonica-<Zeit> angelegt, danach lädt systemd die Mount-Units neu. Bestätigst du nicht innerhalb von 90 Sekunden, stellt der Server die alte Datei wieder her. Eingehängt oder ausgehängt wird beim Speichern nichts.",
+    "applyTitle": "fstab speichern",
+    "saved": "fstab gespeichert.",
+    "confirmPrompt": "Die neue fstab ist aktiv. Bitte innerhalb von {{seconds}} s bestätigen, sonst wird die alte Datei wiederhergestellt.",
+    "risk": {
+      "low": "Geringes Risiko.",
+      "medium": "Mittleres Risiko: Ein Fehler in der fstab kann den nächsten Systemstart aufhalten. Die Datei wurde geprüft, eine Sicherung wird angelegt.",
+      "high": "Hohes Risiko."
+    },
+    "rolledBackTimeout": "Keine Bestätigung erhalten – der Server hat die vorherige fstab wiederhergestellt.",
+    "fileInvalid": "Bitte einen absoluten Pfad angeben (bei Swap: none).",
+    "specMissing": "Bitte ein Gerät angeben.",
+    "specHelp": "Am besten UUID=… wählen; die Liste zeigt alle Geräte mit Dateisystem.",
+    "preferUuid": "Gerätenamen wie /dev/sdb1 können sich ändern. Besser UUID= verwenden.",
+    "optionsHelp": "Kommagetrennt. Vorlagen fügen fehlende Optionen hinzu.",
+    "templates": "Optionsvorlagen",
+    "passHelp": "1 nur für /, 2 für andere Dateisysteme, 0 für keine Prüfung.",
+    "nofailHint": "Ohne nofail hält ein fehlender Datenträger den Systemstart an.",
+    "takeOver": "Übernehmen"
   }
 }

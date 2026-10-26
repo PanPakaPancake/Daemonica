@@ -77,7 +77,7 @@ func httpStatus(code string) int {
 		return http.StatusConflict
 	case "critical_unconfirmed", "simulation_failed":
 		return http.StatusBadRequest
-	case "protected_package":
+	case "protected_package", "protected_mount":
 		return http.StatusForbidden
 	case "no_space":
 		return http.StatusInsufficientStorage
@@ -339,6 +339,12 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 		mux.Handle("POST /api/v1/packages/"+op, sess("packages."+op))
 	}
 	mux.Handle("POST /api/v1/packages/unattended", sess("packages.unattended.set"))
+
+	// M1.7b: disks and mounts.
+	mux.Handle("GET /api/v1/disks", sess("disks.overview"))
+	for _, op := range []string{"fstab_check", "fstab_plan", "users", "mount", "unmount"} {
+		mux.Handle("POST /api/v1/disks/"+op, sess("disks."+op))
+	}
 
 	mux.Handle("GET /api/v1/settings", sess("settings.get"))
 	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))

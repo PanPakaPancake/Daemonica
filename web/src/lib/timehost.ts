@@ -38,6 +38,7 @@ export interface TimeHost {
   host: HostState | null;
   hosts_line: string;
   cloud_init_resets: boolean;
+  cloud_init_hosts: boolean;
   boot_id: string;
   scheduled: Scheduled | null;
   inhibitors: Inhibitor[];
@@ -47,6 +48,7 @@ export interface TimeHost {
 export interface HostnamePlan {
   diff: string;
   cloud_init_resets: boolean;
+  cloud_init_hosts: boolean;
   hosts_changed: boolean;
 }
 

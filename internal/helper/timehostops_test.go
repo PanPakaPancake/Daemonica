@@ -62,7 +62,7 @@ func TestTimeHostOpsRoles(t *testing.T) {
 	_ = os.MkdirAll(filepath.Join(proc, "sys/kernel/random"), 0o755)
 	_ = os.WriteFile(filepath.Join(proc, "sys/kernel/random/boot_id"), []byte("boot-1\n"), 0o644)
 	_ = os.MkdirAll(filepath.Join(dir, "etc/cloud"), 0o755)
-	_ = os.WriteFile(filepath.Join(dir, "etc/cloud/cloud.cfg"), []byte("users: []\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "etc/cloud/cloud.cfg"), []byte("users: []\nmanage_etc_hosts: true\n"), 0o644)
 	fb := &fakeTimeHost{t: timehost.Time{Timezone: "Etc/UTC", CanNTP: true, NTP: true}, h: timehost.Host{Hostname: "srv1", Static: "srv1"}}
 	var deferred []func()
 	now := time.Date(2026, 10, 26, 1, 2, 3, 0, time.UTC)
@@ -77,7 +77,7 @@ func TestTimeHostOpsRoles(t *testing.T) {
 	mustOK(t, r, "get")
 	var st TimeHostState
 	_ = json.Unmarshal(r.Result, &st)
-	if st.BootID != "boot-1" || st.Host.Static != "srv1" || st.HostsLine != "127.0.1.1 srv1.example.org srv1" || !st.CloudInit || len(st.Inhibitors) != 1 {
+	if st.BootID != "boot-1" || st.Host.Static != "srv1" || st.HostsLine != "127.0.1.1 srv1.example.org srv1" || !st.CloudInit || !st.CloudHosts || len(st.Inhibitors) != 1 {
 		t.Fatalf("get: %s", r.Result)
 	}
 	for _, op := range []string{"timehost.set_timezone", "timehost.set_ntp", "timehost.set_hostname", "power.schedule", "power.cancel"} {

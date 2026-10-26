@@ -3,8 +3,11 @@ package timehost
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+const hostinger = "127.0.0.1\tlocalhost\n\n127.0.1.1\tubuntu-26.localhost\tubuntu-26\n127.0.1.1\tsrv1166373.hstgr.cloud\tsrv1166373\n127.0.1.1\tdaemonica.404squad.cloud\tdaemonica\n"
 
 func TestRenameHosts(t *testing.T) {
 	cases := []struct{ in, old, nw, want string }{
@@ -15,6 +18,11 @@ func TestRenameHosts(t *testing.T) {
 		{"127.0.0.1 localhost\n::1 ip6-localhost\n", "srv1", "web2",
 			"127.0.0.1 localhost\n127.0.1.1\tweb2\n::1 ip6-localhost\n"},
 		{"127.0.1.1 unrelated\n", "srv1", "web2", "127.0.1.1\tunrelated web2\n"},
+		// Several 127.0.1.1 lines (Hostinger image): only the line naming
+		// the host changes; an unchanged name changes nothing.
+		{hostinger, "daemonica", "daemonica", hostinger},
+		{hostinger, "daemonica", "web2", strings.Replace(hostinger, "127.0.1.1\tdaemonica.404squad.cloud\tdaemonica", "127.0.1.1\tweb2.404squad.cloud web2", 1)},
+		{"127.0.1.1 a\n127.0.1.1 b # x\n", "srv1", "web2", "127.0.1.1 a\n127.0.1.1\tb web2\t# x\n"},
 		{"", "", "web2", "127.0.1.1\tweb2\n"},
 		{"127.0.1.1   srv1.example.org srv1\n", "srv1", "srv1", "127.0.1.1   srv1.example.org srv1\n"},
 	}
@@ -38,6 +46,22 @@ func TestCloudInitResets(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(root, "etc/cloud/cloud.cfg.d/99-keep.cfg"), []byte("# x\npreserve_hostname: True\n"), 0o644)
 	if CloudInitResets(root) {
 		t.Fatal("preserved")
+	}
+}
+
+func TestCloudInitManagesHosts(t *testing.T) {
+	root := t.TempDir()
+	if CloudInitManagesHosts(root) {
+		t.Fatal("no cloud-init")
+	}
+	_ = os.MkdirAll(filepath.Join(root, "etc/cloud/cloud.cfg.d"), 0o755)
+	_ = os.WriteFile(filepath.Join(root, "etc/cloud/cloud.cfg"), []byte("manage_etc_hosts: True\n"), 0o644)
+	if !CloudInitManagesHosts(root) {
+		t.Fatal("managed")
+	}
+	_ = os.WriteFile(filepath.Join(root, "etc/cloud/cloud.cfg.d/99-off.cfg"), []byte("manage_etc_hosts: false\n"), 0o644)
+	if CloudInitManagesHosts(root) {
+		t.Fatal("switched off in cloud.cfg.d")
 	}
 }
 

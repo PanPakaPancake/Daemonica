@@ -58,10 +58,12 @@ type TimeHostOps struct {
 
 // TimeHostState is the timehost.get result.
 type TimeHostState struct {
-	Time       *timehost.Time       `json:"time"`
-	Host       *timehost.Host       `json:"host"`
-	HostsLine  string               `json:"hosts_line"`
-	CloudInit  bool                 `json:"cloud_init_resets"`
+	Time      *timehost.Time `json:"time"`
+	Host      *timehost.Host `json:"host"`
+	HostsLine string         `json:"hosts_line"`
+	CloudInit bool           `json:"cloud_init_resets"`
+	// CloudHosts: cloud-init rewrites /etc/hosts from its template at boot.
+	CloudHosts bool                 `json:"cloud_init_hosts"`
 	BootID     string               `json:"boot_id"`
 	Scheduled  *timehost.Scheduled  `json:"scheduled"`
 	Inhibitors []timehost.Inhibitor `json:"inhibitors"`
@@ -70,9 +72,10 @@ type TimeHostState struct {
 
 // HostnamePlan is the timehost.hostname_plan result.
 type HostnamePlan struct {
-	Diff      string `json:"diff"`
-	CloudInit bool   `json:"cloud_init_resets"`
-	Changed   bool   `json:"hosts_changed"`
+	Diff       string `json:"diff"`
+	CloudInit  bool   `json:"cloud_init_resets"`
+	CloudHosts bool   `json:"cloud_init_hosts"`
+	Changed    bool   `json:"hosts_changed"`
 }
 
 // PowerResult is the power.schedule result.
@@ -156,7 +159,8 @@ func (o *TimeHostOps) hostsChange(old, nw string) (string, string, error) {
 func (o *TimeHostOps) Register(ops map[string]*Op) {
 	Register(ops, &Op{Name: "timehost.get", Action: policy.ActOverviewRead, NoAudit: true,
 		Handle: func(ctx context.Context, _ Call) (any, error) {
-			res := TimeHostState{BootID: timehost.BootID(o.proc()), CloudInit: timehost.CloudInitResets(o.root()), Inhibitors: []timehost.Inhibitor{}}
+			res := TimeHostState{BootID: timehost.BootID(o.proc()), CloudInit: timehost.CloudInitResets(o.root()),
+				CloudHosts: timehost.CloudInitManagesHosts(o.root()), Inhibitors: []timehost.Inhibitor{}}
 			if t, err := o.Bus.Time(ctx); err == nil {
 				res.Time = &t
 			} else {
@@ -251,7 +255,7 @@ func (o *TimeHostOps) Register(ops map[string]*Op) {
 			if err != nil {
 				return nil, err
 			}
-			res := HostnamePlan{CloudInit: timehost.CloudInitResets(o.root()), Changed: cur != nw}
+			res := HostnamePlan{CloudInit: timehost.CloudInitResets(o.root()), CloudHosts: timehost.CloudInitManagesHosts(o.root()), Changed: cur != nw}
 			if res.Changed {
 				res.Diff = netcfg.UnifiedDiff(o.HostsPath, &cur, &nw)
 			}

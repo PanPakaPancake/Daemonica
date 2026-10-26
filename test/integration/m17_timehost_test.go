@@ -40,7 +40,7 @@ func TestTimeHostOnHost(t *testing.T) {
 	if err != nil || h.Hostname == "" {
 		t.Fatalf("host: %v %+v", err, h)
 	}
-	t.Logf("host %+v cloud-init resets %v", h, timehost.CloudInitResets(""))
+	t.Logf("host %+v cloud-init resets name %v, rewrites hosts %v", h, timehost.CloudInitResets(""), timehost.CloudInitManagesHosts(""))
 	if h.Static != "" && !timehost.ValidHostname(h.Static) {
 		t.Errorf("static name %q not accepted by ValidHostname", h.Static)
 	}
@@ -63,7 +63,10 @@ func TestTimeHostOnHost(t *testing.T) {
 	if name == "" {
 		name = h.Hostname
 	}
-	if got := timehost.RenameHosts(string(text), name, name); got != string(text) {
-		t.Logf("hosts would gain a 127.0.1.1 line:\n%s", got)
+	// Keeping the name must not touch /etc/hosts (several 127.0.1.1 lines
+	// on Hostinger images); otherwise only the name is added.
+	got := timehost.RenameHosts(string(text), name, name)
+	if got != string(text) {
+		t.Logf("hosts has no 127.0.1.1 entry for %q; renaming would write:\n%s", name, got)
 	}
 }

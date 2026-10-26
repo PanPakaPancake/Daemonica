@@ -2101,6 +2101,7 @@
     "prettyLabel": "Display name (optional, free text)",
     "updateHosts": "Also change the name in /etc/hosts (recommended, otherwise sudo reports “unable to resolve host”)",
     "cloudInit": "cloud-init is active and may reset the host name at the next boot. Add “preserve_hostname: true” in /etc/cloud/cloud.cfg.d/ to make it permanent.",
+    "cloudInitHosts": "cloud-init also manages /etc/hosts here (manage_etc_hosts) and rewrites it from /etc/cloud/templates/hosts.debian.tmpl at every boot, so the change to /etc/hosts only lasts until the next reboot.",
     "hostsUnchanged": "/etc/hosts stays unchanged.",
     "preview": "Preview",
     "discard": "Discard",

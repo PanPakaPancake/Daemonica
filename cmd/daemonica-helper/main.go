@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PanPakaPancake/daemonica/internal/apt"
 	"github.com/PanPakaPancake/daemonica/internal/audit"
 	"github.com/PanPakaPancake/daemonica/internal/capture"
 	"github.com/PanPakaPancake/daemonica/internal/execx"
@@ -157,10 +158,11 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() { _ = sd.Close() }()
+	aptOps := &helper.AptOps{Sys: apt.System{Run: apt.ExecRun}, UnattendedPath: apt.UnattendedFile}
 	collector := &sysinfo.Collector{FS: sysinfo.FS{Root: "/"}, Interval: 3 * time.Second, Extras: sysinfo.Extras{
 		FailedUnits: sd.FailedCount,
 		CertDays:    helper.CertDaysFrom(*tlsDir),
-		Updates:     helper.UpdatesFromNotifier("/var/lib/update-notifier/updates-available"),
+		Updates:     updatesFrom(aptOps, helper.UpdatesFromNotifier("/var/lib/update-notifier/updates-available")),
 	}}
 	go collector.Run(ctx)
 	(&helper.SysOps{Collector: collector, SelfPID: os.Getpid()}).Register(ops)
@@ -236,6 +238,13 @@ func main() {
 		log.Error("cannot create script library", "err", err)
 	}
 	(&helper.ScriptOps{L: lib, Jobs: jobMgr.List}).Register(ops)
+	// M1.7a: updates and packages (jobs as transient units).
+	aptOps.Jobs = &apt.Runner{Dir: filepath.Join(*stateDir, "apt"), Units: apt.SystemdUnits{Conn: launcher.Conn}}
+	if err := aptOps.Jobs.Init(); err != nil {
+		log.Error("cannot create apt job dir", "err", err)
+	}
+	aptOps.Register(ops)
+	go aptOps.Watch(ctx, time.Hour)
 	go capOps.Janitor(context.Background(), 10*time.Minute)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to
@@ -281,4 +290,15 @@ func terminalMemoryMax() uint64 {
 		return 0
 	}
 	return si.Totalram * uint64(si.Unit) / 2
+}
+
+// updatesFrom prefers the package view's counts and falls back to the
+// update-notifier file until the first simulation has run.
+func updatesFrom(a *helper.AptOps, fallback func() (sysinfo.Updates, error)) func() (sysinfo.Updates, error) {
+	return func() (sysinfo.Updates, error) {
+		if u, err := a.Updates(); err == nil {
+			return u, nil
+		}
+		return fallback()
+	}
 }

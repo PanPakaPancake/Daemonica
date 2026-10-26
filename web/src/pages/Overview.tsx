@@ -53,7 +53,7 @@ interface Overview {
   reboot_pkgs?: string[];
   failed_units?: number;
   cert_days_left?: number;
-  updates?: { total: number; security: number };
+  updates?: { total: number; security: number; auto_security?: boolean };
 }
 
 export function OverviewPage() {
@@ -73,7 +73,7 @@ export function OverviewPage() {
     { key: "allowlist", done: true },
     { key: "secondPasskey", done: (pk.data?.length ?? 0) >= 2 },
     { key: "firewall", done: false },
-    { key: "updates", done: false },
+    { key: "updates", done: o?.updates?.auto_security === true },
   ];
   const doneCount = items.filter((i) => i.done).length;
   const memPct = o && o.memory.total > 0 ? (100 * o.memory.used) / o.memory.total : 0;
@@ -234,7 +234,10 @@ export function OverviewPage() {
                   {t("overview.processes")}: <span className="text-fg tabular-nums">{o.processes}</span>
                 </p>
                 <p className="text-muted">
-                  {t("overview.updates")}:{" "}
+                  <Link className="underline" to="/updates">
+                    {t("overview.updates")}
+                  </Link>
+                  :{" "}
                   <span className="text-fg tabular-nums">
                     {o.updates ? t("overview.updatesValue", { total: o.updates.total, security: o.updates.security }) : "–"}
                   </span>

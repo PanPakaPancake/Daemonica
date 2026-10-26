@@ -60,7 +60,8 @@ _Last updated: 2026-10-25_
 | M1.4 | ✓ accepted by owner 2026-10-25 | Web terminal (table below, DEC-023). KANN items (keep background processes, reconnect after short drops) not implemented. |
 | M1.5 | ✓ accepted by owner 2026-10-25 | Network, firewall, firewall logs, packet capture (tables below, DEC-024–DEC-028). Browser acceptance 1–4 passed on the VM 2026-10-25. |
 | M1.6 | ✓ accepted by the owner (2026-10-25) | Tasks and jobs plus script library and cron schedule builder (table below, DEC-029, DEC-030). |
-| M1.7 – M1.8 | ✖ open | |
+| M1.7 | ◐ built, acceptance on the VM open | Updates, disks, time and host (table below, DEC-031 – DEC-033). |
+| M1.8 | ✖ open | |
 
 ### M1.0 requirement status
 
@@ -214,6 +215,24 @@ _Last updated: 2026-10-25_
 | Acceptance: job runs at the scheduled time, history shows exit code and log; injection payloads without effect; hardening visible in `systemctl show` | ✓ | integration `TestJobsOnHost`; scheduled run in the browser acceptance |
 | Script library (Timo's request, not in the SPEC; DEC-030): local scripts with editor, GitHub collections pinned to a commit, update only after diff + step-up, use as job or in the terminal, audit | ✓ | `TestLibraryLifecycle`, `TestParseTarball`, `TestGitHub`, `TestScriptOpsRoles`; `Scripts.tsx` |
 | Script library on the host: readable for other users despite umask 0077, trusted for root jobs, runs as `nobody`, real GitHub download | ✓ | integration `TestScriptLibraryOnHost` |
+
+### M1.7 requirement status
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| `apt update` with source errors; upgradable packages with security flag; install all / security only / selection with live progress and log | ✓ | `TestParseSim`, `TestRunner`; Updates page |
+| dpkg lock handling (wait up to 10 min, holder shown); "reboot required"; needrestart hint (SOLL) | ✓ | `LockHolder`, `TestRebootRequired`, `TestNeedRestart` |
+| unattended-upgrades: status, guided setup (security only, optional auto-reboot with time), test run, result log | ✓ | `TestUnattended`, `TestAptOpsRoles`; DEC-031 |
+| Search/install/remove (admin + step-up) with simulation and confirmation of extra removals; critical packages typed; daemonica protected | ✓ | `TestAptOpsRoles` |
+| Sources read-only incl. deb822 | ✓ | `TestSources` |
+| `noninteractive`, `--force-confold` with conffile hint; holds (KANN) | ◐ | conffile notes in the job summary; holds not implemented |
+| Block devices, usage/inodes, mounts; LVM/RAID/SMART (KANN) | ◐ | `TestLsblk`; Disks page; KANN items not implemented |
+| mount/unmount with busy and critical messages | ✓ | `TestDiskOpsRoles` |
+| fstab structured (UUID preferred, option templates, `nofail` recommendation), `findmnt --verify`, backup, confirmation timer | ✓ | `TestValidate`, `TestParseVerify`, `TestDiskOpsRoles`; DEC-032 |
+| Time zone (list), NTP status and switch | ✓ | `TestTimeHostOpsRoles`; Zeit & Host page |
+| Host name (static/pretty) with consistent `/etc/hosts` | ✓ | `TestRenameHosts`, `TestTimeHostOpsRoles`; DEC-033 |
+| Reboot/power-off (admin + step-up + typed name, delay, cancel); UI waits and reconnects | ✓ | `TestTimeHostOpsRoles`, `timehost.test.ts`; overlay checked with a mocked reboot |
+| Acceptance: security updates installed on the VM; unattended-upgrades set up and dry run; broken fstab rejected before saving; reboot flow reconnects | ◐ | integration tests `TestAptOnHost`, `TestDisksOnHost`, `TestTimeHostOnHost`; browser acceptance on the VM open |
 
 ### Test results
 

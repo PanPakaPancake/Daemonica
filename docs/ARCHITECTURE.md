@@ -40,6 +40,9 @@ Daemonica manages exactly one Debian/Ubuntu host. It is split into three binarie
 | `internal/firewall` | M1.5b/c: ufw rules and counters, first-match evaluation, status light, plans and the planner handler, raw view, log parser (DEC-025, DEC-027). |
 | `internal/jobs` | M1.6: managed jobs (validation, unit rendering, trusted-path check, calendar preview, journal history), cron parser, user crontab edits (DEC-029). |
 | `internal/scripts` | M1.6: script library (local scripts, GitHub collections pinned to a commit, tarball reader, tree diff, atomic install under `/var/lib/daemonica-scripts`; DEC-030). |
+| `internal/apt` | M1.7a: apt simulation parser, dpkg state and lock holder, needrestart, sources (one-line and deb822), unattended-upgrades file, package jobs as transient units (DEC-031). |
+| `internal/disks` | M1.7b: lsblk inventory, fstab parser/renderer/validation with `findmnt --verify`, mount units over D-Bus, mount users (DEC-032). |
+| `internal/timehost` | M1.7c: timedated, hostnamed and logind over D-Bus, `/etc/hosts` rename, cloud-init check, boot id (DEC-033). |
 | `internal/capture` | M1.5d: capture spec and filter builder, sandboxed tcpdump unit, pcap reader and packet summaries, limits and retention (DEC-028). |
 
 ## Request flow (authenticated operation)
@@ -108,6 +111,15 @@ Live views use the generic follow WebSocket (`/api/v1/follow/ticket` + `/ws`, DE
 | `jobs` | `jobs.check`, `jobs.save`, `jobs.delete` | jobs.write (admin); jobs.write_root for root jobs (admin + step-up) |
 | `cron` | `cron.get`, `cron.preview`; `cron.save` | jobs.read; jobs.write (root's crontab: jobs.write_root) |
 | `scripts` | `scripts.list`, `scripts.read`; `scripts.preview`, `scripts.check`; `scripts.add`, `scripts.update`, `scripts.remove`, `scripts.save`, `scripts.delete` | jobs.read; jobs.write; jobs.write_root (admin + step-up) |
+| `packages` | `packages.overview`, `.needrestart`, `.installed`, `.sources`, `.search`, `.simulate`, `.jobs`, `.job`, `.unattended` | overview.read (all roles) |
+| `packages` | `packages.start`, `packages.unattended.set` | packages.write (admin + step-up) |
+| `disks` | `disks.overview`, `disks.fstab_check`, `disks.users` | overview.read |
+| `disks` | `disks.fstab_plan` (planner kind `fstab`), `disks.mount`, `disks.unmount` | disks.write (admin + step-up) |
+| `timehost` | `timehost.get`, `timehost.timezones`, `timehost.hostname_plan` | overview.read |
+| `timehost` | `timehost.set_timezone`, `timehost.set_ntp`, `timehost.set_hostname` | timehost.write (admin + step-up) |
+| `power` | `power.schedule`, `power.cancel` | power (admin + step-up, typed host name) |
+
+Package jobs run as transient units `daemonica-apt-<id>.service` outside the helper's sandbox, so dpkg maintainer scripts never run inside the helper process; their output goes to a log file in the helper state that the browser polls (DEC-031). Mounts go through systemd mount units over D-Bus because the helper's `SystemCallFilter` denies `@mount` (DEC-032). Time zone, NTP, host name and power go through timedated, hostnamed and logind, so `ProtectClock=yes` stays set (DEC-033).
 
 Managed jobs are `daemonica-job-<id>.service` + `.timer` in `/etc/systemd/system`, rendered by `internal/jobs` from validated fields with every value quoted for systemd's parser; the helper reloads systemd and enables the timer over D-Bus. Run history comes from the journal, grouped by invocation id. See DEC-029.
 
@@ -117,11 +129,11 @@ The script library (DEC-030) keeps files in `/var/lib/daemonica-scripts/<source>
 
 | Directive not set | Reason |
 |---|---|
-| `NoNewPrivileges=yes` | Originally for `sudo` in the elevated terminal. Since M1.4 terminals run as their own transient units (DEC-023), so this is no longer needed for them; it stays unset until the package management of M1.6 (dpkg maintainer scripts) is measured, then it is to be enabled. Standard workers set `no_new_privs` themselves. |
+| `NoNewPrivileges=yes` | Originally for `sudo` in the elevated terminal. Since M1.4 terminals run as their own transient units (DEC-023), so this is no longer needed for them; package jobs run in their own transient units as well (DEC-031), so dpkg maintainer scripts do not need it either; it is to be enabled and measured in the M1.8 hardening. Standard workers set `no_new_privs` themselves. |
 | `ProtectSystem=strict` / `ProtectHome=yes` | The helper edits system configuration (users, network, fstab, apt) and home directories (`authorized_keys`, file manager). |
 | `PrivateDevices=yes` | Mount/unmount and disk inventory need block devices. |
 | `ProtectKernelTunables=yes` | Network configuration and later checklist fixes write sysctls. |
-| `ProtectHostname=yes` | Hostname changes (M1.7). |
+| `ProtectHostname=yes` | Kept unset so that the helper sees the real host name; the change itself goes through hostnamed (DEC-033). To be re-checked in M1.8. |
 | `CapabilityBoundingSet=` restriction | Root operations across many subsystems; to be narrowed per milestone with measured needs. |
 | `RestrictNamespaces=yes` (fully) | Transient units / container management (Phase 3) need namespaces; only user namespaces are denied. |
 | `MemoryDenyWriteExecute=yes` | Child programs (apt, dpkg maintainer scripts) may need W+X mappings. |

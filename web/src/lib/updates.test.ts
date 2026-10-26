@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appendLog, extraRemovals, pkgNameRE, removalNames, securityNames, statusKey, suiteOf, termRE, type Plan } from "./updates";
+import { appendLog, extraRemovals, pkgNameRE, rebootOnly, removalNames, securityNames, statusKey, suiteOf, termRE, type Plan } from "./updates";
 
 describe("updates helpers", () => {
   it("names and terms", () => {
@@ -55,5 +55,13 @@ describe("updates helpers", () => {
     expect(statusKey("rc ")).toBe("config");
     expect(statusKey("iF ")).toBe("other");
     expect(statusKey("iiR")).toBe("broken");
+  });
+});
+
+describe("rebootOnly", () => {
+  it("keeps the system bus, user managers and the helper out of single restarts", () => {
+    for (const u of ["dbus.service", "dbus-broker.service", "user@1000.service", "daemonica-helper.service"]) expect(rebootOnly(u)).toBe(true);
+    for (const u of ["getty@tty1.service", "polkit.service", "systemd-logind.service", "daemonica-web.service", "dbus-org.foo.service"])
+      expect(rebootOnly(u)).toBe(false);
   });
 });

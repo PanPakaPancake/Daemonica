@@ -205,3 +205,11 @@ export function statusKey(abbrev: string): "installed" | "held" | "config" | "br
   if (abbrev.startsWith("rc")) return "config";
   return "other";
 }
+
+/** Services needrestart lists that must not be restarted on their own: the
+ * system bus (restarting it breaks systemd, logind and the dashboard's
+ * helper), per-user managers (end the user's sessions) and the helper itself.
+ * They are handled by a reboot. */
+export function rebootOnly(unit: string): boolean {
+  return /^(dbus|dbus-broker|daemonica-helper)\.service$/.test(unit) || /^user@\d+\.service$/.test(unit);
+}

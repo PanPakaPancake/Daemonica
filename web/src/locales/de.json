@@ -1783,8 +1783,8 @@
     "locked": "Die Paketverwaltung ist gerade gesperrt durch {{comm}} (PID {{pid}}, {{file}}). Ein neuer Auftrag wartet bis zu 10 Minuten auf die Sperre.",
     "rebootRequired": "Ein Neustart ist erforderlich, damit alle Aktualisierungen wirksam werden.",
     "kernelPending": "Laufender Kernel {{cur}}, installiert ist {{next}}.",
-    "needRestart_one": "{{count}} Dienst nutzt noch alte Bibliotheken und sollte neu gestartet werden:",
-    "needRestart_other": "{{count}} Dienste nutzen noch alte Bibliotheken und sollten neu gestartet werden:",
+    "needRestart_one": "{{count}} Dienst nutzt noch alte Bibliotheken und sollte neu gestartet werden.",
+    "needRestart_other": "{{count}} Dienste nutzen noch alte Bibliotheken und sollten neu gestartet werden.",
     "toServices": "Zu den Diensten",
     "noNeedrestart": "needrestart ist nicht installiert, daher fehlt der Hinweis auf neu zu startende Dienste.",
     "phase": {
@@ -1954,7 +1954,18 @@
     "broken_one": "{{count}} Paket ist nur halb installiert, weitere apt-Aufträge scheitern, bis das erledigt ist:",
     "broken_other": "{{count}} Pakete sind nur halb installiert, weitere apt-Aufträge scheitern, bis das erledigt ist:",
     "repair": "Installation fortsetzen",
-    "repairExplain": "Führt die unterbrochene Einrichtung zu Ende (dpkg --configure -a) und ergänzt fehlende Abhängigkeiten (apt-get -f install). Die Vorschau zeigt, was dabei installiert oder entfernt wird."
+    "repairExplain": "Führt die unterbrochene Einrichtung zu Ende (dpkg --configure -a) und ergänzt fehlende Abhängigkeiten (apt-get -f install). Die Vorschau zeigt, was dabei installiert oder entfernt wird.",
+    "restartAll_one": "{{count}} neu starten",
+    "restartAll_other": "Alle {{count}} neu starten",
+    "needRestartList": "Betroffene Dienste",
+    "restartOne": "{{unit}} neu starten",
+    "restartState": {
+      "busy": "wird neu gestartet",
+      "ok": "neu gestartet",
+      "bad": "Neustart fehlgeschlagen"
+    },
+    "rebootOnly": "Diesen Dienst nicht einzeln neu starten (Systembus, Benutzersitzungen oder Daemonica selbst). Er wird mit dem nächsten Neustart des Servers aktuell.",
+    "rebootOnlyShort": "beim Serverneustart"
   },
   "disks": {
     "title": "Datenträger und Mounts",

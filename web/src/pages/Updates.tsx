@@ -22,6 +22,7 @@ import {
   statusKey,
   suiteOf,
   termRE,
+  rebootOnly,
   upgrades,
   type AptJob,
   type Found,
@@ -147,8 +148,92 @@ export function Updates() {
   );
 }
 
+type RestartState = "busy" | "ok" | "bad";
+
+/** needrestart's list with a restart button per service and for all at once. */
+function RestartServices({ services, canRestart }: { services: string[]; canRestart: boolean }) {
+  const { t } = useTranslation();
+  const { withStepUp } = useSession();
+  const qc = useQueryClient();
+  const [state, setState] = useState<Record<string, RestartState>>({});
+  const [err, setErr] = useState<string>();
+  const restartable = services.filter((u) => !rebootOnly(u));
+  const working = Object.values(state).includes("busy");
+  const restart = async (units: string[]) => {
+    setErr(undefined);
+    for (const u of units) {
+      setState((s) => ({ ...s, [u]: "busy" }));
+      try {
+        await withStepUp(() => api("POST", "/services/action", { unit: u, action: "restart" }));
+        setState((s) => ({ ...s, [u]: "ok" }));
+      } catch (e) {
+        setState((s) => ({ ...s, [u]: "bad" }));
+        setErr(`${u}: ${errorText(t, e)}`);
+        if (e instanceof Error && e.message === "cancelled") break;
+      }
+    }
+    void qc.invalidateQueries({ queryKey: ["packages", "needrestart"] });
+  };
+  const mark: Record<RestartState, string> = { busy: "…", ok: "✓", bad: "✖" };
+  return (
+    <div className="flex flex-col gap-2 rounded-[8px] border border-line bg-bg-2 px-4 py-3">
+      <div className="flex flex-nowrap items-center gap-3 overflow-x-auto">
+        <span aria-hidden="true" className="font-bold text-info">
+          ℹ
+        </span>
+        <span className="min-w-0 flex-1">
+          {t("updates.needRestart", { count: services.length })}{" "}
+          <Link className="underline" to="/services">
+            {t("updates.toServices")}
+          </Link>
+        </span>
+        {restartable.length > 1 && (
+          <button type="button" className="btn btn-secondary min-h-9 shrink-0" disabled={!canRestart || working} onClick={() => void restart(restartable)}>
+            <Icon name="restart" className="h-4 w-4" />
+            {t("updates.restartAll", { count: restartable.length })}
+          </button>
+        )}
+      </div>
+      <ul className="flex flex-wrap gap-2" aria-label={t("updates.needRestartList")}>
+        {services.map((u) => (
+          <li key={u} className="flex items-center gap-1 rounded-[6px] border border-line bg-bg-1 py-0.5 pl-2 pr-0.5 font-mono text-xs">
+            <span>{u}</span>
+            {state[u] && (
+              <span
+                className={state[u] === "ok" ? "text-ok" : state[u] === "bad" ? "text-bad" : "text-muted"}
+                aria-label={t(`updates.restartState.${state[u]}`)}
+              >
+                {mark[state[u]]}
+              </span>
+            )}
+            {rebootOnly(u) ? (
+              <span className="px-1.5 font-sans text-faint" title={t("updates.rebootOnly")}>
+                {t("updates.rebootOnlyShort")}
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="rounded-[4px] p-1 text-muted hover:bg-bg-2 hover:text-fg disabled:opacity-40"
+                disabled={!canRestart || working}
+                title={t("updates.restartOne", { unit: u })}
+                aria-label={t("updates.restartOne", { unit: u })}
+                onClick={() => void restart([u])}
+              >
+                <Icon name="restart" className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {err && <p className="text-sm text-bad">{err}</p>}
+    </div>
+  );
+}
+
 function StatusBar({ o, isAdmin, busy, onStart }: { o: Overview; isAdmin: boolean; busy: boolean; onStart: (p: Pending) => void }) {
   const { t, i18n } = useTranslation();
+  const { me } = useSession();
+  const canRestart = !!me && me.role !== "readonly";
   const nr = useQuery({ queryKey: ["packages", "needrestart"], queryFn: () => api<NeedRestart>("GET", "/packages/needrestart"), staleTime: 300_000 });
   const n = nr.data;
   const ups = upgrades(o.upgrade);
@@ -207,15 +292,7 @@ function StatusBar({ o, isAdmin, busy, onStart }: { o: Overview; isAdmin: boolea
           )}
         </Notice>
       )}
-      {n && n.services.length > 0 && (
-        <Notice tone="info">
-          {t("updates.needRestart", { count: n.services.length })} <span className="font-mono text-xs">{n.services.slice(0, 12).join(", ")}</span>
-          {n.services.length > 12 && " …"}{" "}
-          <Link className="underline" to="/services">
-            {t("updates.toServices")}
-          </Link>
-        </Notice>
-      )}
+      {n && n.services.length > 0 && <RestartServices services={n.services} canRestart={canRestart} />}
       {n && !n.available && <p className="text-xs text-faint">{t("updates.noNeedrestart")}</p>}
     </div>
   );

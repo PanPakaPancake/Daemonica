@@ -221,7 +221,7 @@ _Last updated: 2026-10-25_
 | Requirement | Status | Evidence |
 |---|---|---|
 | `apt update` with source errors; upgradable packages with security flag; install all / security only / selection with live progress and log | ✓ | `TestParseSim`, `TestRunner`; Updates page |
-| dpkg lock handling (wait up to 10 min, holder shown); "reboot required"; needrestart hint (SOLL) | ✓ | `LockHolder`, `TestRebootRequired`, `TestNeedRestart` |
+| dpkg lock handling (wait up to 10 min, holder shown); "reboot required"; needrestart hint (SOLL) with restart per service or all at once (system bus, user managers and the helper only by reboot); finishing interrupted installs | ✓ | `LockHolder`, `TestRebootRequired`, `TestNeedRestart`, `updates.test.ts`, integration `TestAptMaintainerScripts` |
 | unattended-upgrades: status, guided setup (security only, optional auto-reboot with time), test run, result log | ✓ | `TestUnattended`, `TestAptOpsRoles`; DEC-031 |
 | Search/install/remove (admin + step-up) with simulation and confirmation of extra removals; critical packages typed; daemonica protected | ✓ | `TestAptOpsRoles` |
 | Sources read-only incl. deb822 | ✓ | `TestSources` |

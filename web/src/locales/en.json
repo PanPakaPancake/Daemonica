@@ -1783,8 +1783,8 @@
     "locked": "Package management is locked by {{comm}} (PID {{pid}}, {{file}}). A new job waits up to 10 minutes for the lock.",
     "rebootRequired": "A reboot is required for all updates to take effect.",
     "kernelPending": "Running kernel {{cur}}, installed is {{next}}.",
-    "needRestart_one": "{{count}} service still uses old libraries and should be restarted:",
-    "needRestart_other": "{{count}} services still use old libraries and should be restarted:",
+    "needRestart_one": "{{count}} service still uses old libraries and should be restarted.",
+    "needRestart_other": "{{count}} services still use old libraries and should be restarted.",
     "toServices": "Go to services",
     "noNeedrestart": "needrestart is not installed, so there is no hint about services to restart.",
     "phase": {
@@ -1954,7 +1954,18 @@
     "broken_one": "{{count}} package is only half installed; further apt jobs fail until this is done:",
     "broken_other": "{{count}} packages are only half installed; further apt jobs fail until this is done:",
     "repair": "Finish installation",
-    "repairExplain": "Finishes the interrupted setup (dpkg --configure -a) and adds missing dependencies (apt-get -f install). The preview shows what is installed or removed on the way."
+    "repairExplain": "Finishes the interrupted setup (dpkg --configure -a) and adds missing dependencies (apt-get -f install). The preview shows what is installed or removed on the way.",
+    "restartAll_one": "Restart {{count}}",
+    "restartAll_other": "Restart all {{count}}",
+    "needRestartList": "Affected services",
+    "restartOne": "Restart {{unit}}",
+    "restartState": {
+      "busy": "restarting",
+      "ok": "restarted",
+      "bad": "restart failed"
+    },
+    "rebootOnly": "Do not restart this service on its own (system bus, user sessions or Daemonica itself). It is updated with the next server reboot.",
+    "rebootOnlyShort": "on server reboot"
   },
   "disks": {
     "title": "Disks and mounts",

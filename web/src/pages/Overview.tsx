@@ -65,6 +65,8 @@ export function OverviewPage() {
     refetchInterval: 3000,
   });
   const pk = useQuery({ queryKey: ["passkeys"], queryFn: () => api<Passkey[]>("GET", "/passkeys") });
+  // Same query as the firewall page, so a change there updates the checklist.
+  const fw = useQuery({ queryKey: ["firewall"], queryFn: () => api<{ active: boolean }>("GET", "/firewall"), staleTime: 60_000 });
   const o = q.data;
 
   const certOk = o?.cert_days_left !== undefined && o.cert_days_left >= 30;
@@ -72,7 +74,7 @@ export function OverviewPage() {
     { key: "cert", done: certOk },
     { key: "allowlist", done: true },
     { key: "secondPasskey", done: (pk.data?.length ?? 0) >= 2 },
-    { key: "firewall", done: false },
+    { key: "firewall", done: fw.data?.active === true },
     { key: "updates", done: o?.updates?.auto_security === true },
   ];
   const doneCount = items.filter((i) => i.done).length;

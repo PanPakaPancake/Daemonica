@@ -68,7 +68,8 @@
     "mount_point": "The operation would affect another mounted file system and was refused.",
     "root_mode_required": "Root mode must be active for this.",
     "timeout": "The operation took too long.",
-    "no_login_shell": "This Linux user has no login shell."
+    "no_login_shell": "This Linux user has no login shell.",
+    "confirm_mismatch": "The typed name does not match."
   },
   "login": {
     "title": "Sign in",
@@ -2059,5 +2060,118 @@
     "passHelp": "1 only for /, 2 for other file systems, 0 for no check.",
     "nofailHint": "Without nofail a missing disk stops the boot.",
     "takeOver": "Apply"
+  },
+  "timehost": {
+    "title": "Time & host",
+    "intro": "Time zone, time synchronisation and host name of the server, plus reboot and power-off.",
+    "daemonsMissing": "Not all system services answered: {{names}}. Their details are missing.",
+    "time": "Time",
+    "serverTime": "Server time",
+    "timezone": "Time zone",
+    "ntp": "Time synchronisation",
+    "ntpUnavailable": "No NTP service installed",
+    "ntpSynced": "synchronised",
+    "ntpNotSynced": "on, but not synchronised yet",
+    "ntpOff": "off",
+    "drift": "The server clock differs from this browser's clock by {{s}} seconds.",
+    "localRtc": "The hardware clock runs in local time. That causes trouble at daylight saving changes; UTC is usual.",
+    "newTimezone": "Change time zone",
+    "browserZone": "Your browser uses {{zone}}.",
+    "useBrowserZone": "Use the browser's time zone",
+    "otherZones": "Other",
+    "timezoneSet": "The time zone is now {{zone}}.",
+    "ntpSwitch": "Synchronise the time over the network (NTP)",
+    "ntpOnDone": "Time synchronisation switched on.",
+    "ntpOffDone": "Time synchronisation switched off.",
+    "timeExplain": "The time zone is set by systemd-timedated (timedatectl set-timezone). It only changes how local time is shown, not the clock itself; logs and schedules such as cron follow it. Synchronisation switches the first available NTP service on or off, usually systemd-timesyncd.",
+    "host": "Host name",
+    "static": "Host name",
+    "transient": "Current kernel name",
+    "pretty": "Display name",
+    "os": "Operating system",
+    "noHostsLine": "no 127.0.1.1 line",
+    "newHostname": "New host name",
+    "hostnameHelp": "Lowercase letters, digits and hyphens, at most 63 characters. The domain belongs into /etc/hosts or DNS.",
+    "hostnameProblem": {
+      "empty": "Please enter a name.",
+      "upper": "Lowercase only.",
+      "dot": "No dot or domain, just the short name.",
+      "invalid": "Allowed are a–z, 0–9 and hyphens, not at the start or end."
+    },
+    "prettyLabel": "Display name (optional, free text)",
+    "updateHosts": "Also change the name in /etc/hosts (recommended, otherwise sudo reports “unable to resolve host”)",
+    "cloudInit": "cloud-init is active and may reset the host name at the next boot. Add “preserve_hostname: true” in /etc/cloud/cloud.cfg.d/ to make it permanent.",
+    "hostsUnchanged": "/etc/hosts stays unchanged.",
+    "preview": "Preview",
+    "discard": "Discard",
+    "hostnameSet": "The host name is now {{name}}.",
+    "hostExplain": "Daemonica sets the name through systemd-hostnamed (like hostnamectl). /etc/hosts is updated first and backed up as /etc/hosts.daemonica-timestamp. If setting the name fails, /etc/hosts is written back. Open shells show the old name until the next login.",
+    "power": "Reboot and power-off",
+    "reboot": "Reboot",
+    "poweroff": "Power off",
+    "powerIntro": "A reboot drops all connections. The page waits and reconnects once the server is back.",
+    "inhibitors": "Locks (inhibitors)",
+    "noInhibitors": "No locks active.",
+    "col": {
+      "who": "Who",
+      "what": "What",
+      "why": "Why",
+      "mode": "Mode"
+    },
+    "rebootTitle": "Reboot the server",
+    "poweroffTitle": "Power off the server",
+    "rebootExplain": "All services stop; open terminals, transfers and package installs are cut off.",
+    "poweroffExplain": "The server is switched off and can no longer be reached.",
+    "poweroffWarn": "Daemonica cannot switch the server back on. Only your provider's panel can (Hostinger: hPanel → VPS → Start).",
+    "blocked": "These programs currently want to prevent a shutdown: {{who}}. As administrator you can go ahead anyway; their work is cut off.",
+    "when": "When",
+    "now": "Now",
+    "inMinutes_one": "In {{count}} minute",
+    "inMinutes_other": "In {{count}} minutes",
+    "typeName": "Type the host name “{{name}}” to confirm",
+    "rebootNow": "Reboot now",
+    "rebootLater": "Schedule reboot",
+    "poweroffNow": "Power off now",
+    "poweroffLater": "Schedule power-off",
+    "err": {
+      "confirm_mismatch": "The typed name does not match the host name."
+    },
+    "scheduledOk": {
+      "reboot": "Reboot scheduled for {{at}}. Logged-in users get a message.",
+      "poweroff": "Power-off scheduled for {{at}}. Logged-in users get a message."
+    },
+    "pending": {
+      "reboot": "Reboot scheduled for {{at}}. Time left",
+      "poweroff": "Power-off scheduled for {{at}}. Time left"
+    },
+    "cancel": "Cancel",
+    "cancelled": "The scheduled action is cancelled.",
+    "nothingToCancel": "Nothing was scheduled.",
+    "backOnline": "The server is back.",
+    "reconnect": {
+      "title": {
+        "reboot": "Server is rebooting",
+        "poweroff": "Server is powering off"
+      },
+      "waiting": {
+        "reboot": "The server is shutting down …",
+        "poweroff": "The server is shutting down …"
+      },
+      "offline": {
+        "reboot": "The server cannot be reached right now. The page reconnects as soon as it is back.",
+        "poweroff": "The server is off. Once you start it again in your provider's panel, the page reconnects by itself."
+      },
+      "timeout": {
+        "reboot": "The server is not back after 10 minutes.",
+        "poweroff": "The server is still off."
+      },
+      "timeoutHint": {
+        "reboot": "Check your provider's panel (console, status). The page keeps trying.",
+        "poweroff": "Start it in your provider's panel. The page keeps trying."
+      },
+      "back": "The server is back. The page reloads its data.",
+      "elapsed": "Elapsed:",
+      "reload": "Reload page"
+    }
   }
 }

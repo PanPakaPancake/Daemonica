@@ -32,6 +32,7 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/services"
 	"github.com/PanPakaPancake/daemonica/internal/sshkeys"
 	"github.com/PanPakaPancake/daemonica/internal/sysinfo"
+	"github.com/PanPakaPancake/daemonica/internal/timehost"
 	"github.com/PanPakaPancake/daemonica/internal/users"
 	"github.com/PanPakaPancake/daemonica/internal/worker"
 	"golang.org/x/sys/unix"
@@ -250,6 +251,8 @@ func main() {
 	// M1.7b: disks, mounts and fstab (mounts through systemd mount units).
 	(&helper.DiskOps{Run: netcfg.ExecRunner, FstabPath: disks.FstabPath, FS: sysinfo.FS{Root: "/"}, Mounter: disks.Systemd{Conn: launcher.Conn},
 		Planner: pm, Log: helper.JournalTail}).Register(ops)
+	// M1.7c: time zone, NTP, host name, reboot and power-off.
+	(&helper.TimeHostOps{Bus: timehost.Bus{Conn: launcher.Conn}, HostsPath: timehost.HostsPath}).Register(ops)
 	go capOps.Janitor(context.Background(), 10*time.Minute)
 
 	// systemd creates RuntimeDirectory as root:root; the web user needs to

@@ -43,7 +43,7 @@ const groups: NavGroup[] = [
       { to: "/firewall", key: "nav.firewall", icon: "firewall" },
       { to: "/updates", key: "nav.updates", icon: "updates" },
       { to: "/disks", key: "nav.disks", icon: "disk" },
-      { key: "nav.timeHost", icon: "clock" },
+      { to: "/timehost", key: "nav.timeHost", icon: "clock" },
     ],
   },
   {

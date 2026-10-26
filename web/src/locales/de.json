@@ -68,7 +68,8 @@
     "mount_point": "Der Vorgang würde ein anderes eingehängtes Dateisystem betreffen und wurde abgelehnt.",
     "root_mode_required": "Dafür muss der Root-Modus aktiv sein.",
     "timeout": "Der Vorgang hat zu lange gedauert.",
-    "no_login_shell": "Für diesen Linux-Benutzer ist keine Login-Shell eingetragen."
+    "no_login_shell": "Für diesen Linux-Benutzer ist keine Login-Shell eingetragen.",
+    "confirm_mismatch": "Der eingetippte Name stimmt nicht."
   },
   "login": {
     "title": "Anmelden",
@@ -2059,5 +2060,118 @@
     "passHelp": "1 nur für /, 2 für andere Dateisysteme, 0 für keine Prüfung.",
     "nofailHint": "Ohne nofail hält ein fehlender Datenträger den Systemstart an.",
     "takeOver": "Übernehmen"
+  },
+  "timehost": {
+    "title": "Zeit & Host",
+    "intro": "Zeitzone, Zeitsynchronisation und Hostname des Servers, dazu Neustart und Herunterfahren.",
+    "daemonsMissing": "Nicht alle Systemdienste haben geantwortet: {{names}}. Die betroffenen Angaben fehlen.",
+    "time": "Zeit",
+    "serverTime": "Serverzeit",
+    "timezone": "Zeitzone",
+    "ntp": "Zeitsynchronisation",
+    "ntpUnavailable": "Kein NTP-Dienst installiert",
+    "ntpSynced": "synchronisiert",
+    "ntpNotSynced": "eingeschaltet, aber noch nicht synchronisiert",
+    "ntpOff": "ausgeschaltet",
+    "drift": "Die Uhr des Servers weicht um {{s}} Sekunden von der Uhr dieses Browsers ab.",
+    "localRtc": "Die Hardware-Uhr läuft in Ortszeit. Das macht bei der Umstellung auf Sommerzeit Ärger; üblich ist UTC.",
+    "newTimezone": "Zeitzone ändern",
+    "browserZone": "Dein Browser nutzt {{zone}}.",
+    "useBrowserZone": "Zeitzone des Browsers übernehmen",
+    "otherZones": "Sonstige",
+    "timezoneSet": "Zeitzone ist jetzt {{zone}}.",
+    "ntpSwitch": "Zeit automatisch über das Netz synchronisieren (NTP)",
+    "ntpOnDone": "Zeitsynchronisation eingeschaltet.",
+    "ntpOffDone": "Zeitsynchronisation ausgeschaltet.",
+    "timeExplain": "Die Zeitzone setzt systemd-timedated (timedatectl set-timezone). Sie ändert nur die Anzeige der Ortszeit, nicht die Uhr selbst; Protokolle und Zeitpläne wie Cron richten sich danach. Die Synchronisation schaltet den ersten verfügbaren NTP-Dienst ein oder aus, meist systemd-timesyncd.",
+    "host": "Hostname",
+    "static": "Hostname",
+    "transient": "Aktueller Kernel-Name",
+    "pretty": "Anzeigename",
+    "os": "Betriebssystem",
+    "noHostsLine": "keine 127.0.1.1-Zeile",
+    "newHostname": "Neuer Hostname",
+    "hostnameHelp": "Kleinbuchstaben, Ziffern und Bindestriche, höchstens 63 Zeichen. Die Domain gehört nach /etc/hosts oder ins DNS.",
+    "hostnameProblem": {
+      "empty": "Bitte einen Namen eingeben.",
+      "upper": "Nur Kleinbuchstaben.",
+      "dot": "Ohne Punkt und Domain, nur der kurze Name.",
+      "invalid": "Erlaubt sind a–z, 0–9 und Bindestriche, nicht am Anfang oder Ende."
+    },
+    "prettyLabel": "Anzeigename (optional, frei wählbar)",
+    "updateHosts": "Den Namen auch in /etc/hosts ändern (empfohlen, sonst meldet sudo „unable to resolve host“)",
+    "cloudInit": "cloud-init ist aktiv und setzt den Hostnamen beim nächsten Start womöglich zurück. Dauerhaft wird die Änderung mit „preserve_hostname: true“ in /etc/cloud/cloud.cfg.d/.",
+    "hostsUnchanged": "/etc/hosts bleibt unverändert.",
+    "preview": "Vorschau",
+    "discard": "Verwerfen",
+    "hostnameSet": "Der Hostname ist jetzt {{name}}.",
+    "hostExplain": "Daemonica setzt den Namen über systemd-hostnamed (wie hostnamectl). Vorher wird /etc/hosts angepasst und als /etc/hosts.daemonica-Zeitstempel gesichert. Schlägt das Setzen fehl, wird /etc/hosts zurückgeschrieben. Laufende Shells zeigen den alten Namen bis zur nächsten Anmeldung.",
+    "power": "Neustart und Herunterfahren",
+    "reboot": "Neu starten",
+    "poweroff": "Herunterfahren",
+    "powerIntro": "Ein Neustart trennt alle Verbindungen. Die Seite wartet und verbindet sich wieder, sobald der Server zurück ist.",
+    "inhibitors": "Sperren (Inhibitors)",
+    "noInhibitors": "Keine Sperren aktiv.",
+    "col": {
+      "who": "Wer",
+      "what": "Was",
+      "why": "Warum",
+      "mode": "Modus"
+    },
+    "rebootTitle": "Server neu starten",
+    "poweroffTitle": "Server herunterfahren",
+    "rebootExplain": "Alle Dienste werden beendet, laufende Terminals, Übertragungen und Paketinstallationen brechen ab.",
+    "poweroffExplain": "Der Server wird ausgeschaltet und ist danach nicht mehr erreichbar.",
+    "poweroffWarn": "Daemonica kann den Server danach nicht wieder einschalten. Das geht nur im Panel deines Anbieters (bei Hostinger: hPanel → VPS → Start).",
+    "blocked": "Diese Programme wollen das Herunterfahren gerade verhindern: {{who}}. Als Administrator geht es trotzdem, ihre Arbeit bricht dann ab.",
+    "when": "Wann",
+    "now": "Sofort",
+    "inMinutes_one": "In {{count}} Minute",
+    "inMinutes_other": "In {{count}} Minuten",
+    "typeName": "Zur Bestätigung den Hostnamen „{{name}}“ eintippen",
+    "rebootNow": "Jetzt neu starten",
+    "rebootLater": "Neustart planen",
+    "poweroffNow": "Jetzt herunterfahren",
+    "poweroffLater": "Herunterfahren planen",
+    "err": {
+      "confirm_mismatch": "Der eingetippte Name stimmt nicht mit dem Hostnamen überein."
+    },
+    "scheduledOk": {
+      "reboot": "Neustart geplant für {{at}}. Angemeldete Benutzer bekommen eine Nachricht.",
+      "poweroff": "Herunterfahren geplant für {{at}}. Angemeldete Benutzer bekommen eine Nachricht."
+    },
+    "pending": {
+      "reboot": "Neustart geplant für {{at}}. Noch",
+      "poweroff": "Herunterfahren geplant für {{at}}. Noch"
+    },
+    "cancel": "Abbrechen",
+    "cancelled": "Der geplante Termin ist abgesagt.",
+    "nothingToCancel": "Es war nichts geplant.",
+    "backOnline": "Der Server ist wieder da.",
+    "reconnect": {
+      "title": {
+        "reboot": "Server startet neu",
+        "poweroff": "Server fährt herunter"
+      },
+      "waiting": {
+        "reboot": "Der Server fährt herunter …",
+        "poweroff": "Der Server fährt herunter …"
+      },
+      "offline": {
+        "reboot": "Der Server ist gerade nicht erreichbar. Die Seite verbindet sich wieder, sobald er zurück ist.",
+        "poweroff": "Der Server ist aus. Sobald du ihn im Panel deines Anbieters wieder startest, verbindet sich die Seite von selbst."
+      },
+      "timeout": {
+        "reboot": "Der Server ist nach 10 Minuten noch nicht zurück.",
+        "poweroff": "Der Server ist noch aus."
+      },
+      "timeoutHint": {
+        "reboot": "Sieh im Panel deines Anbieters nach (Konsole, Status). Die Seite versucht es weiter.",
+        "poweroff": "Starte ihn im Panel deines Anbieters. Die Seite versucht es weiter."
+      },
+      "back": "Der Server ist wieder da. Die Seite lädt die Daten neu.",
+      "elapsed": "Vergangen:",
+      "reload": "Seite neu laden"
+    }
   }
 }

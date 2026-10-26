@@ -75,7 +75,7 @@ func httpStatus(code string) int {
 	// Packages (M1.7a).
 	case "package_job_running", "plan_changed":
 		return http.StatusConflict
-	case "critical_unconfirmed", "simulation_failed":
+	case "critical_unconfirmed", "simulation_failed", "confirm_mismatch":
 		return http.StatusBadRequest
 	case "protected_package", "protected_mount":
 		return http.StatusForbidden
@@ -345,6 +345,15 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	for _, op := range []string{"fstab_check", "fstab_plan", "users", "mount", "unmount"} {
 		mux.Handle("POST /api/v1/disks/"+op, sess("disks."+op))
 	}
+
+	// M1.7c: time, host name and power.
+	mux.Handle("GET /api/v1/timehost", sess("timehost.get"))
+	mux.Handle("GET /api/v1/timehost/timezones", sess("timehost.timezones"))
+	for _, op := range []string{"set_timezone", "set_ntp", "hostname_plan", "set_hostname"} {
+		mux.Handle("POST /api/v1/timehost/"+op, sess("timehost."+op))
+	}
+	mux.Handle("POST /api/v1/power/schedule", sess("power.schedule"))
+	mux.Handle("POST /api/v1/power/cancel", sess("power.cancel"))
 
 	mux.Handle("GET /api/v1/settings", sess("settings.get"))
 	mux.Handle("POST /api/v1/settings/allowlist/plan", sess("settings.allowlist_plan"))

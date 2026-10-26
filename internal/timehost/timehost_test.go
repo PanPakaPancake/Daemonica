@@ -1,0 +1,81 @@
+package timehost
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestRenameHosts(t *testing.T) {
+	cases := []struct{ in, old, nw, want string }{
+		{"127.0.0.1 localhost\n127.0.1.1 srv1.example.org srv1\n::1 ip6-localhost\n", "srv1", "web2",
+			"127.0.0.1 localhost\n127.0.1.1\tweb2.example.org web2\n::1 ip6-localhost\n"},
+		{"127.0.0.1 localhost\n127.0.1.1 old other # keep\n", "old", "new",
+			"127.0.0.1 localhost\n127.0.1.1\tnew other\t# keep\n"},
+		{"127.0.0.1 localhost\n::1 ip6-localhost\n", "srv1", "web2",
+			"127.0.0.1 localhost\n127.0.1.1\tweb2\n::1 ip6-localhost\n"},
+		{"127.0.1.1 unrelated\n", "srv1", "web2", "127.0.1.1\tunrelated web2\n"},
+		{"", "", "web2", "127.0.1.1\tweb2\n"},
+		{"127.0.1.1   srv1.example.org srv1\n", "srv1", "srv1", "127.0.1.1   srv1.example.org srv1\n"},
+	}
+	for _, c := range cases {
+		if got := RenameHosts(c.in, c.old, c.nw); got != c.want {
+			t.Errorf("RenameHosts(%q,%q,%q) = %q, want %q", c.in, c.old, c.nw, got, c.want)
+		}
+	}
+}
+
+func TestCloudInitResets(t *testing.T) {
+	root := t.TempDir()
+	if CloudInitResets(root) {
+		t.Fatal("no cloud-init")
+	}
+	_ = os.MkdirAll(filepath.Join(root, "etc/cloud/cloud.cfg.d"), 0o755)
+	_ = os.WriteFile(filepath.Join(root, "etc/cloud/cloud.cfg"), []byte("preserve_hostname: false\n"), 0o644)
+	if !CloudInitResets(root) {
+		t.Fatal("cloud-init resets")
+	}
+	_ = os.WriteFile(filepath.Join(root, "etc/cloud/cloud.cfg.d/99-keep.cfg"), []byte("# x\npreserve_hostname: True\n"), 0o644)
+	if CloudInitResets(root) {
+		t.Fatal("preserved")
+	}
+}
+
+func TestValid(t *testing.T) {
+	for _, h := range []string{"web2", "a", "srv-1", "x0"} {
+		if !ValidHostname(h) {
+			t.Errorf("%q rejected", h)
+		}
+	}
+	for _, h := range []string{"", "Web", "-a", "a-", "a.b", "a b", "a_b", string(make([]byte, 64))} {
+		if ValidHostname(h) {
+			t.Errorf("%q accepted", h)
+		}
+	}
+	if !ValidPretty("Timos Server ✓") || ValidPretty("a\nb") {
+		t.Error("pretty")
+	}
+	list := []string{"Europe/Berlin", "Etc/UTC", "America/Argentina/Buenos_Aires"}
+	for _, z := range list {
+		if !ValidTimezone(z, list) {
+			t.Errorf("%q rejected", z)
+		}
+	}
+	for _, z := range []string{"Europe/Paris", "../etc/passwd", "Europe/../Etc/UTC", ""} {
+		if ValidTimezone(z, append(list, z)) && z != "Europe/Paris" {
+			t.Errorf("%q accepted", z)
+		}
+	}
+	if ValidTimezone("Europe/Paris", list) {
+		t.Error("unlisted zone accepted")
+	}
+}
+
+func TestBootID(t *testing.T) {
+	d := t.TempDir()
+	_ = os.MkdirAll(filepath.Join(d, "sys/kernel/random"), 0o755)
+	_ = os.WriteFile(filepath.Join(d, "sys/kernel/random/boot_id"), []byte("abc\n"), 0o644)
+	if BootID(d) != "abc" || BootID(t.TempDir()) != "" {
+		t.Fatal("boot id")
+	}
+}

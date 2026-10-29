@@ -70,8 +70,18 @@ package: build
 	@for a in $(ARCHES); do scripts/build-deb.sh "$(VERSION)" "$$a" "$(SUFFIX)" || exit 1; done
 	@cd dist && sha256sum *.deb > SHA256SUMS && cat SHA256SUMS
 
+# CycloneDX SBOMs for the Go binaries and the bundled frontend (SPEC §4.3).
+# Tools: go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
+#        npx @cyclonedx/cyclonedx-npm@4.0.0 (fetched on first use)
+CYCLONEDX_GOMOD ?= $(shell command -v cyclonedx-gomod || echo $$($(GO) env GOPATH)/bin/cyclonedx-gomod)
 sbom:
-	@echo "CycloneDX SBOM generation requires cyclonedx-gomod / @cyclonedx/cyclonedx-npm (not installable in this environment)"
+	@mkdir -p dist
+	@test -x "$(CYCLONEDX_GOMOD)" || { echo "cyclonedx-gomod missing: go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0"; exit 1; }
+	"$(CYCLONEDX_GOMOD)" app -json -licenses -std -main cmd/daemonica-helper -output dist/sbom-daemonica-helper.cdx.json .
+	"$(CYCLONEDX_GOMOD)" app -json -licenses -std -main cmd/daemonica-web -output dist/sbom-daemonica-web.cdx.json .
+	"$(CYCLONEDX_GOMOD)" app -json -licenses -std -main cmd/daemonica-admin -output dist/sbom-daemonica-admin.cdx.json .
+	cd web && npx -y @cyclonedx/cyclonedx-npm@4.0.0 --omit dev --output-format JSON --output-file ../dist/sbom-web.cdx.json
+	@ls -l dist/sbom-*.cdx.json
 
 release: lint test sec package sbom
 

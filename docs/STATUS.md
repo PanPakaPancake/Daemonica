@@ -67,7 +67,7 @@ _Last updated: 2026-10-25_
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Repo layout, Makefile targets (`deps lint test test-integration test-e2e sec build package sbom release`) | ⚠ | Targets exist; `sbom`, `test-e2e` are stubs (tools unavailable). |
+| Repo layout, Makefile targets (`deps lint test test-integration test-e2e sec build package sbom release`) | ⚠ | `sbom` writes CycloneDX JSON for the three binaries and the frontend (M1.8). `test-e2e` follows with the E2E suite. |
 | Versioned, length-prefixed RPC, 1 MiB limit, strict decoding | ✓ | `internal/rpc`, tests + fuzz target |
 | Helper on Unix sockets only; `helper.sock 0660 root:daemonica-web`, `admin.sock 0600` | ✓ | `internal/helper/server.go`; smoke test (socket modes verified) |
 | `SO_PEERCRED` check | ✓ | `TestPeerCredOverRealSocket` |

@@ -285,6 +285,8 @@ func (s *Server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/services/get", sess("services.get"))
 	mux.Handle("POST /api/v1/services/action", sess("services.action"))
 	mux.Handle("POST /api/v1/journal/query", sess("journal.query"))
+	mux.Handle("GET /api/v1/logs/files", sess("logs.files"))
+	mux.Handle("POST /api/v1/logs/file", sess("logs.file"))
 
 	// M1.2: Linux users/groups and SSH keys.
 	mux.Handle("POST /api/v1/users/list", sess("users.list"))

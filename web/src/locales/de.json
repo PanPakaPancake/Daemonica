@@ -411,7 +411,7 @@
   },
   "logs": {
     "title": "Logs",
-    "intro": "Systemjournal (journald). Filtere nach Dienst, Priorität und Zeitraum; Suche läuft auf dem Server.",
+    "intro": "Systemjournal (journald) und ausgewählte Logdateien wie auth.log oder syslog. Suche und Filter laufen auf dem Server.",
     "unit": "Dienst (Unit)",
     "priority": "Priorität",
     "boot": "Start",
@@ -423,7 +423,13 @@
     "apply": "Anzeigen",
     "follow": "Live mitlesen",
     "truncated": "Ergebnis gekürzt – grenze die Suche ein oder erhöhe die Zeilenzahl.",
-    "empty": "Keine Einträge gefunden."
+    "empty": "Keine Einträge gefunden.",
+    "source": "Quelle",
+    "reload": "Neu laden",
+    "exportTxt": "Als Text speichern",
+    "fileInfo": "{{size}}, zuletzt geändert {{date}}. Ältere, rotierte Dateien (.1, .gz) werden nicht gezeigt.",
+    "fileTruncated": "Es gibt ältere Zeilen. Gezeigt werden die letzten passenden Zeilen aus den letzten 8 MiB der Datei.",
+    "suppressed": "journald hat {{count}} Meldungen wegen seiner Ratenbegrenzung verworfen (betroffen: {{units}}). Sie fehlen hier und in jeder anderen Ansicht. Die Grenze steht in /etc/systemd/journald.conf (RateLimitIntervalSec, RateLimitBurst)."
   },
   "processes": {
     "title": "Prozesse",

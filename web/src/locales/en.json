@@ -411,7 +411,7 @@
   },
   "logs": {
     "title": "Logs",
-    "intro": "System journal (journald). Filter by service, priority and time; search runs on the server.",
+    "intro": "System journal (journald) and selected log files such as auth.log or syslog. Search and filters run on the server.",
     "unit": "Service (unit)",
     "priority": "Priority",
     "boot": "Boot",
@@ -423,7 +423,13 @@
     "apply": "Show",
     "follow": "Follow live",
     "truncated": "Result truncated – narrow the search or increase the line count.",
-    "empty": "No entries found."
+    "empty": "No entries found.",
+    "source": "Source",
+    "reload": "Reload",
+    "exportTxt": "Save as text",
+    "fileInfo": "{{size}}, last changed {{date}}. Older rotated files (.1, .gz) are not shown.",
+    "fileTruncated": "There are older lines. Shown are the last matching lines from the last 8 MiB of the file.",
+    "suppressed": "journald dropped {{count}} messages because of its rate limit (affected: {{units}}). They are missing here and in every other view. The limit is set in /etc/systemd/journald.conf (RateLimitIntervalSec, RateLimitBurst)."
   },
   "processes": {
     "title": "Processes",

@@ -54,7 +54,7 @@ _Last updated: 2026-10-25_
 | ID | Status | Notes |
 |---|---|---|
 | M1.0 | ⚠ nearly done | All core items done incl. accounts, audit view, allowlist Plan→Apply→Confirm. TLS change in settings, DNS-01 guided and renewal done in M1.8 (DEC-034). Open: Playwright E2E with virtual authenticator, helper hardening score ≤ 6.0. |
-| M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Open: last logins, log follow via WebSocket (DEC-017), allowlisted log files (SOLL), owner acceptance check against `top`/`free`/`df`. |
+| M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Last logins, allowlisted log files and the journald rate-limit hint added in M1.8; log follow runs over WebSocket (DEC-026). Open: owner acceptance check against `top`/`free`/`df` (with Phase 1). |
 | M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Last login per user added in M1.8. Open: owner acceptance (with Phase 1). |
 | M1.3 | ✓ accepted by owner 2026-10-25 | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021); lists with sort/filter on every column and right-click menus (DEC-022). Open: folder download as archive (KANN). |
 | M1.4 | ✓ accepted by owner 2026-10-25 | Web terminal (table below, DEC-023). KANN items (keep background processes, reconnect after short drops) not implemented. |
@@ -106,7 +106,8 @@ _Last updated: 2026-10-25_
 | Services: list service/timer/socket with active/sub, autostart, since, memory; search + filter | ✓ | D-Bus (`internal/services`), integration test (295 units on the VM) |
 | Actions start/stop/restart/reload/enable/disable/mask/unmask; detail: status, journal, unit file (read-only), dependencies | ✓ | `services.action`, UI drawer |
 | Protected units (`daemonica-*`, ssh, `systemd-*`): admin + step-up + warning; helper not stoppable/disableable/maskable; web only with typed confirmation | ✓ | `TestServiceDecisionMatrix` |
-| Logs: journald with unit/priority/time/boot filters, server-side search, follow, export TXT/JSON with line limit, control sequences neutralised | ✓ (follow via polling, DEC-017) | `internal/journal`, `TestArgsValidation`, `TestParseSanitisesAndCaps` |
+| Logs: journald with unit/priority/time/boot filters, server-side search, follow, export TXT/JSON with line limit, control sequences neutralised | ✓ (follow over WebSocket, DEC-026) | `internal/journal`, `TestArgsValidation`, `TestParseSanitisesAndCaps` |
+| Log files (SOLL): fixed allowlist (auth.log, syslog, kern.log, ufw.log, dpkg/apt, unattended-upgrades, cloud-init), tail of the last 8 MiB, search, no symlinks; hint when journald dropped messages (rate limit) | ✓ (M1.8) | `TestReadFile`; `logs.files`/`logs.file` |
 | Processes: table (PID, user, CPU, RAM, start, command), sort/filter, signals TERM/KILL/HUP/STOP/CONT with confirmation; protected PID 1/daemonica/sshd; operator only own processes; PID-reuse guard | ✓ | `TestProcSignalRules` |
 | Read-only role: no logs, no signals | ✓ | policy + UI hides log navigation |
 

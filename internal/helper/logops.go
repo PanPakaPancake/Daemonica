@@ -14,6 +14,8 @@ import (
 type LogOps struct {
 	// Run is replaceable in tests.
 	Run func(ctx context.Context, q journal.Query) (journal.Result, error)
+	// Root prefixes the allowlisted log files (tests).
+	Root string
 }
 
 // Register installs journal.* operations.
@@ -37,6 +39,22 @@ func (l *LogOps) Register(ops map[string]*Op) {
 			}
 			if res.Entries == nil {
 				res.Entries = []journal.Entry{}
+			}
+			return res, nil
+		}})
+
+	// Classic log files from a fixed allowlist (SPEC §7.2 SOLL).
+	Register(ops, &Op{Name: "logs.files", Action: policy.ActLogsRead, NoAudit: true,
+		Handle: func(context.Context, Call) (any, error) { return journal.ListFiles(l.Root), nil }})
+	Register(ops, &Op{Name: "logs.file", Action: policy.ActLogsRead, NoAudit: true, Timeout: 30 * time.Second,
+		Handle: func(_ context.Context, c Call) (any, error) {
+			var q journal.FileQuery
+			if err := decode(c, &q); err != nil {
+				return nil, err
+			}
+			res, err := journal.ReadFile(l.Root, q)
+			if err != nil {
+				return nil, Errf(rpc.CodeValidation, "%s", err.Error())
 			}
 			return res, nil
 		}})

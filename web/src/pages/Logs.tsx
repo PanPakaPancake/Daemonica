@@ -6,7 +6,7 @@ import { Notice, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { errorText } from "../lib/errors";
 import { useFollow, followEndText } from "../lib/follow";
-import { saveText } from "../lib/format";
+import { bytes, saveText } from "../lib/format";
 
 interface Entry {
   time: string;
@@ -34,7 +34,124 @@ const prioLabel = ["emerg", "alert", "crit", "err", "warning", "notice", "info",
 const prioClass = (p: number) => (p <= 3 ? "text-bad" : p === 4 ? "text-warn" : p === 5 ? "text-info" : "");
 const MAX_BUFFER = 5000;
 
+interface LogFile {
+  path: string;
+  size: number;
+  modified: string;
+}
+interface FileResult {
+  lines: string[];
+  truncated: boolean;
+  size: number;
+}
+
+// journald drops messages above its rate limit and logs "Suppressed N messages from <unit>".
+const suppressedRE = /^Suppressed (\d+) messages from (\S+)/;
+
+/** Source picker: journald or one of the allowlisted log files (SPEC §7.2). */
 export function Logs() {
+  const { t } = useTranslation();
+  const [source, setSource] = useState("journal");
+  const files = useQuery({ queryKey: ["logfiles"], queryFn: () => api<LogFile[]>("GET", "/logs/files"), staleTime: 60_000 });
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">{t("logs.title")}</h1>
+          <p className="mt-1 text-muted">{t("logs.intro")}</p>
+        </div>
+        <label className="flex min-w-64 flex-col gap-1">
+          <span className="text-sm font-medium">{t("logs.source")}</span>
+          <select className="input font-mono" value={source} onChange={(e) => setSource(e.target.value)}>
+            <option value="journal">journald</option>
+            {(files.data ?? []).map((f) => (
+              <option key={f.path} value={f.path}>
+                {f.path}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {source === "journal" ? <JournalView /> : <FileView key={source} path={source} file={files.data?.find((f) => f.path === source)} />}
+    </div>
+  );
+}
+
+function FileView({ path, file }: { path: string; file?: LogFile }) {
+  const { t, i18n } = useTranslation();
+  const [draft, setDraft] = useState({ grep: "", lines: 500 });
+  const [filter, setFilter] = useState(draft);
+  const q = useQuery({ queryKey: ["logfile", path, filter], queryFn: () => api<FileResult>("POST", "/logs/file", { path, ...filter }) });
+  const lines = q.data?.lines ?? [];
+  const name = path.split("/").pop() ?? "log";
+  return (
+    <>
+      <Panel>
+        <form
+          className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto]"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setFilter({ ...draft });
+          }}
+        >
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">{t("logs.search")}</span>
+            <input className="input" value={draft.grep} onChange={(e) => setDraft({ ...draft, grep: e.target.value })} maxLength={200} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">{t("logs.lines")}</span>
+            <select className="input" value={draft.lines} onChange={(e) => setDraft({ ...draft, lines: Number(e.target.value) })}>
+              {[100, 500, 1000, 2000, 5000].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex items-end gap-2">
+            <button className="btn btn-primary">
+              <Icon name="search" className="h-4 w-4" />
+              {t("logs.apply")}
+            </button>
+            <button type="button" className="btn btn-secondary" title={t("logs.reload")} aria-label={t("logs.reload")} onClick={() => void q.refetch()}>
+              <Icon name="restart" className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={!lines.length}
+              title={t("logs.exportTxt")}
+              aria-label={t("logs.exportTxt")}
+              onClick={() => saveText(`${name}-${new Date().toISOString().replace(/[:.]/g, "-")}.txt`, lines.join("\n"))}
+            >
+              <Icon name="download" className="h-4 w-4" />
+            </button>
+          </div>
+        </form>
+        {file && (
+          <p className="mt-3 text-sm text-muted">
+            {t("logs.fileInfo", { size: bytes(file.size, i18n.language), date: new Date(file.modified).toLocaleString(i18n.language) })}
+          </p>
+        )}
+      </Panel>
+      {q.isError && <Notice tone="bad">{errorText(t, q.error)}</Notice>}
+      {q.data?.truncated && <Notice tone="info">{t("logs.fileTruncated")}</Notice>}
+      <Panel className="p-0">
+        <div className="max-h-[65vh] overflow-auto p-3 font-mono text-xs leading-relaxed" role="log">
+          {q.isLoading && <p className="p-2 text-muted">{t("common.loading")}</p>}
+          {!q.isLoading && lines.length === 0 && <p className="p-2 text-muted">{t("logs.empty")}</p>}
+          {lines.map((l, i) => (
+            <div key={i} className="whitespace-pre-wrap break-words px-1 hover:bg-bg-2">
+              {l}
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </>
+  );
+}
+
+function JournalView() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const [draft, setDraft] = useState<Filter>({ unit: "", priority: "", boot: "0", grep: "", since: "", lines: 500 });
@@ -81,6 +198,10 @@ export function Logs() {
   );
 
   const entries = [...(q.data?.entries ?? []), ...extra];
+  const suppressed = entries.flatMap((e) => {
+    const m = e.identifier === "systemd-journald" ? suppressedRE.exec(e.message) : null;
+    return m ? [{ n: Number(m[1]), unit: m[2] ?? "" }] : [];
+  });
   const fmtTime = (s: string) => new Date(s).toLocaleString(lang);
 
   const exportAs = (kind: "txt" | "json") => {
@@ -96,11 +217,7 @@ export function Logs() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("logs.title")}</h1>
-        <p className="mt-1 text-muted">{t("logs.intro")}</p>
-      </div>
+    <>
       <Panel>
         <form
           className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6"
@@ -185,6 +302,11 @@ export function Logs() {
       {err && <Notice tone="bad">{err}</Notice>}
       {q.isError && <Notice tone="bad">{errorText(t, q.error)}</Notice>}
       {q.data?.truncated && <Notice tone="info">{t("logs.truncated")}</Notice>}
+      {suppressed.length > 0 && (
+        <Notice tone="warn">
+          {t("logs.suppressed", { count: suppressed.reduce((n, x) => n + x.n, 0), units: [...new Set(suppressed.map((x) => x.unit))].slice(0, 5).join(", ") })}
+        </Notice>
+      )}
 
       <Panel className="p-0">
         <div className="max-h-[65vh] overflow-auto p-3 font-mono text-xs leading-relaxed" role="log" aria-live={follow ? "polite" : "off"}>
@@ -208,6 +330,6 @@ export function Logs() {
           <div ref={bottom} />
         </div>
       </Panel>
-    </div>
+    </>
   );
 }

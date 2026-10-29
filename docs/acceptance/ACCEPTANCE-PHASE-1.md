@@ -26,7 +26,7 @@ Platzhalter in den Befehlen: `<VM-IP>` (öffentliche IP der VM), `<DEINE-IP>` (d
 
 | # | Schritt | Erwartung | ☐ |
 |---|---|---|---|
-| 0.1 | Bei Hostinger die VM mit **Ubuntu 24.04 LTS** neu installieren (Root-Zugang per SSH-Schlüssel). | Leeres System, SSH als root funktioniert. | ☐ |
+| 0.1 | Bei Hostinger die VM mit **Ubuntu 26.04 LTS** (wie bisher) neu installieren (Root-Zugang per SSH-Schlüssel). | Leeres System, SSH als root funktioniert. | ☐ |
 | 0.2 | DNS prüfen: `<DOMAIN>` zeigt als A-Eintrag auf `<VM-IP>` (`nslookup <DOMAIN>`). | Antwort ist `<VM-IP>`. | ☐ |
 | 0.3 | Auf der VM drei normale Linux-Benutzer anlegen: `adduser pancake`, `adduser op`, `adduser leser`. | Benutzer mit UID ≥ 1000. | ☐ |
 | 0.4 | Firewall wie im Betrieb: `ufw allow 22/tcp && ufw allow from <DEINE-IP> to any port 8443 proto tcp && ufw enable`. | `ufw status` zeigt die Regeln, SSH bleibt verbunden. | ☐ |

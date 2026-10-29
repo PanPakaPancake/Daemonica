@@ -101,6 +101,9 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() { _ = al.Close() }()
+	if err := al.EnableAppendOnly(); err != nil {
+		log.Warn("audit log stays writable: chattr +a not possible", "err", err)
+	}
 	// Mirror audit records to the journal; the unit sets SyslogIdentifier so
 	// records can be found with `journalctl -t daemonica-helper`.
 	auditLog := slog.New(slog.NewJSONHandler(os.Stdout, nil))

@@ -63,8 +63,15 @@ const (
 type Logger struct {
 	mu   sync.Mutex
 	f    *os.File
+	path string
 	last string
 	now  func() time.Time
+	// MaxSize starts a new file once the current one reaches it (0: never);
+	// Keep is the number of rotated files kept (audit.log.1 … audit.log.Keep).
+	MaxSize int64
+	Keep    int
+	// AppendOnly is set by EnableAppendOnly.
+	AppendOnly bool
 	// Mirror receives each serialized line (e.g. journald). Optional.
 	Mirror func(line []byte)
 }
@@ -88,7 +95,20 @@ func Open(path, prevHash string) (*Logger, error) {
 			last = GenesisHash
 		}
 	}
-	return &Logger{f: f, last: last, now: time.Now}, nil
+	return &Logger{f: f, path: path, last: last, now: time.Now, MaxSize: DefaultMaxSize, Keep: DefaultKeep}, nil
+}
+
+// EnableAppendOnly sets "chattr +a" on the log and keeps it on rotated files
+// (SPEC §3.8 SOLL). It needs CAP_LINUX_IMMUTABLE and a file system with the
+// flag; on failure the log works as before and the error says why.
+func (l *Logger) EnableAppendOnly() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if err := setAppendOnly(l.f, true); err != nil {
+		return err
+	}
+	l.AppendOnly = true
+	return nil
 }
 
 // Close closes the underlying file.
@@ -140,6 +160,12 @@ func (l *Logger) Append(ev Event) (Event, error) {
 	l.last = h
 	if l.Mirror != nil {
 		l.Mirror(line[:len(line)-1])
+	}
+	if l.MaxSize > 0 {
+		if fi, err := l.f.Stat(); err == nil && fi.Size() >= l.MaxSize {
+			// The record is written; a failed rotation is retried on the next one.
+			_ = l.rotate()
+		}
 	}
 	return ev, nil
 }
@@ -195,6 +221,11 @@ type VerifyResult struct {
 	BadLine  int    `json:"bad_line,omitempty"`
 	Problem  string `json:"problem,omitempty"`
 	LastHash string `json:"last_hash,omitempty"`
+	// VerifyAll only: number of files, the file with the problem (BadLine
+	// counts within it), and the accepted anchor of the oldest retained file.
+	Files  int    `json:"files,omitempty"`
+	File   string `json:"file,omitempty"`
+	Anchor string `json:"anchor,omitempty"`
 }
 
 // Verify checks the chain in r, starting from anchor (GenesisHash or the last

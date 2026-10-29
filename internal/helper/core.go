@@ -144,12 +144,10 @@ func (c *Core) Register(ops map[string]*Op, al *audit.Logger) {
 
 	Register(ops, &Op{Name: "admin.audit_verify", AdminChannel: true, NoAudit: true, Timeout: 5 * time.Minute,
 		Handle: func(context.Context, Call) (any, error) {
-			f, err := os.Open(c.AuditPath)
-			if err != nil {
+			if _, err := os.Stat(c.AuditPath); err != nil {
 				return nil, Errf(rpc.CodeNotFound, "audit log not readable")
 			}
-			defer func() { _ = f.Close() }()
-			return audit.Verify(f, ""), nil
+			return audit.VerifyAll(c.AuditPath, audit.DefaultKeep), nil
 		}})
 
 	// --- web channel, pre-auth (setup mode only) ---
@@ -214,7 +212,7 @@ func (c *Core) Register(ops map[string]*Op, al *audit.Logger) {
 					return nil, Errf(rpc.CodeValidation, "filter too long")
 				}
 			}
-			fh, err := os.Open(c.AuditPath)
+			fh, err := audit.OpenAll(c.AuditPath, audit.DefaultKeep)
 			if err != nil {
 				return nil, Errf(rpc.CodeNotFound, "audit log not readable")
 			}
@@ -228,12 +226,10 @@ func (c *Core) Register(ops map[string]*Op, al *audit.Logger) {
 
 	Register(ops, &Op{Name: "audit.verify", Action: policy.ActAuditRead, Timeout: 5 * time.Minute,
 		Handle: func(context.Context, Call) (any, error) {
-			fh, err := os.Open(c.AuditPath)
-			if err != nil {
+			if _, err := os.Stat(c.AuditPath); err != nil {
 				return nil, Errf(rpc.CodeNotFound, "audit log not readable")
 			}
-			defer func() { _ = fh.Close() }()
-			return audit.Verify(fh, ""), nil
+			return audit.VerifyAll(c.AuditPath, audit.DefaultKeep), nil
 		}})
 
 	Register(ops, &Op{Name: "session.whoami", Action: policy.ActOwnSessions, NoAudit: true,

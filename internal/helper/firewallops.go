@@ -178,7 +178,7 @@ func (f *FirewallOps) lastChange(ctx context.Context) *LastChange {
 	if f.AuditPath == "" {
 		return nil
 	}
-	fh, err := os.Open(f.AuditPath)
+	fh, err := audit.OpenAll(f.AuditPath, audit.DefaultKeep)
 	if err != nil {
 		return nil
 	}

@@ -23,8 +23,9 @@ UMask=0077
 
 # Hardening (SPEC §3.9, target <= 6.0). Every directive NOT set here is listed
 # with its reason in docs/ARCHITECTURE.md ("Hardening exceptions").
-# NoNewPrivileges is intentionally NOT set: the elevated terminal must be able
-# to run sudo. Standard-mode workers set no_new_privs themselves.
+# Terminals, jobs, package runs and captures are transient units of their own
+# (started through systemd), so none of these limits reach sudo or dpkg there.
+NoNewPrivileges=yes
 ProtectKernelModules=yes
 ProtectKernelLogs=yes
 ProtectClock=yes
@@ -32,9 +33,13 @@ ProtectControlGroups=yes
 RestrictRealtime=yes
 LockPersonality=yes
 RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6 AF_PACKET
-RestrictNamespaces=~user
+RestrictNamespaces=yes
 SystemCallArchitectures=native
-SystemCallFilter=~@obsolete @debug @cpu-emulation @mount:EPERM
+# Denied calls fail with EPERM instead of killing a child program.
+SystemCallErrorNumber=EPERM
+SystemCallFilter=~@obsolete @debug @cpu-emulation @mount @reboot @raw-io @module @clock @swap
+# Capabilities no helper operation or child program needs (M1.8, measured).
+CapabilityBoundingSet=~CAP_BPF CAP_IPC_LOCK CAP_SYS_TTY_CONFIG CAP_SYS_BOOT CAP_BLOCK_SUSPEND CAP_LEASE CAP_MKNOD CAP_MAC_ADMIN CAP_MAC_OVERRIDE CAP_SYS_PACCT CAP_AUDIT_CONTROL CAP_AUDIT_READ CAP_WAKE_ALARM CAP_SYS_MODULE CAP_SYS_TIME CAP_SYSLOG CAP_SYS_RAWIO CAP_SYS_CHROOT CAP_SYS_NICE CAP_PERFMON CAP_CHECKPOINT_RESTORE
 KeyringMode=private
 
 [Install]

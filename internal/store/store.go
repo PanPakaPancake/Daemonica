@@ -102,6 +102,12 @@ func migrate(ctx context.Context, db *sql.DB, path string, m fs.FS) error {
 	if err := db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&current); err != nil {
 		return err
 	}
+	// A database written by a newer release (downgrade without restoring the
+	// backup) is not touched: older code may misread the newer schema.
+	if n := len(all); n > 0 && current > all[n-1].version {
+		return fmt.Errorf("%w: schema %d, this release knows up to %d; restore the backup taken before the upgrade (docs/INSTALL.md)",
+			ErrNewerSchema, current, all[n-1].version)
+	}
 	var pending []migration
 	for _, mg := range all {
 		if mg.version > current {
@@ -135,6 +141,9 @@ func migrate(ctx context.Context, db *sql.DB, path string, m fs.FS) error {
 	}
 	return nil
 }
+
+// ErrNewerSchema reports a database from a newer release.
+var ErrNewerSchema = errors.New("store: database is newer than this release")
 
 // backup writes a consistent copy next to the database (VACUUM INTO).
 func backup(ctx context.Context, db *sql.DB, path string) error {

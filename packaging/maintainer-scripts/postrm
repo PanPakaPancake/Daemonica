@@ -1,16 +1,41 @@
 #!/bin/sh
 # Data is kept on "remove"; only "purge" deletes it (SPEC §4.3).
 set -e
+
+# An ACME window left open by an interrupted issuance (DEC-034).
+close_acme_window() {
+  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q 'daemonica:acme:window'; then
+    for p in 80 443; do
+      ufw --force delete allow in proto tcp from any to any port "$p" >/dev/null 2>&1 || true
+    done
+  fi
+}
+
 case "$1" in
   purge)
     echo "WARNUNG: daemonica wird vollständig entfernt – Konten, Passkeys, Konfiguration,"
-    echo "Backups und das Audit-Log werden gelöscht." >&2
+    echo "Backups, geplante Jobs und das Audit-Log werden gelöscht." >&2
+    close_acme_window
+    # Scheduled jobs (DEC-029) would run scripts that no longer exist.
+    for u in /etc/systemd/system/daemonica-job-*.timer /etc/systemd/system/daemonica-job-*.service; do
+      [ -e "$u" ] || continue
+      if [ -d /run/systemd/system ]; then systemctl disable --now "$(basename "$u")" >/dev/null 2>&1 || true; fi
+      rm -f "$u"
+    done
+    # The audit log may be append-only (chattr +a, SPEC §3.8).
+    if command -v chattr >/dev/null 2>&1 && [ -d /var/log/daemonica ]; then
+      find /var/log/daemonica -type f -exec chattr -a {} + 2>/dev/null || true
+    fi
     rm -rf /var/lib/daemonica-helper /var/lib/daemonica /var/log/daemonica
     if getent passwd daemonica-web >/dev/null; then deluser --system daemonica-web >/dev/null || true; fi
     if getent group daemonica-web >/dev/null; then delgroup --system daemonica-web >/dev/null || true; fi
+    echo "Hinweis: Firewall-Regeln mit dem Kommentar 'daemonica:...' (z. B. SSH- und Dashboard-Zugang) bleiben bestehen,"
+    echo "damit der Zugang nicht abreißt. Prüfen mit: sudo ufw status numbered"
     ;;
   remove)
+    close_acme_window
     echo "Hinweis: Daten unter /var/lib/daemonica* und /var/log/daemonica bleiben erhalten (apt purge daemonica löscht sie)."
+    echo "Geplante Jobs (daemonica-job-*) laufen weiter, bis sie gelöscht werden oder das Paket gepurgt wird."
     ;;
 esac
 if [ -d /run/systemd/system ]; then systemctl daemon-reload >/dev/null 2>&1 || true; fi

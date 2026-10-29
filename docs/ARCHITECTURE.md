@@ -129,16 +129,19 @@ The script library (DEC-030) keeps files in `/var/lib/daemonica-scripts/<source>
 
 | Directive not set | Reason |
 |---|---|
-| `NoNewPrivileges=yes` | Originally for `sudo` in the elevated terminal. Since M1.4 terminals run as their own transient units (DEC-023), so this is no longer needed for them; package jobs run in their own transient units as well (DEC-031), so dpkg maintainer scripts do not need it either; it is to be enabled and measured in the M1.8 hardening. Standard workers set `no_new_privs` themselves. |
 | `ProtectSystem=strict` / `ProtectHome=yes` | The helper edits system configuration (users, network, fstab, apt) and home directories (`authorized_keys`, file manager). |
-| `PrivateDevices=yes` | Mount/unmount and disk inventory need block devices. |
-| `ProtectKernelTunables=yes` | Network configuration and later checklist fixes write sysctls. |
-| `ProtectHostname=yes` | Kept unset so that the helper sees the real host name; the change itself goes through hostnamed (DEC-033). To be re-checked in M1.8. |
-| `CapabilityBoundingSet=` restriction | Root operations across many subsystems; to be narrowed per milestone with measured needs. |
-| `RestrictNamespaces=yes` (fully) | Transient units / container management (Phase 3) need namespaces; only user namespaces are denied. |
-| `MemoryDenyWriteExecute=yes` | Child programs (apt, dpkg maintainer scripts) may need W+X mappings. |
+| `PrivateDevices=yes` / `DeviceAllow=` | Mount/unmount and disk inventory need block devices. |
+| `ProtectKernelTunables=yes` | `ufw enable` applies its sysctls; network configuration writes sysctls. |
+| `ProtectHostname=yes` | Would give the helper its own UTS namespace, so it would keep showing the old host name after a rename through hostnamed (DEC-033). |
+| `CapabilityBoundingSet=` (fully) | Root operations across many subsystems. M1.8 drops what no operation or child program needs: BPF, IPC_LOCK, SYS_TTY_CONFIG, SYS_BOOT, BLOCK_SUSPEND, LEASE, MKNOD, MAC_*, SYS_PACCT, AUDIT_CONTROL/READ, WAKE_ALARM, SYS_MODULE, SYS_TIME, SYSLOG, SYS_RAWIO, SYS_CHROOT, SYS_NICE, PERFMON, CHECKPOINT_RESTORE. Kept on purpose: DAC_*/FOWNER/CHOWN/FSETID (file manager, users), SETUID/SETGID/SETPCAP (workers drop to the user), KILL (process signals), NET_ADMIN/NET_RAW (ufw/iptables), SYS_ADMIN (various admin tools), SYS_PTRACE (process details of other users), SYS_RESOURCE (root reserve on full disks), LINUX_IMMUTABLE (`chattr +a` on the audit log), AUDIT_WRITE (shadow tools). |
+| `SystemCallFilter=~@privileged @resources` | Child programs (useradd, chown in the file manager, setrlimit in the Go runtime) need them; denied groups are `@obsolete @debug @cpu-emulation @mount @reboot @raw-io @module @clock @swap` with `SystemCallErrorNumber=EPERM`. |
+| `MemoryDenyWriteExecute=yes` | Python child programs (ufw, netplan with cffi) may need W+X mappings for callbacks. |
 | `RestrictSUIDSGID=yes` | The file manager's root mode may set setuid/setgid bits (chmod per Linux rules). |
-| `ProtectProc=invisible` | Process management needs all processes. |
+| `ProtectProc=invisible` / `ProcSubset=pid` | Process management and the overview need all processes and `/proc` files. |
 | `PrivateTmp=yes` | File manager workers inherit the helper's mount namespace and must see the real `/tmp` (DEC-019). Terminals run in their own units and are not affected. |
+| `PrivateNetwork=yes` / `IPAddressDeny=` | ACME (Let's Encrypt) and network configuration need the host network; ACME servers have no fixed addresses. |
+| `PrivateUsers=yes`, `User=`/`DynamicUser=`, `RootDirectory=` | The helper is the root half of the privilege split (SPEC §3.1). |
+
+Since M1.8 `NoNewPrivileges=yes` and `RestrictNamespaces=yes` are set: terminals (DEC-023), jobs (DEC-029), package runs (DEC-031) and captures (DEC-028) are transient units started by systemd, so sudo and dpkg there are not affected. Measured with `systemd-analyze security --offline=true` (systemd 255): helper 7.0 → 5.1, web 1.1 (on the VM in the audit report).
 
 Actual `systemd-analyze security` scores will be recorded in the phase audit report.

@@ -233,7 +233,16 @@
     "days_other": "noch {{count}} Tage",
     "failed": "Fehlgeschlagene Units",
     "top": "Prozesse mit der höchsten Last",
-    "allProcesses": "Alle Prozesse"
+    "allProcesses": "Alle Prozesse",
+    "logins": "Letzte Anmeldungen",
+    "allUsers": "Alle Benutzer",
+    "noLogins": "Keine Anmeldungen aufgezeichnet (wtmpdb).",
+    "loginFrom": "Von",
+    "loginTty": "Terminal",
+    "loginTime": "Zeit",
+    "loginState": "Status",
+    "loginOpen": "angemeldet",
+    "loginEnded": "beendet"
   },
   "passkeys": {
     "title": "Passkeys",
@@ -508,7 +517,9 @@
     "removeHome": "Home-Verzeichnis {{home}} ebenfalls löschen",
     "typeToConfirm": "Zur Bestätigung „{{name}}“ eingeben",
     "groupTitle": "Gruppe {{name}}",
-    "deleteGroup": "Gruppe löschen"
+    "deleteGroup": "Gruppe löschen",
+    "lastLogin": "Letzte Anmeldung",
+    "never": "nie"
   },
   "sshkeys": {
     "title": "SSH-Schlüssel",

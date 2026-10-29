@@ -8,6 +8,7 @@ import { Icon } from "../components/icons";
 import { Explain, Field, Notice, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { errorText } from "../lib/errors";
+import { dateTime, relative } from "../lib/format";
 import { useSession } from "../lib/session";
 import { DataTable } from "../components/DataTable";
 import type { MenuItem } from "../components/Modal";
@@ -30,6 +31,7 @@ interface LinuxUser {
   must_change: boolean;
   sudo: boolean;
   key_count: number;
+  last_login?: string;
   dashboard_accounts?: string[];
   admin_mapped: boolean;
 }
@@ -54,7 +56,7 @@ type Dlg =
   | undefined;
 
 export function Users() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const qc = useQueryClient();
   const { me, withStepUp } = useSession();
   const isAdmin = me?.role === "admin";
@@ -254,6 +256,20 @@ export function Users() {
                       )}
                     </>
                   ),
+                },
+                {
+                  key: "last",
+                  label: t("users.lastLogin"),
+                  thClass: "hidden md:table-cell",
+                  tdClass: "hidden md:table-cell align-top tabular-nums",
+                  sortValue: (u) => u.last_login ?? "",
+                  filterValue: (u) => (u.last_login ? dateTime(u.last_login, i18n.language) : t("users.never")),
+                  cell: (u) =>
+                    u.last_login ? (
+                      <span title={dateTime(u.last_login, i18n.language)}>{relative(u.last_login, i18n.language)}</span>
+                    ) : (
+                      <span className="text-faint">{t("users.never")}</span>
+                    ),
                 },
                 {
                   key: "actions",

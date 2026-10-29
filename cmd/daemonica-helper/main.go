@@ -13,6 +13,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -168,11 +169,13 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() { _ = sd.Close() }()
+	loginDB := users.LoginDB{Wtmp: users.WtmpDBPath, Lastlog2: users.Lastlog2Path}
 	aptOps := &helper.AptOps{Sys: apt.System{Run: apt.ExecRun}, UnattendedPath: apt.UnattendedFile}
 	collector := &sysinfo.Collector{FS: sysinfo.FS{Root: "/"}, Interval: 3 * time.Second, Extras: sysinfo.Extras{
 		FailedUnits: sd.FailedCount,
 		CertDays:    helper.CertDaysFrom(*tlsDir),
 		Updates:     updatesFrom(aptOps, helper.UpdatesFromNotifier("/var/lib/update-notifier/updates-available")),
+		Logins:      loginsFrom(loginDB, 30*time.Second),
 	}}
 	go collector.Run(ctx)
 	(&helper.SysOps{Collector: collector, SelfPID: os.Getpid()}).Register(ops)
@@ -183,7 +186,7 @@ func main() {
 	keyOps := &helper.SSHKeyOps{Worker: &worker.Runner{Timeout: 30 * time.Second}, Lookup: worker.Lookup,
 		Config: sshkeys.EffectiveConfig, HostKeyDir: "/etc/ssh"}
 	keyOps.Register(ops)
-	(&helper.UserOps{DB: users.DB{Root: "/"}, Accts: db, KeyCount: keyOps.Count}).Register(ops)
+	(&helper.UserOps{DB: users.DB{Root: "/"}, Accts: db, KeyCount: keyOps.Count, LastLogins: loginDB.Last}).Register(ops)
 	// M1.3: file manager (workers under the mapped user; timeouts come from the ops).
 	(&helper.FileOps{Worker: &worker.Runner{Timeout: 15 * time.Minute}, Lookup: worker.Lookup,
 		UploadMiB: func() int { return cfg.Get().UploadMiB },
@@ -309,6 +312,37 @@ func terminalMemoryMax() uint64 {
 
 // updatesFrom prefers the package view's counts and falls back to the
 // update-notifier file until the first simulation has run.
+// loginsFrom serves the overview's login history from wtmpdb, read at most
+// once per ttl (the collector samples every few seconds).
+func loginsFrom(l users.LoginDB, ttl time.Duration) func(n int) ([]sysinfo.Login, error) {
+	var mu sync.Mutex
+	var cached []sysinfo.Login
+	var at time.Time
+	return func(n int) ([]sysinfo.Login, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		if time.Since(at) < ttl {
+			return cached[:min(n, len(cached)):min(n, len(cached))], nil
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		list, err := l.Recent(ctx, n)
+		if err != nil {
+			return nil, err
+		}
+		// A new slice: snapshots keep referring to the old one.
+		cached, at = make([]sysinfo.Login, 0, len(list)), time.Now()
+		for _, x := range list {
+			from := x.From
+			if from == "" {
+				from = x.Service
+			}
+			cached = append(cached, sysinfo.Login{User: x.User, From: from, TTY: x.TTY, Time: x.Time, End: x.End})
+		}
+		return cached, nil
+	}
+}
+
 func updatesFrom(a *helper.AptOps, fallback func() (sysinfo.Updates, error)) func() (sysinfo.Updates, error) {
 	return func() (sysinfo.Updates, error) {
 		if u, err := a.Updates(); err == nil {

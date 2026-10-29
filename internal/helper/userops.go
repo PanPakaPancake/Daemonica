@@ -23,6 +23,8 @@ type UserOps struct {
 	Now   func() time.Time
 	// KeyCount optionally returns the number of SSH keys of a user.
 	KeyCount func(ctx context.Context, name string) int
+	// LastLogins optionally returns the last login per user (wtmpdb/lastlog2).
+	LastLogins func(ctx context.Context) (map[string]time.Time, error)
 }
 
 func (u *UserOps) now() time.Time {
@@ -151,8 +153,13 @@ func (u *UserOps) Register(ops map[string]*Op) {
 			}
 			byUser, admin := u.mappings(ctx)
 			out := UserListing{Groups: groups, Shells: u.DB.Shells()}
+			var last map[string]time.Time
+			if u.LastLogins != nil {
+				last, _ = u.LastLogins(ctx) // the listing works without history
+			}
 			n := 0
 			for _, x := range list {
+				x.LastLogin = last[x.Name]
 				v := UserView{User: x, Accounts: byUser[x.Name], AdminMap: admin[x.Name]}
 				if u.KeyCount != nil && (!x.System) && n < 50 {
 					v.KeyCount = u.KeyCount(ctx, x.Name)

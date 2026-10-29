@@ -61,7 +61,7 @@ type User struct {
 	MustChange bool      `json:"must_change"`
 	Sudo       bool      `json:"sudo"`
 	KeyCount   int       `json:"key_count"` // filled by the caller (SSH module)
-	LastLogin  time.Time `json:"last_login,omitempty"`
+	LastLogin  time.Time `json:"last_login,omitzero"`
 }
 
 // Group is one Linux group.

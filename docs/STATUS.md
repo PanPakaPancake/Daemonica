@@ -55,7 +55,7 @@ _Last updated: 2026-10-25_
 |---|---|---|
 | M1.0 | ⚠ nearly done | All core items done incl. accounts, audit view, allowlist Plan→Apply→Confirm. TLS change in settings, DNS-01 guided and renewal done in M1.8 (DEC-034). Open: Playwright E2E with virtual authenticator, helper hardening score ≤ 6.0. |
 | M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Open: last logins, log follow via WebSocket (DEC-017), allowlisted log files (SOLL), owner acceptance check against `top`/`free`/`df`. |
-| M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Open: last login per user (wtmpdb), owner acceptance. |
+| M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Last login per user added in M1.8. Open: owner acceptance (with Phase 1). |
 | M1.3 | ✓ accepted by owner 2026-10-25 | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021); lists with sort/filter on every column and right-click menus (DEC-022). Open: folder download as archive (KANN). |
 | M1.4 | ✓ accepted by owner 2026-10-25 | Web terminal (table below, DEC-023). KANN items (keep background processes, reconnect after short drops) not implemented. |
 | M1.5 | ✓ accepted by owner 2026-10-25 | Network, firewall, firewall logs, packet capture (tables below, DEC-024–DEC-028). Browser acceptance 1–4 passed on the VM 2026-10-25. |
@@ -101,7 +101,7 @@ _Last updated: 2026-10-25_
 | Requirement | Status | Evidence |
 |---|---|---|
 | Overview: hostname, OS/kernel, uptime, load, CPU, RAM/swap, mounts with usage + inodes, network interfaces with live throughput, top processes, reboot required, pending updates (total/security), failed units, dashboard certificate expiry, setup checklist | ✓ | `internal/sysinfo`, `helper/sysops.go`; integration test on the VM (`make test-integration`) |
-| Last logins | ✖ | Ubuntu 26.04 uses wtmpdb; reader follows |
+| Last logins | ✓ (M1.8) | wtmpdb (sessions) + lastlog2 read-only; overview table, column in the users list; `TestLoginDB`, integration `TestLoginHistoryOnHost` |
 | One shared collector (3 s), no polling storm | ✓ | `sysinfo.Collector` in the helper; UI polls the cached snapshot |
 | Services: list service/timer/socket with active/sub, autostart, since, memory; search + filter | ✓ | D-Bus (`internal/services`), integration test (295 units on the VM) |
 | Actions start/stop/restart/reload/enable/disable/mask/unmask; detail: status, journal, unit file (read-only), dependencies | ✓ | `services.action`, UI drawer |

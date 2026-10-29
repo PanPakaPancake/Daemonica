@@ -60,6 +60,7 @@ type Login struct {
 	From string    `json:"from"`
 	TTY  string    `json:"tty"`
 	Time time.Time `json:"time"`
+	End  time.Time `json:"end,omitzero"` // zero while the session is open
 }
 
 // Extras are slower or optional data sources consulted by the collector.

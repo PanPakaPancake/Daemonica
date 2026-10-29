@@ -233,7 +233,16 @@
     "days_other": "{{count}} days left",
     "failed": "Failed units",
     "top": "Busiest processes",
-    "allProcesses": "All processes"
+    "allProcesses": "All processes",
+    "logins": "Last logins",
+    "allUsers": "All users",
+    "noLogins": "No logins recorded (wtmpdb).",
+    "loginFrom": "From",
+    "loginTty": "Terminal",
+    "loginTime": "Time",
+    "loginState": "State",
+    "loginOpen": "signed in",
+    "loginEnded": "ended"
   },
   "passkeys": {
     "title": "Passkeys",
@@ -508,7 +517,9 @@
     "removeHome": "Also delete the home directory {{home}}",
     "typeToConfirm": "Type “{{name}}” to confirm",
     "groupTitle": "Group {{name}}",
-    "deleteGroup": "Delete group"
+    "deleteGroup": "Delete group",
+    "lastLogin": "Last login",
+    "never": "never"
   },
   "sshkeys": {
     "title": "SSH keys",

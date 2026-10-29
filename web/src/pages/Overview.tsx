@@ -5,7 +5,7 @@ import { Icon } from "../components/icons";
 import { Meter, Notice, Panel, Stat } from "../components/ui";
 import { api, type Passkey } from "../lib/api";
 import { errorText } from "../lib/errors";
-import { bytes, duration, num, pct, rate } from "../lib/format";
+import { bytes, dateTime, duration, num, pct, rate, relative } from "../lib/format";
 import { DataTable } from "../components/DataTable";
 
 export interface ProcessInfo {
@@ -54,6 +54,7 @@ interface Overview {
   failed_units?: number;
   cert_days_left?: number;
   updates?: { total: number; security: number; auto_security?: boolean };
+  last_logins?: { user: string; from: string; tty: string; time: string; end?: string }[];
 }
 
 export function OverviewPage() {
@@ -314,6 +315,50 @@ export function OverviewPage() {
                 ]}
               />
             </div>
+          </Panel>
+
+          <Panel>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-semibold">
+                <Icon name="users" className="h-4 w-4 text-cyan" />
+                {t("overview.logins")}
+              </h2>
+              <Link to="/users" className="text-sm text-violet underline">
+                {t("overview.allUsers")}
+              </Link>
+            </div>
+            {(o.last_logins ?? []).length === 0 ? (
+              <p className="text-sm text-muted">{t("overview.noLogins")}</p>
+            ) : (
+              <div className="relative overflow-x-auto">
+                <DataTable
+                  rows={o.last_logins ?? []}
+                  rowKey={(l) => `${l.user}-${l.tty}-${l.time}`}
+                  className=""
+                  label={t("overview.logins")}
+                  columns={[
+                    { key: "user", label: t("processes.user"), sortValue: (l) => l.user, cell: (l) => <>{l.user}</> },
+                    { key: "from", label: t("overview.loginFrom"), tdClass: "font-mono", sortValue: (l) => l.from, cell: (l) => <>{l.from || "–"}</> },
+                    { key: "tty", label: t("overview.loginTty"), tdClass: "font-mono", sortValue: (l) => l.tty, cell: (l) => <>{l.tty}</> },
+                    {
+                      key: "time",
+                      label: t("overview.loginTime"),
+                      tdClass: "tabular-nums",
+                      sortValue: (l) => l.time,
+                      cell: (l) => <span title={dateTime(l.time, lang)}>{relative(l.time, lang)}</span>,
+                    },
+                    {
+                      key: "state",
+                      label: t("overview.loginState"),
+                      sortValue: (l) => (l.end ? 1 : 0),
+                      filterValue: (l) => (l.end ? t("overview.loginEnded") : t("overview.loginOpen")),
+                      cell: (l) =>
+                        l.end ? <span className="text-muted">{t("overview.loginEnded")}</span> : <span className="text-ok">● {t("overview.loginOpen")}</span>,
+                    },
+                  ]}
+                />
+              </div>
+            )}
           </Panel>
         </>
       )}

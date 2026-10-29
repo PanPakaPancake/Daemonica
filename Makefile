@@ -42,8 +42,11 @@ fuzz:
 test-integration:
 	CGO_ENABLED=0 $(GO) test -count=1 -tags integration -v ./test/integration/
 
+# Needs a freshly installed, not yet set up Daemonica on this host (root):
+#   sudo make test-e2e E2E_USERS=alice,bob,carol
+E2E_OUT ?= dist/e2e
 test-e2e:
-	@echo "E2E (Playwright + virtual WebAuthn) pending: frontend not yet buildable (docs/STATUS.md)"
+	node scripts/e2e/full.mjs $(E2E_OUT)
 
 sec:
 	@set -e; fail=0; \

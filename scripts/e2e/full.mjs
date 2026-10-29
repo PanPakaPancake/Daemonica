@@ -11,6 +11,8 @@
 //   E2E_DOMAIN   dashboard domain for the test (default e2e.daemonica.test)
 //   E2E_PORT     port (default 8443)
 //   E2E_USERS    three normal Linux users for admin, operator, read-only
+//   E2E_LOAD     parallel sessions for the base load (default 50, 0 skips it)
+//   E2E_LOAD_SECONDS  duration of the load (default 120)
 //   E2E_STRICT=1 also fail on error notices and API 5xx answers (on a real host
 //                every page must load; a container without systemd cannot)
 //   DAEMONICA_ADMIN_SOCKET  passed to daemonica-admin (local test stacks)
@@ -19,6 +21,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { runLoad } from "./load.mjs";
 
 // require() honours NODE_PATH, so a global Playwright installation works too.
 const { chromium } = createRequire(import.meta.url)("playwright");
@@ -29,6 +32,8 @@ const DOMAIN = process.env.E2E_DOMAIN ?? "e2e.daemonica.test";
 const PORT = Number(process.env.E2E_PORT ?? 8443);
 const [ADMIN_USER, OP_USER, VIEW_USER] = (process.env.E2E_USERS ?? "e2eadmin,e2eop,e2eview").split(",");
 const STRICT = process.env.E2E_STRICT === "1";
+const LOAD = Number(process.env.E2E_LOAD ?? 50);
+const LOAD_SECONDS = Number(process.env.E2E_LOAD_SECONDS ?? 120);
 const SETUP = `https://127.0.0.1:${PORT}`;
 const BASE = `https://${DOMAIN}:${PORT}`;
 const ADMIN_BIN = process.env.DAEMONICA_ADMIN ?? "daemonica-admin";
@@ -43,7 +48,7 @@ async function step(name, fn) {
     results.push({ name, ok: true, ms: Date.now() - t0, ...(detail ? { detail } : {}) });
     console.log(`✓ ${name}`);
   } catch (e) {
-    results.push({ name, ok: false, ms: Date.now() - t0, error: String(e?.message ?? e).slice(0, 2000) });
+    results.push({ name, ok: false, ms: Date.now() - t0, error: String(e?.message ?? e).slice(0, 2000), ...(e?.detail ? { detail: e.detail } : {}) });
     console.log(`✗ ${name}: ${e?.message ?? e}`);
     if (currentErrors?.length) console.log(currentErrors.slice(-10).join("\n"));
     await current?.screenshot({ path: join(out, `fail-${results.length}.png`), fullPage: true }).catch(() => undefined);
@@ -382,6 +387,28 @@ try {
     await a.ctx.close();
     if (bad.length) throw new Error(bad.join(", "));
   });
+  if (LOAD > 0)
+    await step(`Grundlast: ${LOAD} parallele Sitzungen, Speicher im Leerlauf`, async () => {
+      const [credential] = await admin.credentials();
+      const r = await runLoad({
+        domain: DOMAIN,
+        port: PORT,
+        ca: certs.ca,
+        credential,
+        sessions: LOAD,
+        seconds: LOAD_SECONDS,
+        log: (m) => console.log(`  ${m}`),
+      });
+      console.log(
+        `  ${r.requests} Anfragen (${r.rps}/s), p95 ${r.latencyMs.p95} ms, RAM Web ${r.memoryMiB.idleBefore} → ${r.memoryMiB.underLoadPeak} → ${r.memoryMiB.idleAfter} MiB`,
+      );
+      const bad = [];
+      if (r.failed) bad.push(`${r.failed} failed requests: ${JSON.stringify(r.failures)}`);
+      if (r.latencyMs.p95 > 1000) bad.push(`p95 ${r.latencyMs.p95} ms > 1000 ms`);
+      for (const k of ["idleBefore", "idleAfter"]) if (!(r.memoryMiB[k] < 100)) bad.push(`web RSS ${k} ${r.memoryMiB[k]} MiB (target < 100)`);
+      if (bad.length) throw Object.assign(new Error(bad.join("\n")), { detail: r });
+      return r;
+    });
 } catch {
   // reported below
 } finally {

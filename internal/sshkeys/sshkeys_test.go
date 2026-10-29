@@ -44,7 +44,7 @@ func rsaLine(bits int) string {
 
 func ecdsaLine() string {
 	k, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	pt := elliptic.Marshal(elliptic.P256(), k.X, k.Y) //nolint:staticcheck // test fixture encoding
+	pt, _ := k.PublicKey.Bytes()
 	return "ecdsa-sha2-nistp256 " + base64.StdEncoding.EncodeToString(wire([]byte("ecdsa-sha2-nistp256"), []byte("nistp256"), pt))
 }
 

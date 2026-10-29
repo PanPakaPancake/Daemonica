@@ -116,7 +116,7 @@ func TestProcessesParsing(t *testing.T) {
 		"proc/42/stat":      "42 (evil) name\x1b[31m) R 1 42 42 0 -1 0 0 0 0 0 200 100 0 0 20 0 3 0 500 0 0",
 		"proc/42/status":    "Name:\tevil\nUid:\t1000\t1000\t1000\t1000\n",
 		"proc/42/statm":     "100 20 0 0 0 0 0",
-		"proc/42/cmdline":   "sh\x00-c\x00echo \x1b]0;pwned\x07‮",
+		"proc/42/cmdline":   "sh\x00-c\x00echo \x1b]0;pwned\x07\u202e",
 		"proc/self/stat":    "x",
 		"proc/notapid/stat": "x",
 	})
@@ -133,7 +133,7 @@ func TestProcessesParsing(t *testing.T) {
 	if p42.Name != "evil) name[31m" || p42.User != "pancake" || p42.PPID != 1 || p42.Threads != 3 {
 		t.Fatalf("p42 %+v", p42)
 	}
-	if strings.ContainsAny(p42.Command, "\x1b\x07‮") {
+	if strings.ContainsAny(p42.Command, "\x1b\x07\u202e") {
 		t.Fatalf("control chars not neutralised: %q", p42.Command)
 	}
 	if p42.CPU != 20 { // (300-200)*2/1000*100

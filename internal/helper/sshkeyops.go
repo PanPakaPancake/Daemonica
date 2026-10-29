@@ -141,9 +141,7 @@ func (s *SSHKeyOps) list(ctx context.Context, id worker.Identity) (KeyListing, e
 			}
 		}
 		pf, invalid := sshkeys.ParseFile(f.Content)
-		for _, k := range pf.Keys {
-			out.Keys = append(out.Keys, k)
-		}
+		out.Keys = append(out.Keys, pf.Keys...)
 		out.Invalid = append(out.Invalid, invalid...)
 	}
 	if rr.SSHDir && (rr.SSHDirUID != id.UID || rr.SSHDirMode&0o077 != 0) {

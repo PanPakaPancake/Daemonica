@@ -1,0 +1,26 @@
+version: "2"
+linters:
+  # Default set (errcheck, govet, ineffassign, staticcheck, unused) plus gosec.
+  # Every gosec finding is either fixed or carries //nolint:gosec with the
+  # reason; the reviewed list is in docs/security/AUDIT-PHASE-1.md.
+  enable:
+    - gosec
+  settings:
+    staticcheck:
+      checks:
+        - all
+        # Style-only: De Morgan rewrites read worse for these allow/deny conditions.
+        - -QF1001
+        # Package comment and naming conventions are not enforced.
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+  exclusions:
+    rules:
+      # Tests write fixtures with fixed paths and modes.
+      - path: _test\.go
+        linters:
+          - gosec

@@ -77,7 +77,7 @@ func unitProperties(args []string, spec Spec, out, errOut int) []property {
 		prop("SystemCallArchitectures", []string{"native"}),
 		prop("MemoryMax", uint64(256<<20)),
 		prop("TasksMax", uint64(4)),
-		prop("RuntimeMaxUSec", uint64((time.Duration(spec.DurationSec)*time.Second+30*time.Second)/time.Microsecond)),
+		prop("RuntimeMaxUSec", uint64((time.Duration(spec.DurationSec)*time.Second+30*time.Second)/time.Microsecond)), //nolint:gosec // duration validated (max. 30 min), positive
 		prop("StandardInput", "null"),
 		prop("StandardOutputFileDescriptor", dbus.UnixFD(out)), //nolint:gosec // fd fits
 		// stderr gets its own pipe: tcpdump's messages must never mix into the

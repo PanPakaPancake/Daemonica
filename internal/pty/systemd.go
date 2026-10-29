@@ -225,7 +225,7 @@ func (l *SystemdLauncher) Launch(ctx context.Context, spec Spec, tty *os.File) (
 	if p.poll == 0 {
 		p.poll = 500 * time.Millisecond
 	}
-	go p.watch()
+	go p.watch() //nolint:gosec // the watcher outlives the request by design (unit lifetime)
 	return p, nil
 }
 

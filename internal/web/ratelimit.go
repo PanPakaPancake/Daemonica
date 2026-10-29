@@ -28,6 +28,19 @@ type bucket struct {
 	blockTil time.Time
 }
 
+// clientKey is the bucket key: the IPv4 address, or the /64 prefix of an IPv6
+// address (one host usually owns a whole /64, so per-address buckets would let
+// it rotate addresses past the per-IP limit and the backoff).
+func clientKey(ip netip.Addr) netip.Addr {
+	ip = ip.Unmap()
+	if ip.Is6() {
+		if p, err := ip.Prefix(64); err == nil {
+			return p.Addr()
+		}
+	}
+	return ip
+}
+
 // NewRateLimiter creates a limiter. Example: NewRateLimiter(0.2, 5, 5, 50).
 func NewRateLimiter(perIPRate, perIPBurst, globalRate, globalBurst float64) *RateLimiter {
 	return &RateLimiter{perIP: map[netip.Addr]*bucket{}, rate: perIPRate, burst: perIPBurst,
@@ -51,6 +64,7 @@ func refill(b *bucket, now time.Time, rate, burst float64) {
 func (l *RateLimiter) Allow(ip netip.Addr) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	ip = clientKey(ip)
 	now := l.now()
 	b, ok := l.perIP[ip]
 	if !ok {
@@ -77,6 +91,7 @@ func (l *RateLimiter) Allow(ip netip.Addr) bool {
 func (l *RateLimiter) Fail(ip netip.Addr) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	ip = clientKey(ip)
 	b, ok := l.perIP[ip]
 	if !ok {
 		b = &bucket{}
@@ -94,6 +109,7 @@ func (l *RateLimiter) Fail(ip netip.Addr) {
 func (l *RateLimiter) Success(ip netip.Addr) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	ip = clientKey(ip)
 	if b, ok := l.perIP[ip]; ok {
 		b.failures = 0
 		b.blockTil = time.Time{}

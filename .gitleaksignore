@@ -1,0 +1,4 @@
+# Reviewed false positives (docs/security/AUDIT-PHASE-1.md, SA-08):
+# a keyboard shortcut in the German locale and a key type constant.
+61917f8075e1a52c023c59d9a7b22510356277f4:web/src/locales/de.json:generic-api-key:813
+27cb22fb53374fb67863128ff63e4202f14ea3b9:internal/acme/acme.go:generic-api-key:127

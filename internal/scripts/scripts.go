@@ -194,11 +194,11 @@ func (l *Library) now() time.Time {
 // Init creates the tree root (root 0755) and the local source.
 func (l *Library) Init() error {
 	for _, d := range []string{l.Root, filepath.Join(l.Root, LocalID)} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
+		if err := os.MkdirAll(d, 0o755); err != nil { //nolint:gosec // script tree must be readable by jobs of every user
 			return err
 		}
 		// The helper runs with UMask=0077; jobs of other users must read the tree.
-		if err := os.Chmod(d, 0o755); err != nil {
+		if err := os.Chmod(d, 0o755); err != nil { //nolint:gosec // script tree must be readable by jobs of every user
 			return err
 		}
 	}
@@ -292,7 +292,7 @@ func (l *Library) Files() ([]File, error) {
 				return nil
 			}
 			f := File{Source: id, Path: filepath.ToSlash(rel), Abs: p, Size: fi.Size(), Exec: fi.Mode()&0o111 != 0, Modified: fi.ModTime().UTC()}
-			if b, err := os.ReadFile(p); err == nil {
+			if b, err := os.ReadFile(p); err == nil { //nolint:gosec // inside the root-owned script tree, regular files only
 				sum := sha256.Sum256(b)
 				f.SHA256 = hex.EncodeToString(sum[:])
 				f.Shebang = shebang(b)
@@ -332,7 +332,7 @@ func (l *Library) Read(source, path string) ([]byte, string, error) {
 	if fi.Size() > MaxLocalSize {
 		return nil, "", ErrTooLarge
 	}
-	b, err := os.ReadFile(p)
+	b, err := os.ReadFile(p) //nolint:gosec // inside the root-owned script tree, validated name
 	if err != nil {
 		return nil, "", err
 	}
@@ -364,7 +364,7 @@ func (l *Library) SaveLocal(name string, content []byte, exec bool, hash string)
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	p := l.Abs(LocalID, name)
-	cur, err := os.ReadFile(p)
+	cur, err := os.ReadFile(p) //nolint:gosec // inside the root-owned script tree, validated name
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		if hash != "" {
@@ -422,7 +422,7 @@ func (l *Library) ReadTree(id string) (Tree, error) {
 		if fi.Size() > MaxFileSize {
 			return ErrTooLarge
 		}
-		b, err := os.ReadFile(p)
+		b, err := os.ReadFile(p) //nolint:gosec // inside the root-owned script tree, regular files only
 		if err != nil {
 			return err
 		}
@@ -460,7 +460,7 @@ func (l *Library) install(id string, t Tree) error {
 			return err
 		}
 	}
-	if err := os.Chmod(tmp, 0o755); err != nil {
+	if err := os.Chmod(tmp, 0o755); err != nil { //nolint:gosec // scripts are executed by jobs of other users
 		return err
 	}
 	dst := l.SourceDir(id)
@@ -494,10 +494,10 @@ func mkdirs(base, dir string) error {
 	if err := mkdirs(base, filepath.Dir(dir)); err != nil {
 		return err
 	}
-	if err := os.Mkdir(dir, 0o755); err != nil && !errors.Is(err, fs.ErrExist) {
+	if err := os.Mkdir(dir, 0o755); err != nil && !errors.Is(err, fs.ErrExist) { //nolint:gosec // script tree must be readable by jobs of every user
 		return err
 	}
-	return os.Chmod(dir, 0o755)
+	return os.Chmod(dir, 0o755) //nolint:gosec // script tree must be readable by jobs of every user
 }
 
 func randHex() string {

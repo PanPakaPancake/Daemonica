@@ -101,10 +101,6 @@ type pemParams struct {
 	KeyPEM  string `json:"key_pem"`
 }
 
-type tokenParams struct {
-	Token string `json:"token"`
-}
-
 // CertInfo summarises a certificate.
 type CertInfo struct {
 	Domain   string    `json:"domain"`

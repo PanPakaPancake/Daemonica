@@ -51,8 +51,9 @@ test-e2e:
 sec:
 	@set -e; fail=0; \
 	if command -v govulncheck >/dev/null; then govulncheck ./... || fail=1; else echo "SKIP govulncheck (not installed)"; fi; \
-	if command -v gosec >/dev/null; then gosec -quiet ./... || fail=1; else echo "SKIP gosec (not installed)"; fi; \
-	if command -v gitleaks >/dev/null; then gitleaks detect --no-banner --redact || fail=1; else echo "SKIP gitleaks (not installed)"; fi; \
+	if command -v osv-scanner >/dev/null; then osv-scanner scan source -r . || fail=1; else echo "SKIP osv-scanner (not installed)"; fi; \
+	if command -v golangci-lint >/dev/null; then golangci-lint run --enable-only gosec ./... || fail=1; else echo "SKIP gosec (golangci-lint not installed)"; fi; \
+	if command -v gitleaks >/dev/null; then gitleaks git --no-banner --redact . || fail=1; else echo "SKIP gitleaks (not installed)"; fi; \
 	if [ -f web/package-lock.json ]; then (cd web && npm audit --omit=dev) || fail=1; fi; \
 	scripts/check-secrets.sh || fail=1; \
 	exit $$fail

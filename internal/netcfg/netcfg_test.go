@@ -20,8 +20,6 @@ type call struct {
 type fakeRun struct {
 	calls []call
 	code  int
-	files map[string]string // snapshot of the netplan dir at generate time
-	root  string
 }
 
 func (f *fakeRun) run(_ context.Context, _ time.Duration, path string, args ...string) (execx.Result, error) {

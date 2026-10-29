@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net/netip"
@@ -149,7 +150,7 @@ func recoverAccount(ctx context.Context, c *rpc.Client, args []string) error {
 		name = fs.Arg(0)
 	}
 	if name == "" {
-		return fmt.Errorf("Kontoname fehlt: daemonica-admin recover <konto> [--revoke-all]")
+		return errors.New("kein Kontoname: daemonica-admin recover <konto> [--revoke-all]")
 	}
 	var res struct {
 		Token           string    `json:"token"`

@@ -79,7 +79,7 @@ func ReadFile(root string, q FileQuery) (FileResult, error) {
 	}
 	n = min(n, MaxLines)
 	// O_NOFOLLOW: a symlink planted in place of a log file is not followed.
-	f, err := os.OpenFile(root+q.Path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	f, err := os.OpenFile(root+q.Path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0) //nolint:gosec // q.Path is checked against the LogFiles allowlist
 	if err != nil {
 		return FileResult{}, err
 	}

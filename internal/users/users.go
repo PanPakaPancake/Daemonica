@@ -29,8 +29,8 @@ var (
 	Userdel  = "/usr/sbin/userdel"
 	Groupadd = "/usr/sbin/groupadd"
 	Groupdel = "/usr/sbin/groupdel"
-	Gpasswd  = "/usr/bin/gpasswd"
-	Chpasswd = "/usr/sbin/chpasswd"
+	Gpasswd  = "/usr/bin/gpasswd"   //nolint:gosec // binary paths, not credentials
+	Chpasswd = "/usr/sbin/chpasswd" //nolint:gosec // binary paths, not credentials
 	Chage    = "/usr/bin/chage"
 )
 

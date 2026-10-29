@@ -269,7 +269,7 @@ func main() {
 	// traverse it to reach helper.sock (admin.sock stays 0600 root).
 	if err := os.MkdirAll(*runDir, 0o750); err == nil {
 		_ = os.Chown(*runDir, 0, webGID)
-		_ = os.Chmod(*runDir, 0o750)
+		_ = os.Chmod(*runDir, 0o750) //nolint:gosec // run dir: the web user's group must reach helper.sock
 	}
 	webL, err := helper.ListenUnix(filepath.Join(*runDir, "helper.sock"), 0o660, webGID)
 	if err != nil {

@@ -450,7 +450,7 @@ func (m *Manager) Lines(id, after string, max int) (Lines, error) {
 	if a >= r.seq {
 		return out, nil
 	}
-	waiting := int(r.seq - a)
+	waiting := int(r.seq - a) //nolint:gosec // a < r.seq, the difference is bounded by the ring
 	avail := min(waiting, len(r.ring))
 	n := min(avail, max)
 	out.Entries = append(out.Entries, r.ring[len(r.ring)-n:]...)

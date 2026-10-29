@@ -220,7 +220,7 @@ func readString(b []byte) (s, rest []byte, err error) {
 		return nil, nil, ErrBlob
 	}
 	n := binary.BigEndian.Uint32(b)
-	if uint64(n) > uint64(len(b)-4) {
+	if uint64(n) > uint64(len(b)-4) { //nolint:gosec // len(b) >= 4 checked above
 		return nil, nil, ErrBlob
 	}
 	return b[4 : 4+n], b[4+n:], nil

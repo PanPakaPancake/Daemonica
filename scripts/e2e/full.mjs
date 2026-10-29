@@ -24,7 +24,15 @@ import { join } from "node:path";
 import { runLoad } from "./load.mjs";
 
 // require() honours NODE_PATH, so a global Playwright installation works too.
-const { chromium } = createRequire(import.meta.url)("playwright");
+const require = createRequire(import.meta.url);
+const { chromium } = require("playwright");
+// Optional accessibility check per page (axe-core, if resolvable via NODE_PATH).
+let axeSource;
+try {
+  axeSource = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
+} catch {
+  /* not installed: the module step reports "axe: skipped" */
+}
 
 const out = process.argv[2] ?? "e2e-out";
 mkdirSync(out, { recursive: true });
@@ -270,6 +278,7 @@ try {
     const p = admin.page;
     const problems = [];
     const notes = [];
+    const a11y = {};
     for (const path of pages) {
       const before = admin.errors.length;
       const apiBefore = admin.api.length;
@@ -282,6 +291,15 @@ try {
       const alerts = await p.getByRole("alert").allInnerTexts();
       if (STRICT && alerts.length) problems.push(`${path}: ${alerts.join(" | ").slice(0, 300)}`);
       if (admin.errors.length > before) problems.push(`${path}: ${admin.errors.slice(before).join(" | ").slice(0, 300)}`);
+      if (axeSource) {
+        // A string expression goes through DevTools, outside the page's CSP (no eval there).
+        await p.evaluate(axeSource);
+        const v = await p.evaluate(async () => {
+          const r = await window.axe.run(document, { resultTypes: ["violations"] });
+          return r.violations.filter((x) => x.impact === "critical" || x.impact === "serious").map((x) => `${x.id} (${x.nodes.length})`);
+        });
+        if (v.length) a11y[path] = v;
+      }
       const failedApi = admin.api.slice(apiBefore).filter((x) => x.status >= 500);
       if (failedApi.length)
         (STRICT ? problems : notes).push(
@@ -291,8 +309,9 @@ try {
             .slice(0, 300)}`,
         );
     }
+    if (STRICT && Object.keys(a11y).length) problems.push(`axe: ${JSON.stringify(a11y)}`);
     if (problems.length) throw new Error(problems.join("\n"));
-    return { pages: pages.length, notes };
+    return { pages: pages.length, notes, axe: axeSource ? a11y : "skipped" };
   });
 
   await step("Step-up mit Passkey (Einladung Operator)", async () => {

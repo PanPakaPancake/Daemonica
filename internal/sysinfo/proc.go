@@ -123,7 +123,7 @@ func (f FS) Processes(prev map[int]uint64, cpuTotalDelta uint64, ncpu int, users
 		return nil, err
 	}
 	boot := f.BootTime()
-	page := uint64(os.Getpagesize())
+	page := uint64(os.Getpagesize()) //nolint:gosec // page size is positive
 	out := make([]Process, 0, 256)
 	for _, e := range entries {
 		pid, err := strconv.Atoi(e.Name())
@@ -144,7 +144,7 @@ func (f FS) Processes(prev map[int]uint64, cpuTotalDelta uint64, ncpu int, users
 		}
 		p := Process{PID: pid, PPID: ppid, State: state, Name: SanitizeText(comm, 64), Threads: threads, ticks: ticks}
 		if !boot.IsZero() {
-			p.Start = boot.Add(time.Duration(start) * time.Second / clkTck).UTC()
+			p.Start = boot.Add(time.Duration(start) * time.Second / clkTck).UTC() //nolint:gosec // start ticks since boot fit int64
 		}
 		if st, err := f.read(filepath.Join(dir, "status")); err == nil {
 			sc := bufio.NewScanner(bytes.NewReader(st))

@@ -249,7 +249,7 @@ func (r *Runner) Start(ctx context.Context, k Kind, pkgs, restoreAuto []string, 
 		j.Packages = []string{}
 	}
 	logPath := r.path(j.ID, ".log")
-	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) //nolint:gosec // path built from the generated job ID
 	if err != nil {
 		return Job{}, err
 	}

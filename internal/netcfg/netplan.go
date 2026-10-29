@@ -490,7 +490,7 @@ func writeTo(root, p string, b []byte) error {
 	if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
 		return err
 	}
-	return os.WriteFile(full, b, 0o600)
+	return os.WriteFile(full, b, 0o600) //nolint:gosec // paths come from the netplan directories, written to a temp copy
 }
 
 func firstLine(b []byte) string {

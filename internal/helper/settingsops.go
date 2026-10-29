@@ -63,13 +63,6 @@ type SettingsOps struct {
 	Now     func() time.Time
 }
 
-func (s *SettingsOps) now() time.Time {
-	if s.Now != nil {
-		return s.Now()
-	}
-	return time.Now()
-}
-
 // SettingsView is returned by settings.get.
 type SettingsView struct {
 	Domain      string   `json:"domain"`

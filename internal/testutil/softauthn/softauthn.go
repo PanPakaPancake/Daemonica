@@ -85,10 +85,8 @@ func authData(rpID string, flags byte, counter uint32, attested []byte) []byte {
 }
 
 func coseKey(pub *ecdsa.PublicKey) []byte {
-	x := make([]byte, 32)
-	y := make([]byte, 32)
-	pub.X.FillBytes(x)
-	pub.Y.FillBytes(y)
+	pt, _ := pub.Bytes() // 0x04 || X || Y
+	x, y := pt[1:33], pt[33:65]
 	b, _ := cbor.Marshal(map[int]any{1: 2, 3: -7, -1: 1, -2: x, -3: y})
 	return b
 }
@@ -111,7 +109,7 @@ func (a *Authenticator) Create(optionsJSON []byte, origin string) ([]byte, *Cred
 
 	attested := make([]byte, 16) // AAGUID zero
 	var l [2]byte
-	binary.BigEndian.PutUint16(l[:], uint16(len(id)))
+	binary.BigEndian.PutUint16(l[:], uint16(len(id))) //nolint:gosec // credential IDs are 16 bytes
 	attested = append(attested, l[:]...)
 	attested = append(attested, id...)
 	attested = append(attested, coseKey(&key.PublicKey)...)

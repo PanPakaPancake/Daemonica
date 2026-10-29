@@ -9,7 +9,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"net"
 	"net/netip"
 	"os"
@@ -170,10 +169,10 @@ func (r *Reader) vlan(name string) (string, int) {
 	for _, line := range strings.Split(string(b), "\n") {
 		f := strings.Fields(line)
 		for i := 0; i+1 < len(f); i++ {
-			switch {
-			case f[i] == "VID:":
+			switch f[i] {
+			case "VID:":
 				id, _ = strconv.Atoi(f[i+1])
-			case f[i] == "Device:":
+			case "Device:":
 				parent = f[i+1]
 			}
 		}
@@ -459,5 +458,3 @@ func dirNames(p string) []string {
 	}
 	return out
 }
-
-var errNotFound = errors.New("netcfg: not found")

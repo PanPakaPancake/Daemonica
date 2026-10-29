@@ -33,6 +33,7 @@ interface LogResult {
   cursor?: string;
   truncated: boolean;
   scanned: number;
+  suppressed?: number;
 }
 
 const ranges = { "15m": 15, "1h": 60, "24h": 1440, "7d": 10080 } as const;
@@ -306,6 +307,7 @@ export function FirewallLogs({
           {skipped > 0 && <span className="text-warn"> · {t("common.skipped", { count: skipped })}</span>}
         </p>
       )}
+      {!!q.data?.suppressed && <Notice tone="warn">{t("firewall.logs.suppressed", { count: q.data.suppressed })}</Notice>}
       {stats && rows.length > 0 && <Stats rows={rows} />}
       <div className="relative overflow-x-auto">
         <DataTable

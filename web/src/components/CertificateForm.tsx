@@ -218,6 +218,7 @@ export function CertificateForm({ base, token, wrap = (fn) => fn(), defaultCa = 
               </select>
             )}
           </Field>
+          {ca === "staging" && <Notice tone="warn">{t("cert.stagingChoice")}</Notice>}
           <label className="flex items-start gap-2">
             <input type="checkbox" checked={tos} disabled={!canWrite} onChange={(e) => setTos(e.target.checked)} className="mt-1" />
             <span>{t("cert.tos")}</span>

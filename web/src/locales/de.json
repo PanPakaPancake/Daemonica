@@ -1187,6 +1187,8 @@
       "summary_one": "{{count}} Eintrag ({{scanned}} Kernel-Zeilen geprüft)",
       "summary_other": "{{count}} Einträge ({{scanned}} Kernel-Zeilen geprüft)",
       "truncated": "Ergebnis gekürzt, Zeitraum oder Filter eingrenzen",
+      "suppressed_one": "Der Kernel hat im Zeitraum {{count}} Protokollmeldung wegen Ratenbegrenzung unterdrückt – es fehlen Einträge.",
+      "suppressed_other": "Der Kernel hat im Zeitraum {{count}} Protokollmeldungen wegen Ratenbegrenzung unterdrückt – es fehlen Einträge.",
       "empty": "Keine Firewall-Einträge im Zeitraum.",
       "col": {
         "time": "Zeit",
@@ -2220,6 +2222,7 @@
     "expiring": "Das Zertifikat läuft in {{days}} Tagen ab.",
     "expired": "Das Zertifikat ist abgelaufen. Browser zeigen eine Warnung, bis ein neues installiert ist.",
     "stagingWarn": "Das ist ein Test-Zertifikat von Let’s Encrypt Staging. Browser vertrauen ihm nicht.",
+    "stagingChoice": "Nur für Tests: Browser vertrauen einem Staging-Zertifikat nicht, Anmeldung und Bestätigung per Passkey funktionieren damit nicht mehr. Zurück zu einem gültigen Zertifikat geht es dann auf dem Server mit „sudo daemonica-admin tls-issue --agree-tos“ oder „tls-install“.",
     "renewFailed": "Die automatische Erneuerung ist fehlgeschlagen. Daemonica versucht es in 12 Stunden erneut.",
     "installed": "Neues Zertifikat installiert, gültig bis {{date}}. Das Dashboard nutzt es ab sofort, du bleibst angemeldet.",
     "source": "Zertifikatsquelle",

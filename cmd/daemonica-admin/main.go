@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
@@ -28,7 +30,13 @@ Befehle:
   audit-verify                 Hash-Kette des Audit-Logs prüfen
   recover <konto> [--revoke-all]  Wiederherstellung bei Passkey-Verlust
   list-accounts                Dashboard-Konten auflisten
-  tls-status                   Zertifikatsstatus anzeigen
+  tls-status                   Zertifikat und laufende Ausstellung anzeigen
+  tls-install <kette.pem> <schlüssel.pem>
+                               eigenes Zertifikat installieren (z. B. wenn das alte
+                               abgelaufen ist und der Browser keine Passkeys mehr zulässt)
+  tls-issue [--method http-01|tls-alpn-01|dns-01] [--staging] --agree-tos
+                               Let's-Encrypt-Zertifikat ausstellen (DNS-01: zeigt den
+                               TXT-Eintrag und wartet auf Enter)
 `
 
 func main() {
@@ -86,8 +94,11 @@ func main() {
 			}
 		}
 	case "tls-status":
-		fmt.Fprintln(os.Stderr, "'tls-status' folgt mit der Zertifikatsverwaltung in den Einstellungen.")
-		os.Exit(2)
+		err = tlsStatus(ctx, c)
+	case "tls-install":
+		err = tlsInstall(ctx, c, args)
+	case "tls-issue":
+		err = tlsIssue(ctx, c, args)
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 	default:
@@ -213,3 +224,122 @@ type multi []string
 
 func (m *multi) String() string     { return strings.Join(*m, ",") }
 func (m *multi) Set(v string) error { *m = append(*m, v); return nil }
+
+func printCert(v helper.CertView) {
+	fmt.Printf("Domain:  %s\n", v.Domain)
+	if v.Cert == nil {
+		fmt.Println("Zertifikat: keines installiert")
+	} else {
+		fmt.Printf("Zertifikat: %s, Aussteller %s\n", strings.Join(v.Cert.Names, ", "), v.Cert.Issuer)
+		fmt.Printf("Gültig bis: %s UTC (noch %d Tage)\n", v.Cert.NotAfter.UTC().Format("2006-01-02 15:04"), v.Cert.DaysLeft)
+		renew := "nein"
+		if v.AutoRenew {
+			renew = "ja"
+		}
+		fmt.Printf("Quelle: %s", v.Source)
+		if v.Method != "" {
+			fmt.Printf(", Verfahren %s", v.Method)
+		}
+		fmt.Printf(", automatische Erneuerung: %s\n", renew)
+	}
+	if i := v.Issuance; i != nil {
+		fmt.Printf("Letzte Ausstellung: %s über %s (%s), Zustand %s", i.CA, i.Method, i.Started.UTC().Format("2006-01-02 15:04"), i.State)
+		if i.Error != "" {
+			fmt.Printf(": %s", i.Error)
+		}
+		fmt.Println()
+	}
+}
+
+func tlsStatus(ctx context.Context, c *rpc.Client) error {
+	var v helper.CertView
+	if err := c.Call(ctx, "admin.cert_status", "", "", nil, &v); err != nil {
+		return err
+	}
+	printCert(v)
+	return nil
+}
+
+func tlsInstall(ctx context.Context, c *rpc.Client, args []string) error {
+	if len(args) != 2 {
+		return errors.New("falscher Aufruf: daemonica-admin tls-install <kette.pem> <schlüssel.pem>")
+	}
+	chain, err := os.ReadFile(args[0]) //nolint:gosec // root names the file on its own console
+	if err != nil {
+		return err
+	}
+	key, err := os.ReadFile(args[1]) //nolint:gosec // root names the file on its own console
+	if err != nil {
+		return err
+	}
+	var info helper.CertInfo
+	if err := c.Call(ctx, "admin.cert_upload", "", "", map[string]string{"cert_pem": string(chain), "key_pem": string(key)}, &info); err != nil {
+		return err
+	}
+	fmt.Printf("Zertifikat installiert, gültig bis %s UTC. Das Dashboard nutzt es sofort.\n", info.NotAfter.UTC().Format("2006-01-02 15:04"))
+	return nil
+}
+
+func tlsIssue(ctx context.Context, c *rpc.Client, args []string) error {
+	fs := flag.NewFlagSet("tls-issue", flag.ExitOnError)
+	method := fs.String("method", "http-01", "http-01, tls-alpn-01 oder dns-01")
+	staging := fs.Bool("staging", false, "Let's Encrypt Staging (Test-Zertifikat, Browser vertrauen ihm nicht)")
+	tos := fs.Bool("agree-tos", false, "Nutzungsbedingungen von Let's Encrypt akzeptieren")
+	_ = fs.Parse(args)
+	if !*tos {
+		return errors.New("--agree-tos fehlt (Nutzungsbedingungen von Let's Encrypt)")
+	}
+	ca := "production"
+	if *staging {
+		ca = "staging"
+	}
+	var i helper.Issuance
+	if err := c.Call(ctx, "admin.cert_issue", "", "", map[string]any{"method": *method, "ca": ca, "agree_tos": true}, &i); err != nil {
+		return err
+	}
+	// Ctrl-C cancels the issuance in the helper (and closes an ACME window).
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+	defer signal.Stop(sig)
+	asked := false
+	for {
+		var v helper.CertView
+		if err := c.Call(ctx, "admin.cert_status", "", "", nil, &v); err != nil {
+			return err
+		}
+		it := v.Issuance
+		switch {
+		case it == nil:
+			return errors.New("keine Ausstellung gefunden")
+		case it.State == "done":
+			printCert(v)
+			return nil
+		case it.State == "failed" || it.State == "canceled":
+			if it.State == "canceled" {
+				return errors.New("die Ausstellung wurde abgebrochen")
+			}
+			return fmt.Errorf("die Ausstellung ist fehlgeschlagen: %s", it.Error)
+		case it.State == "dns_wait" && !asked && it.Record != nil:
+			asked = true
+			fmt.Printf("\nLege beim DNS-Anbieter diesen Eintrag an (TTL so kurz wie möglich):\n\n    %s  TXT  %q\n\nDanach Enter drücken (Strg+C bricht ab) ... ", it.Record.Name, it.Record.Value)
+			line := make(chan struct{})
+			go func() { _, _ = bufio.NewReader(os.Stdin).ReadString('\n'); close(line) }()
+			select {
+			case <-line:
+			case <-sig:
+				_ = c.Call(ctx, "admin.cert_cancel", "", "", nil, nil)
+				return errors.New("abgebrochen")
+			}
+			if err := c.Call(ctx, "admin.cert_dns_confirm", "", "", nil, nil); err != nil {
+				return err
+			}
+			fmt.Println("Prüfe die Nameserver ...")
+		}
+		select {
+		case <-sig:
+			_ = c.Call(ctx, "admin.cert_cancel", "", "", nil, nil)
+			return errors.New("abgebrochen")
+		case <-time.After(2 * time.Second):
+		}
+	}
+}

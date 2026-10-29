@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"math/big"
 	"os"
@@ -209,3 +210,33 @@ func TestCertUpload(t *testing.T) {
 }
 
 func auditActor() audit.Actor { return audit.Actor{AccountID: "acc-test"} }
+
+// TestCertAdminChannel: the root console can replace the certificate without a
+// browser session (way back after an expired or untrusted certificate); the
+// web channel cannot reach these operations.
+func TestCertAdminChannel(t *testing.T) {
+	e := newAuthEnv(t)
+	c := certFixture(t)
+	c.Config = e.cfg
+	if _, err := e.cfg.Update(func(cf *Config) error { cf.Domain = certDomain; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	c.Register(e.web.Ops)
+	certPEM, keyPEM := testCertPEM(t, time.Now().Add(30*24*time.Hour))
+	params := map[string]string{"cert_pem": string(certPEM), "key_pem": string(keyPEM)}
+	if r, _ := e.call(t, e.web, "admin.cert_upload", "", params); r.OK {
+		t.Fatal("admin op reachable on the web channel")
+	}
+	r, _ := e.call(t, e.admin, "admin.cert_upload", "", params)
+	mustOK(t, r, "admin.cert_upload")
+	r, res := e.call(t, e.admin, "admin.cert_status", "", nil)
+	mustOK(t, r, "admin.cert_status")
+	var v CertView
+	_ = json.Unmarshal(res, &v)
+	if v.Cert == nil || v.Source != "own" {
+		t.Fatalf("status %+v", v)
+	}
+	if r, _ := e.call(t, e.admin, "admin.cert_issue", "", map[string]any{"method": "http-01", "ca": "staging"}); r.OK {
+		t.Fatal("issuance without accepted terms")
+	}
+}

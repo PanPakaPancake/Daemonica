@@ -1,7 +1,8 @@
-# Daemonica – Installation (Entwicklungsstand M1.0)
+# Daemonica – Installation (Release Candidate Phase 1)
 
-> **Achtung:** Dies ist ein Entwicklungsstand. Die Anmeldung per Passkey und die
-> eigentliche Weboberfläche fehlen noch (siehe `docs/STATUS.md`). Nur auf der Test-VM installieren.
+> **Achtung:** Release Candidate zur Abnahme von Phase 1, **nicht signiert**
+> (`-UNSIGNED-TESTONLY`). Nur auf Test-Systemen installieren. Bekannte
+> Einschränkungen: `docs/acceptance/ACCEPTANCE-PHASE-1.md`, Abschnitt „Bekannte Einschränkungen“.
 
 ## Voraussetzungen
 
@@ -12,7 +13,7 @@
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
-sudo apt install ./daemonica_0.1.0~dev_amd64-UNSIGNED-TESTONLY.deb
+sudo apt install ./daemonica_0.1.0~rc1_amd64-UNSIGNED-TESTONLY.deb
 ```
 
 Nach der Installation laufen zwei Dienste:
@@ -57,6 +58,13 @@ Die Zertifikatswarnung im Setup-Modus ist erwartet (temporäres Zertifikat).
 | `sudo daemonica-admin allowlist-reset` | Dashboard nur noch lokal erreichbar (falls du dich ausgesperrt hast) |
 | `sudo daemonica-admin audit-verify` | Prüft, ob das Audit-Log manipuliert wurde |
 | `sudo daemonica-admin status` | Zustand anzeigen |
+| `sudo daemonica-admin recover <konto> [--revoke-all]` | Passkey verloren: Wiederherstellungs-Token (einmalig, 30 min) für einen neuen Passkey, beendet alle Sitzungen des Kontos; `--revoke-all` entfernt zusätzlich alle alten Passkeys |
+| `sudo daemonica-admin list-accounts` | Dashboard-Konten auflisten |
+| `sudo daemonica-admin tls-status` | Zertifikat und Restlaufzeit anzeigen |
+| `sudo daemonica-admin tls-issue --agree-tos [--method http-01\|tls-alpn-01\|dns-01]` | Neues Let’s-Encrypt-Zertifikat ausstellen, ohne Browser (bei DNS-01 zeigt es den TXT-Eintrag und wartet auf Enter) |
+| `sudo daemonica-admin tls-install kette.pem schluessel.pem` | Eigenes Zertifikat installieren |
+
+Ist das Zertifikat abgelaufen oder nicht vertrauenswürdig (z. B. ein Staging-Test-Zertifikat), lassen Browser keine Passkey-Anmeldung und keine Bestätigung mehr zu. Dann hilft nur einer der beiden letzten Befehle auf dem Server; das Dashboard übernimmt das neue Zertifikat sofort.
 
 ## 4. Deinstallation
 

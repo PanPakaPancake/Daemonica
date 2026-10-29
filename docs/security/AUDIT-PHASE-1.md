@@ -12,8 +12,8 @@ Rows marked **VM** are re-tested in the full test on the freshly installed VM (M
 |---|---|---|---|---|
 | Critical | 0 | – | – | – |
 | High | 0 | – | – | – |
-| Medium | 2 | 2 | 0 | – |
-| Low | 4 | 2 | – | 2 |
+| Medium | 3 | 3 | 0 | – |
+| Low | 5 | 3 | – | 2 |
 | Info | 5 | 3 | – | 2 |
 
 No finding needs a risk decision by the owner at this point. Gate rule (SPEC §6.5): met in the build environment; the VM re-test is still open.
@@ -78,6 +78,8 @@ Status: ✓ checked without open finding, ✓* checked, finding fixed, **VM** re
 | F-09 | Helper unit exposure 5.1 | Info | `daemonica-helper.service` | accepted by design (target ≤ 6.0 met) | **VM** score |
 | F-10 | `osv-scanner` and `vuln.go.dev` not reachable from the build environment | Info | tooling | open → VM | **VM** |
 | F-11 | No reproducible-build check, unsigned RC | Info | release | backlog | – |
+| F-12 | Expired or untrusted certificate locks the admin out of certificate changes | Medium | certificates (DEC-034), `daemonica-admin` | fixed | `TestCertAdminChannel` ✓; `tls-status`/`tls-install`/`tls-issue` against the local stack ✓; **VM** |
+| F-13 | Firewall log entries lost to kernel rate limiting were not shown (SPEC §7.6b "soweit erkennbar") | Low | `firewall.logs` | fixed | `TestFirewallLogsAndBlockSource` ✓ |
 
 ### F-01 — Rate limit and backoff per IPv6 address (Medium, fixed)
 - **Description:** Buckets and the failure backoff were keyed by the full client address. A host usually owns a whole IPv6 /64 and can use any address in it, so it could bypass the per-IP login limit and the backoff by rotating addresses; only the global limit remained. IPv4-mapped IPv6 addresses also got their own bucket.
@@ -105,6 +107,15 @@ Status: ✓ checked without open finding, ✓* checked, finding fixed, **VM** re
 ### F-08 — Ceremony table and global limit exhaustible from within the allowlist (Low, backlog)
 - **Description:** pending ceremonies are capped at 1000 for 120 s. A client inside the allowlist with ≥ 12 /64 prefixes (or IPv4 addresses) could keep the table full; the global limit (10/s) itself lets the same client slow everyone's login. This follows the SPEC design (no account lockout, per-IP plus global limit) and needs allowlist access.
 - **Recommendation:** in Phase 2 reserve part of the global budget for clients with a valid session cookie and evict the oldest login ceremony instead of refusing new ones.
+
+### F-12 — Expired or untrusted certificate locks the admin out of certificate changes (Medium, fixed)
+- **Description:** browsers refuse WebAuthn on origins with certificate errors. Once the dashboard certificate expired (e.g. a missed manual DNS-01 renewal) or an untrusted one was installed (Let's Encrypt staging chosen in the settings), passkey login and step-up stopped working, and replacing the certificate needs step-up. The only way back was editing `/var/lib/daemonica/tls` by hand; `daemonica-admin tls-status` was still a stub.
+- **Fix:** admin-socket operations `admin.cert_status/issue/dns_confirm/cancel/upload` and the console commands `tls-status`, `tls-issue` (HTTP-01, TLS-ALPN-01, DNS-01 interactive, Ctrl-C cancels and closes the ACME window) and `tls-install`; the UI warns when staging is chosen; INSTALL.md §3 explains the way back.
+- **Re-test:** `TestCertAdminChannel` (reachable only on the admin socket, upload works, terms required); console commands against the local stack (status, install, failing staging issuance reported).
+
+### F-13 — Firewall log entries lost to rate limiting not shown (Low, fixed)
+- **Description:** SPEC §7.6b asks to show entries lost to rate limiting as far as detectable; the firewall log view did not.
+- **Fix:** `firewall.logs` also counts kernel `N callbacks suppressed` lines in the same period and the page shows a warning. ufw's own `LOG` rate limit drops silently and stays undetectable (said in the result field's comment and in STATUS).
 
 ### F-09, F-10, F-11
 - **F-09:** remaining helper exposure comes from capabilities and file system access the admin modules need (users, files, firewall, packages, disks); listed with reasons in `docs/ARCHITECTURE.md` "Hardening exceptions".

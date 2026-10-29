@@ -172,6 +172,9 @@ func TestFirewallLogsAndBlockSource(t *testing.T) {
 	var lastQuery journal.Query
 	now := time.Now().UTC()
 	jr := func(_ context.Context, q journal.Query) (journal.Result, error) {
+		if q.Grep == "callbacks suppressed" {
+			return journal.Result{Entries: []journal.Entry{{Time: now, Message: "net_ratelimit: 37 callbacks suppressed"}}}, nil
+		}
 		lastQuery = q
 		return journal.Result{Cursor: "cur9", Entries: []journal.Entry{
 			{Time: now, Message: "[UFW BLOCK] IN=eth0 OUT= SRC=203.0.113.9 DST=203.0.113.10 PROTO=TCP SPT=40000 DPT=5432 SYN"},
@@ -192,7 +195,7 @@ func TestFirewallLogsAndBlockSource(t *testing.T) {
 	mustOK(t, r, "logs")
 	var lv FirewallLogs
 	_ = json.Unmarshal(r.Result, &lv)
-	if lv.Scanned != 4 || len(lv.Entries) != 1 || lv.Entries[0].Src != "192.0.2.44" || !lv.Truncated || lv.Cursor != "cur9" {
+	if lv.Scanned != 4 || len(lv.Entries) != 1 || lv.Entries[0].Src != "192.0.2.44" || !lv.Truncated || lv.Cursor != "cur9" || lv.Suppressed != 37 {
 		t.Fatalf("logs: %+v", lv)
 	}
 	if lastQuery.Identifier != "kernel" || lastQuery.Grep != "SRC=" || !lastQuery.NoBudget {

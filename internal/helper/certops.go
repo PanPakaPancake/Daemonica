@@ -482,6 +482,41 @@ func (c *CertOps) Register(ops map[string]*Op) {
 			return c.upload(p.CertPEM, p.KeyPEM)
 		}})
 
+	// --- daemonica-admin (root console): the way back when the browser cannot
+	// do passkey ceremonies any more (expired or untrusted certificate) ---
+	root := audit.Actor{Name: "root (daemonica-admin)", LinuxUser: "root"}
+	Register(ops, &Op{Name: "admin.cert_status", AdminChannel: true, NoAudit: true,
+		Handle: func(context.Context, Call) (any, error) {
+			cfg := c.Config.Get()
+			return CertView{Domain: cfg.Domain, Cert: c.Installed(), Source: cfg.TLSSource, Method: cfg.TLSMethod,
+				AutoRenew: autoRenew(cfg), RenewDays: RenewDays, Issuance: c.Current()}, nil
+		}})
+	Register(ops, &Op{Name: "admin.cert_issue", AdminChannel: true,
+		Handle: func(_ context.Context, call Call) (any, error) {
+			var p acmeParams
+			if err := decode(call, &p); err != nil {
+				return nil, err
+			}
+			m, err := checkACME(p)
+			if err != nil {
+				return nil, err
+			}
+			call.AuditKV["method"], call.AuditKV["ca"] = p.Method, p.CA
+			return c.Start(m, p.CA, false, root)
+		}})
+	Register(ops, &Op{Name: "admin.cert_dns_confirm", AdminChannel: true,
+		Handle: func(context.Context, Call) (any, error) { return c.Confirm() }})
+	Register(ops, &Op{Name: "admin.cert_cancel", AdminChannel: true,
+		Handle: func(context.Context, Call) (any, error) { return c.Cancel() }})
+	Register(ops, &Op{Name: "admin.cert_upload", AdminChannel: true,
+		Handle: func(_ context.Context, call Call) (any, error) {
+			var p pemParams
+			if err := decode(call, &p); err != nil {
+				return nil, err
+			}
+			return c.upload(p.CertPEM, p.KeyPEM)
+		}})
+
 	// --- settings (admin; changes need step-up) ---
 	Register(ops, &Op{Name: "cert.get", Action: policy.ActSettingsRead, NoAudit: true,
 		Handle: func(context.Context, Call) (any, error) {

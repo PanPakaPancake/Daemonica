@@ -1,8 +1,8 @@
 # Status (progress against SPEC v1.2)
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-10-29_
 
-## Current phase: Phase 1 — milestone M1.0 (in progress)
+## Current phase: Phase 1 — milestone M1.8 (acceptance package; full test on a fresh VM pending)
 
 ### Blockers (need owner action)
 
@@ -45,7 +45,7 @@ _Last updated: 2026-10-25_
 ### First install on the VM
 
 - `.deb` installs, both services active, web listens on **127.0.0.1:8443 only** (not reachable on the public IP).
-- `systemd-analyze security`: **daemonica-web 1.1** (target ≤ 2.0 ✓), **daemonica-helper 6.8** (target ≤ 6.0 ✖ — to be tightened).
+- `systemd-analyze security`: **daemonica-web 1.1** (target ≤ 2.0 ✓), **daemonica-helper 6.8** (target ≤ 6.0 ✖ at M1.0; 5.1 since M1.8).
 - Bootstrap → token check → helper restart → audit chain verify: all ok. `govulncheck`: no vulnerabilities.
 - Bug found and fixed: `/run/daemonica` was root:root 0750, so the web user could not reach `helper.sock` (fixed in d357a34).
 
@@ -53,7 +53,7 @@ _Last updated: 2026-10-25_
 
 | ID | Status | Notes |
 |---|---|---|
-| M1.0 | ⚠ nearly done | All core items done incl. accounts, audit view, allowlist Plan→Apply→Confirm. TLS change in settings, DNS-01 guided and renewal done in M1.8 (DEC-034). Open: Playwright E2E with virtual authenticator, helper hardening score ≤ 6.0. |
+| M1.0 | ✓ done in M1.8, owner acceptance with Phase 1 | All core items incl. accounts, audit view, allowlist Plan→Apply→Confirm; TLS change in settings, guided DNS-01 and renewal (DEC-034); Playwright E2E with virtual authenticator (`make test-e2e`); helper exposure 5.1 (≤ 6.0). |
 | M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Last logins, allowlisted log files and the journald rate-limit hint added in M1.8; log follow runs over WebSocket (DEC-026). Open: owner acceptance check against `top`/`free`/`df` (with Phase 1). |
 | M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Last login per user added in M1.8. Open: owner acceptance (with Phase 1). |
 | M1.3 | ✓ accepted by owner 2026-10-25 | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021); lists with sort/filter on every column and right-click menus (DEC-022). Open: folder download as archive (KANN). |
@@ -61,13 +61,13 @@ _Last updated: 2026-10-25_
 | M1.5 | ✓ accepted by owner 2026-10-25 | Network, firewall, firewall logs, packet capture (tables below, DEC-024–DEC-028). Browser acceptance 1–4 passed on the VM 2026-10-25. |
 | M1.6 | ✓ accepted by the owner (2026-10-25) | Tasks and jobs plus script library and cron schedule builder (table below, DEC-029, DEC-030). |
 | M1.7 | ✓ accepted by the owner (2026-10-26) | Updates, disks, time and host (table below, DEC-031 – DEC-033). |
-| M1.8 | ✖ open | |
+| M1.8 | ⚠ acceptance package ready, full test on a fresh VM pending | Open requirements closed (certificates DEC-034, last logins, log files, SBOM), hardening (helper 7.0 → 5.1, purge, newer-schema guard), E2E + base load (`scripts/e2e`), phase audit `docs/security/AUDIT-PHASE-1.md` (2 medium findings fixed, DEC-035), acceptance checklist `docs/acceptance/ACCEPTANCE-PHASE-1.md`, test report `docs/acceptance/TEST-REPORT-PHASE-1.md`. |
 
 ### M1.0 requirement status
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Repo layout, Makefile targets (`deps lint test test-integration test-e2e sec build package sbom release`) | ⚠ | `sbom` writes CycloneDX JSON for the three binaries and the frontend (M1.8). `test-e2e` follows with the E2E suite. |
+| Repo layout, Makefile targets (`deps lint test test-integration test-e2e sec build package sbom release`) | ✓ | `test-e2e` runs `scripts/e2e/full.mjs` (M1.8); `sec` runs govulncheck, osv-scanner, gosec (golangci-lint), gitleaks, npm audit; `sbom` writes CycloneDX JSON. |
 | Versioned, length-prefixed RPC, 1 MiB limit, strict decoding | ✓ | `internal/rpc`, tests + fuzz target |
 | Helper on Unix sockets only; `helper.sock 0660 root:daemonica-web`, `admin.sock 0600` | ✓ | `internal/helper/server.go`; smoke test (socket modes verified) |
 | `SO_PEERCRED` check | ✓ | `TestPeerCredOverRealSocket` |
@@ -93,7 +93,7 @@ _Last updated: 2026-10-25_
 | Setup wizard (token → domain → allowlist → certificate → switch to domain → first passkey), UI shell, dark (default)/light theme, de/en i18n, nav icons, mobile drawer | ✓ | Owner completed setup in a real browser on the VM (2026-10-24); headless Chromium: no CSP/Trusted-Types violations |
 | Session cookie `__Host-`, Secure, HttpOnly, SameSite=Strict, rotation on login/step-up, grant never sent to browser | ✓ | `internal/web/auth_test.go` |
 | ACME (Let's Encrypt, HTTP-01/TLS-ALPN-01, ECDSA P-256, staging/production) | ✓ HTTP-01, TLS-ALPN-01, DNS-01 guided, ACME window, change in settings, automatic renewal (DEC-034) | Production cert issued for the test VM with owner approval (S2); VM test of the new paths in the Phase 1 acceptance (staging) |
-| systemd units with hardening | ⚠ | Scores on the VM: daemonica-web **1.1** (target ≤ 2.0 ✓), daemonica-helper **6.8** (target ≤ 6.0 ✖, to tighten in M1.8) |
+| systemd units with hardening | ✓ | daemonica-web **1.1** (target ≤ 2.0), daemonica-helper **5.1** (target ≤ 6.0) since M1.8 (offline measurement; VM value in the audit report) |
 | `.deb` packaging, postinst/prerm/postrm | ✓ (install/upgrade on VM) / ⚠ (remove/purge test, arm64 install untested) | VM: install, reinstall and the daemonia→daemonica migration (data moved, accounts/passkeys/audit chain intact) |
 
 ### M1.1 requirement status
@@ -185,7 +185,7 @@ _Last updated: 2026-10-25_
 | Statistics (SOLL): top sources, top ports, timeline, per action | ✓ | `FirewallLogs.tsx` |
 | Block source (admin, step-up, plan) with protection of own IP, allowlist networks, SSH/dashboard | ✓ | `TestFirewallLogsAndBlockSource` |
 | Logging control with explanations, wizard when off, warning for high/full | ✓ | `FirewallLogs.tsx`, `Firewall.tsx` |
-| Entries lost to journald rate limiting shown "as far as detectable" | ✖ | not implemented yet |
+| Entries lost to journald rate limiting shown "as far as detectable" | ✓ | kernel printk suppression (`N callbacks suppressed`) counted and shown (M1.8, `TestFirewallLogsAndBlockSource`); ufw's own LOG rate limit drops silently and cannot be detected |
 | No external lookups; only parsed fields shown | ✓ | DEC-027 |
 | Packet capture: admin only, step-up per start, privacy warning, audit without contents | ✓ | `TestCaptureOps`, policy table |
 | Wizard: purpose templates, interface (regex + existence), filter builder, free BPF under Advanced (allowlist, no leading `-`, compile check, single argv element), limits, full packets with extra warning, promiscuous off, dashboard excluded | ✓ | `capture.Spec`, `TestSpec`, `TestCaptureOps`, `Capture.tsx`, `capture.test.ts` |

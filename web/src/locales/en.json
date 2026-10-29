@@ -1187,6 +1187,8 @@
       "summary_one": "{{count}} entry ({{scanned}} kernel lines checked)",
       "summary_other": "{{count}} entries ({{scanned}} kernel lines checked)",
       "truncated": "result truncated, narrow the time range or filters",
+      "suppressed_one": "The kernel suppressed {{count}} log message in this period (rate limit) – entries are missing.",
+      "suppressed_other": "The kernel suppressed {{count}} log messages in this period (rate limit) – entries are missing.",
       "empty": "No firewall entries in this time range.",
       "col": {
         "time": "Time",
@@ -2220,6 +2222,7 @@
     "expiring": "The certificate expires in {{days}} days.",
     "expired": "The certificate has expired. Browsers show a warning until a new one is installed.",
     "stagingWarn": "This is a test certificate from Let’s Encrypt staging. Browsers do not trust it.",
+    "stagingChoice": "For tests only: browsers do not trust a staging certificate, so passkey sign-in and confirmation stop working. To get back to a valid certificate, run “sudo daemonica-admin tls-issue --agree-tos” or “tls-install” on the server.",
     "renewFailed": "The automatic renewal failed. Daemonica tries again in 12 hours.",
     "installed": "New certificate installed, valid until {{date}}. The dashboard uses it right away, you stay signed in.",
     "source": "Certificate source",

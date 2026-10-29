@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/netip"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -401,7 +402,13 @@ type FirewallLogs struct {
 	Cursor    string              `json:"cursor,omitempty"`
 	Truncated bool                `json:"truncated"`
 	Scanned   int                 `json:"scanned"`
+	// Suppressed counts kernel log lines dropped by printk rate limiting
+	// ("N callbacks suppressed") in the same period: entries are missing
+	// (SPEC §7.6b "soweit erkennbar"). ufw's own LOG limit is not detectable.
+	Suppressed int `json:"suppressed,omitempty"`
 }
+
+var suppressedRE = regexp.MustCompile(`(\d+) callbacks suppressed`)
 
 // MaxFirewallLogLines bounds one firewall log answer (RPC frame limit); the
 // UI pages backwards with "until" for exports of up to 10,000 rows.
@@ -438,6 +445,15 @@ func (f *FirewallOps) logs(ctx context.Context, p fwLogParams) (FirewallLogs, er
 	if n := len(out.Entries); n > p.Lines {
 		out.Entries = out.Entries[n-p.Lines:] // the newest
 		out.Truncated = true
+	}
+	q.Grep, q.Lines, q.NoBudget = "callbacks suppressed", 500, false
+	if sup, err := run(ctx, q); err == nil {
+		for _, je := range sup.Entries {
+			if m := suppressedRE.FindStringSubmatch(je.Message); m != nil {
+				n, _ := strconv.Atoi(m[1])
+				out.Suppressed += n
+			}
+		}
 	}
 	return out, nil
 }

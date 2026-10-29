@@ -92,10 +92,11 @@ func main() {
 	}
 
 	// Watch the helper-owned configuration: allowlist changes apply live; a
-	// changed domain, port, certificate or setup phase restarts the process
+	// changed domain, port or setup phase restarts the process; a new
+	// certificate is swapped in (reloadCert)
 	// (exit 75 → systemd Restart=on-failure) so listener and origins are rebuilt.
 	kick := make(chan struct{}, 1)
-	go watchConfig(ctx, client, log, cfg, allow, domainMode, kick)
+	go watchConfig(ctx, client, log, cfg, allow, domainMode, kick, func() error { return reloadCert(holder, *tlsDir) })
 
 	srv := &web.Server{
 		Helper:   client,
@@ -165,7 +166,19 @@ func fetchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger) (helper.W
 // ExitRestart asks systemd to restart the service (Restart=on-failure).
 const ExitRestart = 75
 
-func watchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger, start helper.WebConfig, allow *netallow.Allowlist, domainMode bool, kick <-chan struct{}) {
+// reloadCert swaps in a new certificate (ACME renewal, change in the
+// settings) without restarting: sessions live in this process.
+func reloadCert(h *tlsconf.Holder, dir string) error {
+	cert, err := tls.LoadX509KeyPair(filepath.Join(dir, "fullchain.pem"), filepath.Join(dir, "privkey.pem"))
+	if err != nil {
+		return err
+	}
+	h.Set(&cert)
+	return nil
+}
+
+func watchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger, start helper.WebConfig, allow *netallow.Allowlist, domainMode bool,
+	kick <-chan struct{}, reload func() error) {
 	t := time.NewTicker(3 * time.Second)
 	defer t.Stop()
 	for {
@@ -183,8 +196,17 @@ func watchConfig(ctx context.Context, c *rpc.Client, log *slog.Logger, start hel
 		// In loopback setup mode only switching to domain mode matters; restarting
 		// on every wizard step would abort in-flight requests (e.g. ACME issuance).
 		changed := wantDomainMode != domainMode
-		if domainMode && (cur.Domain != start.Domain || cur.Port != start.Port || cur.CertVersion != start.CertVersion) {
+		if domainMode && (cur.Domain != start.Domain || cur.Port != start.Port) {
 			changed = true
+		}
+		if domainMode && !changed && cur.CertVersion != start.CertVersion {
+			if err := reload(); err != nil {
+				// Key and chain are written one after the other: retry at the next poll.
+				log.Warn("cannot load the new certificate yet", "err", err)
+			} else {
+				start.CertVersion = cur.CertVersion
+				log.Info("certificate reloaded")
+			}
 		}
 		if changed {
 			log.Info("listener configuration changed; restarting")

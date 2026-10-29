@@ -1,7 +1,8 @@
 // Package acme is the reusable ACME client used for the dashboard certificate
 // (SPEC §3.6) and, in Phase 3, for nginx sites. It wraps lego with the
 // project's constraints: ECDSA P-256 keys, explicit CA choice (staging is the
-// default for tests), HTTP-01/TLS-ALPN-01 only in a short-lived "ACME window".
+// default for tests), HTTP-01/TLS-ALPN-01 only in a short-lived "ACME window",
+// DNS-01 guided: the operator creates the TXT record by hand (SPEC §3.6 b).
 package acme
 
 import (
@@ -21,6 +22,7 @@ import (
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
+	"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/challenge/http01"
 	"github.com/go-acme/lego/v4/challenge/tlsalpn01"
 	"github.com/go-acme/lego/v4/lego"
@@ -36,11 +38,40 @@ const (
 // Method is the challenge type.
 type Method string
 
-// Supported methods (DNS-01 guided mode follows in a later milestone).
+// Supported methods.
 const (
 	HTTP01    Method = "http-01"
 	TLSALPN01 Method = "tls-alpn-01"
+	DNS01     Method = "dns-01"
 )
+
+// DNSTimeout is how long a guided DNS-01 challenge waits for the operator
+// and for the record to reach all authoritative name servers.
+const DNSTimeout = 30 * time.Minute
+
+// Guide connects a guided DNS-01 challenge with the operator.
+type Guide struct {
+	// Record is called with the TXT record to create (name without trailing dot).
+	Record func(name, value string)
+	// Confirmed reports whether the operator says the record is in place;
+	// until then the record is not checked.
+	Confirmed func() bool
+	// Checked receives every propagation check (authoritative name servers).
+	Checked func(ok bool, err error)
+}
+
+// guided is the lego DNS provider for Guide: it presents nothing itself.
+type guided struct{ g *Guide }
+
+func (m guided) Present(domain, _, keyAuth string) error {
+	i := dns01.GetChallengeInfo(domain, keyAuth)
+	m.g.Record(dns01.UnFqdn(i.EffectiveFQDN), i.Value)
+	return nil
+}
+
+func (guided) CleanUp(string, string, string) error { return nil }
+
+func (guided) Timeout() (time.Duration, time.Duration) { return DNSTimeout, 10 * time.Second }
 
 // Request describes one issuance.
 type Request struct {
@@ -50,6 +81,8 @@ type Request struct {
 	StateDir string // holds the ACME account key (0600)
 	// AgreeTOS must be true: the operator accepted the CA's terms in the UI.
 	AgreeTOS bool
+	// Guide is required for DNS01.
+	Guide *Guide
 }
 
 // Result carries PEM-encoded certificate chain and private key.
@@ -143,6 +176,25 @@ func Obtain(ctx context.Context, r Request) (*Result, error) {
 			return nil, errors.New("acme: port 443 is in use")
 		}
 		if err := client.Challenge.SetTLSALPN01Provider(tlsalpn01.NewProviderServer("", "443")); err != nil {
+			return nil, err
+		}
+	case DNS01:
+		if r.Guide == nil {
+			return nil, errors.New("acme: dns-01 needs a guide")
+		}
+		g := r.Guide
+		err := client.Challenge.SetDNS01Provider(guided{g}, dns01.WrapPreCheck(func(_, fqdn, value string, check dns01.PreCheckFunc) (bool, error) {
+			if ctx.Err() != nil {
+				return true, ctx.Err() // ends lego's wait loop
+			}
+			if !g.Confirmed() {
+				return false, nil
+			}
+			ok, err := check(fqdn, value)
+			g.Checked(ok, err)
+			return ok, nil
+		}))
+		if err != nil {
 			return nil, err
 		}
 	default:

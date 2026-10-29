@@ -1,9 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
+import { CertificateForm } from "../components/CertificateForm";
 import { Explain, Field, Notice, Panel, Steps, Wordmark } from "../components/ui";
 import { api, type CeremonyStart, type LinuxUser, type SetupState } from "../lib/api";
+import type { CertInfo } from "../lib/cert";
 import { errorText } from "../lib/errors";
 import { createPasskey, supported } from "../lib/webauthn";
 
@@ -33,12 +35,8 @@ export function Setup() {
   const [allow, setAllow] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [publicOk, setPublicOk] = useState(false);
-  const [certMode, setCertMode] = useState<"acme" | "own">("acme");
-  const [ca, setCa] = useState<"production" | "staging">("production");
-  const [tos, setTos] = useState(false);
-  const [certPem, setCertPem] = useState("");
-  const [keyPem, setKeyPem] = useState("");
   const [certInfo, setCertInfo] = useState<string>();
+  const [certLost, setCertLost] = useState(false);
   const [account, setAccount] = useState("");
   const [linuxUser, setLinuxUser] = useState("");
   const [pkName, setPkName] = useState("");
@@ -85,15 +83,20 @@ export function Setup() {
     setStep("certificate");
   };
 
-  const installCert = async () => {
-    const info =
-      certMode === "acme"
-        ? await api<{ not_after: string }>("POST", "/setup/certificate/acme", { token, method: "http-01", ca, agree_tos: tos })
-        : await api<{ not_after: string }>("POST", "/setup/certificate/upload", { token, cert_pem: certPem, key_pem: keyPem });
-    setCertInfo(new Date(info.not_after).toLocaleDateString());
-    await qc.invalidateQueries({ queryKey: ["setup-state"] });
+  const certInstalled = useCallback(
+    (c: CertInfo) => {
+      setCertInfo(new Date(c.not_after).toLocaleDateString());
+      void qc.invalidateQueries({ queryKey: ["setup-state"] });
+      setStep("switch");
+    },
+    [qc],
+  );
+  // The web service restarts on the final domain right after the certificate
+  // is installed; the loopback page can lose it before seeing "done".
+  const certLostCb = useCallback(() => {
+    setCertLost(true);
     setStep("switch");
-  };
+  }, []);
 
   const register = async () => {
     const start = await api<CeremonyStart>("POST", "/setup/register/begin", { token, account_name: account.trim(), linux_user: linuxUser });
@@ -209,72 +212,20 @@ export function Setup() {
           )}
 
           {step === "certificate" && (
-            <form
-              className="flex flex-col gap-5"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void run(installCert);
-              }}
-            >
-              <fieldset className="flex flex-col gap-3">
-                <legend className="sr-only">{t("setup.steps.certificate")}</legend>
-                <label className="flex items-start gap-2">
-                  <input type="radio" name="cert" checked={certMode === "acme"} onChange={() => setCertMode("acme")} className="mt-1" />
-                  <span>
-                    <span className="font-medium">{t("setup.certificate.acme")}</span>
-                    <span className="block text-sm text-muted">{t("setup.certificate.acmeHelp")}</span>
-                  </span>
-                </label>
-                <label className="flex items-start gap-2">
-                  <input type="radio" name="cert" checked={certMode === "own"} onChange={() => setCertMode("own")} className="mt-1" />
-                  <span className="font-medium">{t("setup.certificate.own")}</span>
-                </label>
-              </fieldset>
-              {certMode === "acme" ? (
-                <>
-                  <Field label={t("setup.certificate.ca")}>
-                    {(p) => (
-                      <select {...p} className="input" value={ca} onChange={(e) => setCa(e.target.value === "staging" ? "staging" : "production")}>
-                        <option value="production">{t("setup.certificate.production")}</option>
-                        <option value="staging">{t("setup.certificate.staging")}</option>
-                      </select>
-                    )}
-                  </Field>
-                  <label className="flex items-start gap-2">
-                    <input type="checkbox" checked={tos} onChange={(e) => setTos(e.target.checked)} className="mt-1" />
-                    <span>{t("setup.certificate.tos")}</span>
-                  </label>
-                </>
-              ) : (
-                <>
-                  <Field label={t("setup.certificate.certPem")}>
-                    {(p) => <textarea {...p} className="input" value={certPem} onChange={(e) => setCertPem(e.target.value)} spellCheck={false} />}
-                  </Field>
-                  <Field label={t("setup.certificate.keyPem")}>
-                    {(p) => (
-                      <textarea {...p} className="input" value={keyPem} onChange={(e) => setKeyPem(e.target.value)} spellCheck={false} autoComplete="off" />
-                    )}
-                  </Field>
-                </>
-              )}
-              {busy && (
-                <Notice tone="info" live>
-                  {t("setup.certificate.working")}
-                </Notice>
-              )}
-              <Explain>{t("setup.certificate.explain")}</Explain>
-              <Nav
-                onBack={() => setStep("allowlist")}
-                busy={busy}
-                label={certMode === "acme" ? t("setup.certificate.issue") : t("setup.certificate.upload")}
-                disabled={certMode === "acme" ? !tos : !certPem || !keyPem}
-              />
-            </form>
+            <div className="flex flex-col gap-5">
+              <CertificateForm base="/setup/certificate" token={token} onInstalled={certInstalled} onLost={certLostCb} />
+              <div>
+                <button type="button" className="btn btn-secondary" onClick={() => setStep("allowlist")}>
+                  {t("common.back")}
+                </button>
+              </div>
+            </div>
           )}
 
           {step === "switch" && (
             <div className="flex flex-col gap-4">
               {certInfo && <Notice tone="ok">{t("setup.certificate.ok", { date: certInfo })}</Notice>}
+              {certLost && !certInfo && <Notice tone="info">{t("setup.certificate.lost")}</Notice>}
               <h2 className="text-lg font-semibold">{t("setup.switch.title")}</h2>
               <p>{t("setup.switch.text", { url })}</p>
               {url && (

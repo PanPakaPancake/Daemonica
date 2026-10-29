@@ -109,20 +109,8 @@
       "explain": "The default is “allowed networks only”. Local access (127.0.0.1, ::1) always remains allowed."
     },
     "certificate": {
-      "acme": "Let’s Encrypt (recommended)",
-      "acmeHelp": "Free, automatically issued certificate. Port 80 must briefly be free and reachable from the Internet.",
-      "ca": "Certificate authority",
-      "production": "Let’s Encrypt (trusted)",
-      "staging": "Let’s Encrypt Staging (testing only, not trusted by browsers)",
-      "tos": "I accept the Let’s Encrypt terms of service.",
-      "own": "Upload my own certificate",
-      "certPem": "Certificate chain (PEM)",
-      "keyPem": "Private key (PEM, ECDSA P-256)",
-      "issue": "Request certificate",
-      "upload": "Use certificate",
-      "working": "Issuing certificate … this can take up to a minute.",
       "ok": "Certificate installed, valid until {{date}}.",
-      "explain": "The dashboard only speaks TLS 1.3. The certificate is stored only for the web service."
+      "lost": "The certificate is installed and the web service now listens on the domain, so this page (localhost) can no longer reach it. Continue on the domain."
     },
     "switch": {
       "title": "Switching to the final address",
@@ -361,11 +349,10 @@
     },
     "explain": "Daemonica checks the allowlist when a connection is accepted, before TLS, and again on every request. After applying, the server closes your connection; the confirmation must arrive over a new connection and thereby proves you still get in with the new allowlist. The revert timer runs in the privileged helper – independent of the browser and the web process.",
     "general": "General",
-    "tls": "Certificate",
     "sessionTimes": "Session lifetime",
     "sessionTimesValue": "{{idle}} min idle, max. {{abs}} h",
     "upload": "Upload limit",
-    "moreLater": "More settings (switch certificate, session lifetime, language) will follow."
+    "moreLater": "More settings (session times, language) will follow."
   },
   "services": {
     "title": "Services",
@@ -2194,5 +2181,71 @@
       "elapsed": "Elapsed:",
       "reload": "Reload page"
     }
+  },
+  "cert": {
+    "title": "TLS certificate",
+    "change": "Change certificate",
+    "names": "Valid for",
+    "issuer": "Issuer",
+    "validUntil": "Valid until",
+    "validValue": "{{date}} ({{days}} days left)",
+    "sourceLabel": "Source",
+    "sourceName": {
+      "own": "Own certificate",
+      "acme-staging": "Let’s Encrypt staging",
+      "acme-production": "Let’s Encrypt"
+    },
+    "method": "Challenge",
+    "renewal": "Renewal",
+    "renewAuto": "Automatic once fewer than {{days}} days are left (checked twice a day).",
+    "renewManual": "Manual: DNS-01 needs a new TXT record for every renewal. Daemonica warns 30 days ahead.",
+    "renewOwn": "Manual: upload a new certificate in time. Daemonica warns 30 days ahead.",
+    "expiring": "The certificate expires in {{days}} days.",
+    "expired": "The certificate has expired. Browsers show a warning until a new one is installed.",
+    "stagingWarn": "This is a test certificate from Let’s Encrypt staging. Browsers do not trust it.",
+    "renewFailed": "The automatic renewal failed. Daemonica tries again in 12 hours.",
+    "installed": "New certificate installed, valid until {{date}}. The dashboard uses it right away, you stay signed in.",
+    "source": "Certificate source",
+    "mode": {
+      "http-01": "Let’s Encrypt via HTTP-01 (recommended)",
+      "tls-alpn-01": "Let’s Encrypt via TLS-ALPN-01",
+      "dns-01": "Let’s Encrypt via DNS-01 (guided)",
+      "own": "Upload own certificate"
+    },
+    "modeHelp": {
+      "http-01": "Port 80 must be free and reachable from the internet. Daemonica opens it for the challenge only.",
+      "tls-alpn-01": "Port 443 must be free and reachable from the internet. Daemonica opens it for the challenge only.",
+      "dns-01": "No open port needed. You create a TXT record at your DNS provider; Daemonica shows and checks it.",
+      "own": "Certificate chain and key in PEM format, ECDSA P-256."
+    },
+    "explain": {
+      "http-01": "Let’s Encrypt fetches a challenge URL on port 80. If the firewall (ufw) is active and blocks port 80, Daemonica opens it for this challenge only and closes it afterwards. Only challenge paths are answered. The certificate is renewed automatically later.",
+      "tls-alpn-01": "Let’s Encrypt opens a TLS connection to port 443. If the firewall (ufw) is active and blocks port 443, Daemonica opens it for this challenge only and closes it afterwards. The certificate is renewed automatically later.",
+      "dns-01": "Daemonica shows the name and value of a TXT record. You create it at your DNS provider and confirm. Daemonica waits until all authoritative name servers return the record (up to 30 minutes) and then has the certificate issued. Every renewal needs a new record.",
+      "own": "Daemonica checks that certificate and key match, cover the domain and are currently valid. Afterwards only the web service holds the key (file 0600)."
+    },
+    "ca": "Certificate authority",
+    "production": "Let’s Encrypt (trusted)",
+    "staging": "Let’s Encrypt staging (tests only, browsers do not trust it)",
+    "tos": "I accept the Let’s Encrypt terms of service.",
+    "certPem": "Certificate chain (PEM)",
+    "keyPem": "Private key (PEM, ECDSA P-256)",
+    "issue": "Request certificate",
+    "upload": "Use certificate",
+    "working": "Issuing the certificate via {{method}} … this usually takes less than a minute.",
+    "preparing": "Let’s Encrypt is preparing the DNS challenge …",
+    "dnsIntro": "Create this record at your DNS provider and confirm afterwards:",
+    "dnsType": "Type",
+    "dnsName": "Name",
+    "dnsValue": "Value",
+    "dnsTtl": "as short as possible, e.g. 60 seconds",
+    "dnsShort": "Many providers want only the part before the zone as name, here probably “{{name}}”.",
+    "dnsConfirm": "Record is set, check now",
+    "checking": "Checking the authoritative name servers (attempt {{n}}) … this can take a few minutes.",
+    "copy": "Copy",
+    "cancel": "Cancel issuance",
+    "failed": "Issuing via {{method}} failed.",
+    "canceled": "The issuance was cancelled.",
+    "notVisible": "Not yet visible on all authoritative name servers."
   }
 }

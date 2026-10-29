@@ -147,12 +147,19 @@ func main() {
 	core.Register(ops, al)
 	authOps := &helper.AuthOps{DB: db, Config: cfg, Grants: grants, Tokens: tokens, Audit: al}
 	authOps.Register(ops)
-	certOps := &helper.CertOps{Config: cfg, Guard: authOps.SetupGuard, TLSDir: *tlsDir, StateDir: *stateDir, WebUID: webUIDInt, WebGID: webGID}
+	certOps := &helper.CertOps{Config: cfg, Guard: authOps.SetupGuard, TLSDir: *tlsDir, StateDir: *stateDir, WebUID: webUIDInt, WebGID: webGID,
+		Window: ufw.OpenWindow, Audit: al}
 	certOps.Register(ops)
 	(&helper.SettingsOps{Config: cfg, Planner: pm}).Register(ops)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
+	// An ACME window left open by an interrupted issuance is closed now;
+	// due renewals start two minutes after start and are checked twice a day.
+	if err := ufw.CloseStaleWindows(ctx); err != nil {
+		log.Warn("cannot close stale ACME window", "err", err)
+	}
+	go certOps.RenewLoop(ctx, 2*time.Minute, 12*time.Hour)
 
 	// M1.1: system overview, processes, services (D-Bus), journal.
 	sd, err := services.Connect()

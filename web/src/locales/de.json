@@ -109,20 +109,8 @@
       "explain": "Standard ist „nur freigegebene Netze“. Lokaler Zugriff (127.0.0.1, ::1) bleibt immer erlaubt."
     },
     "certificate": {
-      "acme": "Let’s Encrypt (empfohlen)",
-      "acmeHelp": "Kostenloses, automatisch ausgestelltes Zertifikat. Port 80 muss dafür kurz frei und aus dem Internet erreichbar sein.",
-      "ca": "Zertifizierungsstelle",
-      "production": "Let’s Encrypt (vertrauenswürdig)",
-      "staging": "Let’s Encrypt Staging (nur für Tests, Browser vertrauen ihm nicht)",
-      "tos": "Ich akzeptiere die Nutzungsbedingungen von Let’s Encrypt.",
-      "own": "Eigenes Zertifikat hochladen",
-      "certPem": "Zertifikatskette (PEM)",
-      "keyPem": "Privater Schlüssel (PEM, ECDSA P-256)",
-      "issue": "Zertifikat anfordern",
-      "upload": "Zertifikat übernehmen",
-      "working": "Zertifikat wird ausgestellt … das kann bis zu einer Minute dauern.",
       "ok": "Zertifikat installiert, gültig bis {{date}}.",
-      "explain": "Das Dashboard spricht nur TLS 1.3. Das Zertifikat liegt ausschließlich beim Web-Dienst."
+      "lost": "Das Zertifikat ist installiert, der Web-Dienst lauscht jetzt auf der Domain. Diese Seite (localhost) erreicht ihn deshalb nicht mehr. Mach auf der Domain weiter."
     },
     "switch": {
       "title": "Wechsel auf die endgültige Adresse",
@@ -361,11 +349,10 @@
     },
     "explain": "Daemonica prüft die Allowlist beim Verbindungsaufbau, noch vor TLS, und zusätzlich bei jeder Anfrage. Nach dem Anwenden schließt der Server deine Verbindung; die Bestätigung muss über eine neue Verbindung kommen und beweist so, dass du mit der neuen Freigabe noch hineinkommst. Der Rücksetz-Timer läuft im privilegierten Helfer – unabhängig von Browser und Web-Prozess.",
     "general": "Allgemein",
-    "tls": "Zertifikat",
     "sessionTimes": "Sitzungsdauer",
     "sessionTimesValue": "{{idle}} min Leerlauf, max. {{abs}} h",
     "upload": "Upload-Limit",
-    "moreLater": "Weitere Einstellungen (Zertifikat wechseln, Sitzungszeiten, Sprache) folgen."
+    "moreLater": "Weitere Einstellungen (Sitzungszeiten, Sprache) folgen."
   },
   "services": {
     "title": "Dienste",
@@ -2194,5 +2181,71 @@
       "elapsed": "Vergangen:",
       "reload": "Seite neu laden"
     }
+  },
+  "cert": {
+    "title": "TLS-Zertifikat",
+    "change": "Zertifikat wechseln",
+    "names": "Gilt für",
+    "issuer": "Aussteller",
+    "validUntil": "Gültig bis",
+    "validValue": "{{date}} (noch {{days}} Tage)",
+    "sourceLabel": "Quelle",
+    "sourceName": {
+      "own": "Eigenes Zertifikat",
+      "acme-staging": "Let’s Encrypt Staging",
+      "acme-production": "Let’s Encrypt"
+    },
+    "method": "Prüfverfahren",
+    "renewal": "Erneuerung",
+    "renewAuto": "Automatisch, sobald weniger als {{days}} Tage übrig sind (zweimal täglich geprüft).",
+    "renewManual": "Von Hand: DNS-01 braucht für jede Erneuerung einen neuen TXT-Eintrag. Daemonica warnt 30 Tage vorher.",
+    "renewOwn": "Von Hand: lade rechtzeitig ein neues Zertifikat hoch. Daemonica warnt 30 Tage vorher.",
+    "expiring": "Das Zertifikat läuft in {{days}} Tagen ab.",
+    "expired": "Das Zertifikat ist abgelaufen. Browser zeigen eine Warnung, bis ein neues installiert ist.",
+    "stagingWarn": "Das ist ein Test-Zertifikat von Let’s Encrypt Staging. Browser vertrauen ihm nicht.",
+    "renewFailed": "Die automatische Erneuerung ist fehlgeschlagen. Daemonica versucht es in 12 Stunden erneut.",
+    "installed": "Neues Zertifikat installiert, gültig bis {{date}}. Das Dashboard nutzt es ab sofort, du bleibst angemeldet.",
+    "source": "Zertifikatsquelle",
+    "mode": {
+      "http-01": "Let’s Encrypt über HTTP-01 (empfohlen)",
+      "tls-alpn-01": "Let’s Encrypt über TLS-ALPN-01",
+      "dns-01": "Let’s Encrypt über DNS-01 (geführt)",
+      "own": "Eigenes Zertifikat hochladen"
+    },
+    "modeHelp": {
+      "http-01": "Port 80 muss frei und aus dem Internet erreichbar sein. Daemonica öffnet ihn nur für die Prüfung.",
+      "tls-alpn-01": "Port 443 muss frei und aus dem Internet erreichbar sein. Daemonica öffnet ihn nur für die Prüfung.",
+      "dns-01": "Kein offener Port nötig. Du legst beim DNS-Anbieter einen TXT-Eintrag an, Daemonica zeigt ihn an und prüft ihn.",
+      "own": "Zertifikatskette und Schlüssel im PEM-Format, ECDSA P-256."
+    },
+    "explain": {
+      "http-01": "Let’s Encrypt ruft eine Prüfadresse auf Port 80 ab. Ist die Firewall (ufw) aktiv und Port 80 gesperrt, öffnet Daemonica ihn nur für diese Prüfung und schließt ihn danach wieder. Es antworten nur die Prüfpfade. Das Zertifikat wird später automatisch erneuert.",
+      "tls-alpn-01": "Let’s Encrypt baut eine TLS-Verbindung zu Port 443 auf. Ist die Firewall (ufw) aktiv und Port 443 gesperrt, öffnet Daemonica ihn nur für diese Prüfung und schließt ihn danach wieder. Das Zertifikat wird später automatisch erneuert.",
+      "dns-01": "Daemonica zeigt dir Name und Wert eines TXT-Eintrags. Du legst ihn beim DNS-Anbieter an und bestätigst. Daemonica wartet, bis alle zuständigen Nameserver den Eintrag liefern (bis zu 30 Minuten), und lässt dann ausstellen. Bei jeder Erneuerung ist ein neuer Eintrag nötig.",
+      "own": "Daemonica prüft, dass Zertifikat und Schlüssel zusammenpassen, die Domain abdecken und gerade gültig sind. Der Schlüssel liegt danach nur beim Web-Dienst (Datei 0600)."
+    },
+    "ca": "Zertifizierungsstelle",
+    "production": "Let’s Encrypt (vertrauenswürdig)",
+    "staging": "Let’s Encrypt Staging (nur für Tests, Browser vertrauen ihm nicht)",
+    "tos": "Ich akzeptiere die Nutzungsbedingungen von Let’s Encrypt.",
+    "certPem": "Zertifikatskette (PEM)",
+    "keyPem": "Privater Schlüssel (PEM, ECDSA P-256)",
+    "issue": "Zertifikat anfordern",
+    "upload": "Zertifikat übernehmen",
+    "working": "Zertifikat wird über {{method}} ausgestellt … das dauert meist unter einer Minute.",
+    "preparing": "Let’s Encrypt bereitet die DNS-Prüfung vor …",
+    "dnsIntro": "Lege bei deinem DNS-Anbieter diesen Eintrag an und bestätige danach:",
+    "dnsType": "Typ",
+    "dnsName": "Name",
+    "dnsValue": "Wert",
+    "dnsTtl": "so kurz wie möglich, z. B. 60 Sekunden",
+    "dnsShort": "Viele Anbieter wollen nur den Teil vor der Zone als Namen, hier vermutlich „{{name}}“.",
+    "dnsConfirm": "Eintrag ist gesetzt, jetzt prüfen",
+    "checking": "Prüfe die zuständigen Nameserver (Versuch {{n}}) … das kann einige Minuten dauern.",
+    "copy": "Kopieren",
+    "cancel": "Ausstellung abbrechen",
+    "failed": "Die Ausstellung über {{method}} ist fehlgeschlagen.",
+    "canceled": "Die Ausstellung wurde abgebrochen.",
+    "notVisible": "Noch nicht auf allen zuständigen Nameservern sichtbar."
   }
 }

@@ -53,7 +53,7 @@ _Last updated: 2026-10-25_
 
 | ID | Status | Notes |
 |---|---|---|
-| M1.0 | ⚠ nearly done | All core items done incl. accounts, audit view, allowlist Plan→Apply→Confirm. Open: TLS change in settings, DNS-01 guided, certificate renewal timer, Playwright E2E with virtual authenticator, helper hardening score ≤ 6.0. |
+| M1.0 | ⚠ nearly done | All core items done incl. accounts, audit view, allowlist Plan→Apply→Confirm. TLS change in settings, DNS-01 guided and renewal done in M1.8 (DEC-034). Open: Playwright E2E with virtual authenticator, helper hardening score ≤ 6.0. |
 | M1.1 | ⚠ implemented, in owner test | Overview, services, logs, processes (see table below). Open: last logins, log follow via WebSocket (DEC-017), allowlisted log files (SOLL), owner acceptance check against `top`/`free`/`df`. |
 | M1.2 | ⚠ implemented, in owner test | Users/groups and SSH keys (table below). Open: last login per user (wtmpdb), owner acceptance. |
 | M1.3 | ✓ accepted by owner 2026-10-25 | File manager, editor, up/download (table below). SOLL items /etc pre-versions and validators done (DEC-021); lists with sort/filter on every column and right-click menus (DEC-022). Open: folder download as archive (KANN). |
@@ -92,7 +92,7 @@ _Last updated: 2026-10-25_
 | Recovery (`daemonica-admin recover <account> [--revoke-all]`, ends sessions, 30 min token) | ✓ | `TestPasskeyManagementAndRecovery` |
 | Setup wizard (token → domain → allowlist → certificate → switch to domain → first passkey), UI shell, dark (default)/light theme, de/en i18n, nav icons, mobile drawer | ✓ | Owner completed setup in a real browser on the VM (2026-10-24); headless Chromium: no CSP/Trusted-Types violations |
 | Session cookie `__Host-`, Secure, HttpOnly, SameSite=Strict, rotation on login/step-up, grant never sent to browser | ✓ | `internal/web/auth_test.go` |
-| ACME (Let's Encrypt, HTTP-01/TLS-ALPN-01, ECDSA P-256, staging/production) | ✓ (HTTP-01) / ✖ (DNS-01 guided, renewal timer, TLS change via settings) | Production cert issued for the test VM with owner approval (S2) |
+| ACME (Let's Encrypt, HTTP-01/TLS-ALPN-01, ECDSA P-256, staging/production) | ✓ HTTP-01, TLS-ALPN-01, DNS-01 guided, ACME window, change in settings, automatic renewal (DEC-034) | Production cert issued for the test VM with owner approval (S2); VM test of the new paths in the Phase 1 acceptance (staging) |
 | systemd units with hardening | ⚠ | Scores on the VM: daemonica-web **1.1** (target ≤ 2.0 ✓), daemonica-helper **6.8** (target ≤ 6.0 ✖, to tighten in M1.8) |
 | `.deb` packaging, postinst/prerm/postrm | ✓ (install/upgrade on VM) / ⚠ (remove/purge test, arm64 install untested) | VM: install, reinstall and the daemonia→daemonica migration (data moved, accounts/passkeys/audit chain intact) |
 

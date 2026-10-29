@@ -27,6 +27,7 @@ type Config struct {
 	Language    string   `json:"language"`
 	UploadMiB   int      `json:"upload_limit_mib"`
 	TLSSource   string   `json:"tls_source,omitempty"` // own | acme-staging | acme-production
+	TLSMethod   string   `json:"tls_method,omitempty"` // ACME challenge used (renewal)
 	// TerminalIdleMinutes ends web terminals without input (SPEC §7.5; 0 = default 15).
 	TerminalIdleMinutes int `json:"terminal_idle_minutes,omitempty"`
 	// CaptureRetentionHours deletes packet captures after this time (SPEC §7.6 M1.5d; 0 = 24 h, max. 7 days).

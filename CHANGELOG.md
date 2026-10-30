@@ -4,7 +4,7 @@ All notable changes are documented here (Keep a Changelog style).
 
 ## [Unreleased]
 
-## [0.1.0~rc1] — 2026-10-29 — Phase 1 release candidate
+## [0.1.0~rc2] — 2026-10-30 — Phase 1 release candidate
 
 Release candidate for the Phase 1 acceptance (SPEC §6.6). Unsigned test build
 (`-UNSIGNED-TESTONLY`). Acceptance checklist: `docs/acceptance/ACCEPTANCE-PHASE-1.md`;
@@ -54,9 +54,11 @@ test report: `docs/acceptance/TEST-REPORT-PHASE-1.md`; security audit:
 - Rate limits count IPv6 clients per /64 (audit F-01).
 - Audit log is append-only (`chattr +a`) and rotates at 32 MiB with the hash chain continued
   across files (DEC-035, audit F-02).
-- `golang.org/x/net` 0.62.0.
+- `golang.org/x/net` 0.62.0, `go-jose/v4` 4.1.6 (audit F-14).
 
 ### Fixed
+- Automatic certificate renewal stays on after upgrading an installation from before M1.8 (audit F-16).
+- Last logins on hosts without wtmpdb/lastlog2 (Ubuntu 26.04 without `pam_wtmpdb`) come from sshd's journal lines.
 - Firewall log view shows entries suppressed by kernel rate limiting (audit F-13).
 - An expired or untrusted dashboard certificate can be replaced from the console (audit F-12).
 - Purge removes job units, the ACME window and the append-only flag; a newer database schema is

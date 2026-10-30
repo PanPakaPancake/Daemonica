@@ -31,9 +31,12 @@ type Login struct {
 }
 
 // LoginDB reads wtmpdb and lastlog2 read-only; missing databases are no error.
+// Without wtmpdb the SSH sessions come from the journal (Journal, optional).
 type LoginDB struct {
 	Wtmp     string
 	Lastlog2 string
+	Journal  func(ctx context.Context) ([]LogLine, error)
+	Alive    func(pid int) bool
 }
 
 func openRO(ctx context.Context, path string) (*sql.DB, error) {
@@ -64,7 +67,8 @@ func (l LoginDB) Recent(ctx context.Context, n int) ([]Login, error) {
 	out := []Login{}
 	db, err := openRO(ctx, l.Wtmp)
 	if errors.Is(err, os.ErrNotExist) {
-		return out, nil
+		j := l.journalLogins(ctx)
+		return append(out, j[:min(n, len(j))]...), nil
 	}
 	if err != nil {
 		return nil, err
@@ -113,6 +117,9 @@ func (l LoginDB) Last(ctx context.Context) (map[string]time.Time, error) {
 	}
 	db, err := openRO(ctx, l.Wtmp)
 	if errors.Is(err, os.ErrNotExist) {
+		for _, x := range l.journalLogins(ctx) {
+			keep(x.User, x.Time)
+		}
 		return last, nil
 	}
 	if err != nil {

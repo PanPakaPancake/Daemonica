@@ -26,6 +26,7 @@ import (
 	"github.com/PanPakaPancake/daemonica/internal/firewall"
 	"github.com/PanPakaPancake/daemonica/internal/helper"
 	"github.com/PanPakaPancake/daemonica/internal/jobs"
+	"github.com/PanPakaPancake/daemonica/internal/journal"
 	"github.com/PanPakaPancake/daemonica/internal/netcfg"
 	"github.com/PanPakaPancake/daemonica/internal/planner"
 	"github.com/PanPakaPancake/daemonica/internal/pty"
@@ -172,7 +173,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() { _ = sd.Close() }()
-	loginDB := users.LoginDB{Wtmp: users.WtmpDBPath, Lastlog2: users.Lastlog2Path}
+	loginDB := users.LoginDB{Wtmp: users.WtmpDBPath, Lastlog2: users.Lastlog2Path, Journal: sshJournal, Alive: pidAlive}
 	aptOps := &helper.AptOps{Sys: apt.System{Run: apt.ExecRun}, UnattendedPath: apt.UnattendedFile}
 	collector := &sysinfo.Collector{FS: sysinfo.FS{Root: "/"}, Interval: 3 * time.Second, Extras: sysinfo.Extras{
 		FailedUnits: sd.FailedCount,
@@ -315,6 +316,32 @@ func terminalMemoryMax() uint64 {
 
 // updatesFrom prefers the package view's counts and falls back to the
 // update-notifier file until the first simulation has run.
+// sshJournal reads sshd's session lines from the journal (login history on
+// hosts without wtmpdb). Debian/Ubuntu name the unit ssh.service, others sshd.service.
+func sshJournal(ctx context.Context) ([]users.LogLine, error) {
+	var out []users.LogLine
+	for _, unit := range []string{"ssh.service", "sshd.service"} {
+		for _, grep := range []string{"Accepted ", "Disconnected from user "} {
+			res, err := journal.Run(ctx, journal.Query{Unit: unit, Grep: grep, Lines: 500})
+			if err != nil {
+				continue
+			}
+			for _, e := range res.Entries {
+				out = append(out, users.LogLine{Time: e.Time, PID: e.PID, Message: e.Message})
+			}
+		}
+		if len(out) > 0 {
+			break
+		}
+	}
+	return out, nil
+}
+
+func pidAlive(pid int) bool {
+	_, err := os.Stat("/proc/" + strconv.Itoa(pid))
+	return err == nil
+}
+
 // loginsFrom serves the overview's login history from wtmpdb, read at most
 // once per ttl (the collector samples every few seconds).
 func loginsFrom(l users.LoginDB, ttl time.Duration) func(n int) ([]sysinfo.Login, error) {

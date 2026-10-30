@@ -1,6 +1,6 @@
 # Test report — Phase 1
 
-Release candidate `0.1.0~rc1`, branch `wip/m18`. Date: 2026-10-29.
+Release candidate `0.1.0~rc2`, branch `wip/m18`. Date: 2026-10-30. Build-environment numbers from 2026-10-29 (rc1); the rc2 fixes do not touch the measured paths.
 Columns "build environment" were measured in the development container (Ubuntu 24.04,
 systemd 255 without running systemd, local helper and web process); "VM" is filled in during the
 full test on the freshly installed VM (M1.8 step 6).
@@ -22,6 +22,21 @@ full test on the freshly installed VM (M1.8 step 6).
 | Security tools | see `docs/security/AUDIT-PHASE-1.md` §1 | **VM** items there |
 | `systemd-analyze security` | helper 5.1, web 1.1 (offline) | **VM** |
 | Install → setup → modules → roles → update → purge | – | **VM** and owner checklist |
+
+## Upgrade on the existing test VM (2026-10-30)
+
+Ubuntu 26.04.1, systemd 259, installation from M1.0–M1.7 (0.1.0~dev, set up, 1 admin with 2 passkeys,
+201 audit records), upgraded with `apt-get install` to rc1 built on the VM from `b11f497`. The findings are fixed in rc2.
+
+| Check | Result |
+|---|---|
+| Package and services | 0.1.0~rc1 installed, helper and web active, web on the domain (`:8443`, HTTP 200 over loopback) |
+| Data | account and passkeys unchanged, configuration kept, no database migration needed (no new backup) |
+| Audit log | chain intact, 201 → 203 records (helper stop and start), append-only flag set |
+| `systemd-analyze security` | helper 5.1, web 1.1 |
+| RSS after start | helper 28 MiB, web 22 MiB |
+| Integration | `TestInstalledAuditLog` pass |
+| Found | automatic renewal off for the pre-M1.8 certificate (audit F-16, fixed); no login history on Ubuntu 26.04 because neither wtmpdb nor lastlog2 is installed (now read from sshd's journal, `TestSSHLoginsFromJournal`); `go-jose` advisories (F-14, fixed) |
 
 ## End-to-end test
 

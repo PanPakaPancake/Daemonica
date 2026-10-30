@@ -181,7 +181,8 @@ func TestCertRenewDue(t *testing.T) {
 	if c.RenewDue() {
 		t.Fatal("dns-01 renewed without the operator")
 	}
-	_, _ = c.Config.Update(func(cf *Config) error { cf.TLSMethod = "http-01"; return nil })
+	// Installations from before M1.8 have no method recorded: their wizard only offered HTTP-01.
+	_, _ = c.Config.Update(func(cf *Config) error { cf.TLSMethod = ""; return nil })
 	if !c.RenewDue() {
 		t.Fatal("due renewal not started")
 	}

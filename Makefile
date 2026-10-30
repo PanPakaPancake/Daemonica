@@ -1,6 +1,6 @@
 # Daemonica – local, CI-agnostic build targets (SPEC §4.3).
 SHELL       := /bin/bash
-VERSION     ?= 0.1.0~rc1
+VERSION     ?= 0.1.0~rc2
 ARCHES      ?= amd64 arm64
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
 export SOURCE_DATE_EPOCH

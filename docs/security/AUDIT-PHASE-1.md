@@ -12,9 +12,9 @@ Rows marked **VM** are re-tested in the full test on the freshly installed VM (M
 |---|---|---|---|---|
 | Critical | 0 | – | – | – |
 | High | 0 | – | – | – |
-| Medium | 3 | 3 | 0 | – |
-| Low | 5 | 3 | – | 2 |
-| Info | 5 | 3 | – | 2 |
+| Medium | 4 | 4 | 0 | – |
+| Low | 6 | 4 | – | 2 |
+| Info | 6 | 4 | – | 2 |
 
 No finding needs a risk decision by the owner at this point. Gate rule (SPEC §6.5): met in the build environment; the VM re-test is still open.
 
@@ -27,7 +27,7 @@ No finding needs a risk decision by the owner at this point. Gate rule (SPEC §6
 | `golangci-lint` | 2.15.0 | clean | `.golangci.yml`: default linters + `gosec`; only `QF1001` (De Morgan style) and naming/doc style checks off |
 | `gosec` (through golangci-lint) | – | clean | 23 findings in production code, each reviewed and annotated with the reason (F-04); standalone `gosec` raw: 101 incl. tests |
 | `govulncheck` | 1.9.0 | **0 reachable** vulnerabilities | run with `-db file://` from `golang/vulndb` (data as of 2026-10-27), as `vuln.go.dev` is not reachable from the build environment; 7 unreached findings in `golang.org/x/net` 0.59.0 fixed by upgrading (F-03); `x/crypto/openpgp` (unmaintained, not imported) remains as info |
-| `osv-scanner` | 2.7.0 | **VM** | `api.osv.dev` refused from the build environment (F-10) |
+| `osv-scanner` | 2.x (on the VM) | `go-jose/v4` 4.1.4: 3 advisories, fixed by 4.1.6 (F-14); `undici` 7.30.0 and `zod` 4.6.5 dev-only, updated (F-15) | run on the test VM, as `api.osv.dev` is refused from the build environment (F-10) |
 | `gitleaks git` (all 98 commits) | 8.x | clean | 2 reviewed false positives in `.gitleaksignore` (F-06) |
 | `scripts/check-secrets.sh` | – | clean | failed before on a test fixture header line (F-06) |
 | `npm audit --omit=dev` | npm 10.9.4 | 0 vulnerabilities | |
@@ -80,6 +80,9 @@ Status: ✓ checked without open finding, ✓* checked, finding fixed, **VM** re
 | F-11 | No reproducible-build check, unsigned RC | Info | release | backlog | – |
 | F-12 | Expired or untrusted certificate locks the admin out of certificate changes | Medium | certificates (DEC-034), `daemonica-admin` | fixed | `TestCertAdminChannel` ✓; `tls-status`/`tls-install`/`tls-issue` against the local stack ✓; **VM** |
 | F-13 | Firewall log entries lost to kernel rate limiting were not shown (SPEC §7.6b "soweit erkennbar") | Low | `firewall.logs` | fixed | `TestFirewallLogsAndBlockSource` ✓ |
+| F-14 | `go-jose/v4` 4.1.4 with known advisories (ACME client dependency) | Low | `go.mod` | fixed (4.1.6) | `govulncheck` ✓, osv-scanner **VM** |
+| F-15 | Dev-only npm packages `undici`, `zod` with advisories | Info | `web/package-lock.json` | fixed (7.30.1, 4.6.7) | `npm audit` ✓ |
+| F-16 | Automatic certificate renewal off after upgrading a pre-M1.8 installation | Medium | `internal/helper/certops.go` | fixed | `TestCertRenewDue` ✓; VM upgrade **VM** |
 
 ### F-01 — Rate limit and backoff per IPv6 address (Medium, fixed)
 - **Description:** Buckets and the failure backoff were keyed by the full client address. A host usually owns a whole IPv6 /64 and can use any address in it, so it could bypass the per-IP login limit and the backoff by rotating addresses; only the global limit remained. IPv4-mapped IPv6 addresses also got their own bucket.
@@ -117,6 +120,14 @@ Status: ✓ checked without open finding, ✓* checked, finding fixed, **VM** re
 - **Description:** SPEC §7.6b asks to show entries lost to rate limiting as far as detectable; the firewall log view did not.
 - **Fix:** `firewall.logs` also counts kernel `N callbacks suppressed` lines in the same period and the page shows a warning. ufw's own `LOG` rate limit drops silently and stays undetectable (said in the result field's comment and in STATUS).
 
+### F-16 — Automatic renewal off after an upgrade (Medium, fixed)
+- **Description:** found in the upgrade test on the VM (0.1.0~dev → 0.1.0~rc1): `tls-status` showed "automatische Erneuerung: nein" for the Let's Encrypt certificate. Installations from before M1.8 did not record the ACME method, and renewal required it, so their certificate would have expired silently (and an expired certificate blocks passkeys, F-12).
+- **Fix:** without a recorded method an ACME certificate counts as HTTP-01, the only method the earlier wizard offered (`tlsMethod`).
+- **Re-test:** `TestCertRenewDue` covers a configuration without method; on the VM `tls-status` after the upgrade (**VM**).
+
+### F-14, F-15
+- `go-jose/v4` (used by the ACME client lego) 4.1.4 had three advisories (CVSS up to 7.5); govulncheck found no reachable call. Upgraded to 4.1.6. The npm findings are build-time only (jsdom/eslint) and not shipped; updated anyway.
+
 ### F-09, F-10, F-11
 - **F-09:** remaining helper exposure comes from capabilities and file system access the admin modules need (users, files, firewall, packages, disks); listed with reasons in `docs/ARCHITECTURE.md` "Hardening exceptions".
 - **F-10:** the build environment's network policy refuses `api.osv.dev` and `vuln.go.dev`. `govulncheck` ran against a local copy of the Go vulnerability database from GitHub; `osv-scanner` runs on the VM in the full test.
@@ -126,9 +137,9 @@ Status: ✓ checked without open finding, ✓* checked, finding fixed, **VM** re
 
 | Check | Result |
 |---|---|
-| `systemd-analyze security daemonica-helper daemonica-web` | **VM** |
-| `TestInstalledAuditLog` (append-only, chain) | **VM** |
-| `osv-scanner scan source -r .` | **VM** |
+| `systemd-analyze security daemonica-helper daemonica-web` | helper 5.1, web 1.1 on the VM (upgraded installation, Ubuntu 26.04, systemd 259) ✓ |
+| `TestInstalledAuditLog` (append-only, chain) | pass on the upgraded VM; `lsattr` shows `a`; chain intact (203 records) ✓ |
+| `osv-scanner scan source -r .` | ran on the VM: F-14, F-15 (fixed) |
 | TLS check against the dashboard with its real certificate | **VM** |
 | `TestACMEWindow` against the real ufw (`DAEMONICA_FIREWALL_TESTS=1`) | **VM** |
 | `make test-e2e` on the fresh installation (`E2E_STRICT=1`) incl. base load and idle RAM | **VM** |

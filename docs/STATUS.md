@@ -101,7 +101,7 @@ _Last updated: 2026-10-29_
 | Requirement | Status | Evidence |
 |---|---|---|
 | Overview: hostname, OS/kernel, uptime, load, CPU, RAM/swap, mounts with usage + inodes, network interfaces with live throughput, top processes, reboot required, pending updates (total/security), failed units, dashboard certificate expiry, setup checklist | ✓ | `internal/sysinfo`, `helper/sysops.go`; integration test on the VM (`make test-integration`) |
-| Last logins | ✓ (M1.8) | wtmpdb (sessions) + lastlog2 read-only; overview table, column in the users list; `TestLoginDB`, integration `TestLoginHistoryOnHost` |
+| Last logins | ✓ (M1.8) | wtmpdb (sessions) + lastlog2 read-only, or sshd's journal lines where wtmpdb is missing (Ubuntu 26.04 without pam_wtmpdb); overview table, column in the users list; `TestLoginDB`, `TestSSHLoginsFromJournal`, integration `TestLoginHistoryOnHost` |
 | One shared collector (3 s), no polling storm | ✓ | `sysinfo.Collector` in the helper; UI polls the cached snapshot |
 | Services: list service/timer/socket with active/sub, autostart, since, memory; search + filter | ✓ | D-Bus (`internal/services`), integration test (295 units on the VM) |
 | Actions start/stop/restart/reload/enable/disable/mask/unmask; detail: status, journal, unit file (read-only), dependencies | ✓ | `services.action`, UI drawer |

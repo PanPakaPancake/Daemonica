@@ -172,8 +172,18 @@ func (c *CertOps) Installed() *CertInfo {
 
 // autoRenew reports whether the configured certificate renews by itself.
 func autoRenew(cfg Config) bool {
+	m := tlsMethod(cfg)
 	return (cfg.TLSSource == "acme-staging" || cfg.TLSSource == "acme-production") &&
-		(cfg.TLSMethod == string(acme.HTTP01) || cfg.TLSMethod == string(acme.TLSALPN01))
+		(m == string(acme.HTTP01) || m == string(acme.TLSALPN01))
+}
+
+// tlsMethod is the ACME method of the installed certificate. Installations
+// from before M1.8 did not record it; their wizard only offered HTTP-01.
+func tlsMethod(cfg Config) string {
+	if cfg.TLSMethod == "" && (cfg.TLSSource == "acme-staging" || cfg.TLSSource == "acme-production") {
+		return string(acme.HTTP01)
+	}
+	return cfg.TLSMethod
 }
 
 func (c *CertOps) snapshot() *Issuance {
@@ -406,7 +416,7 @@ func (c *CertOps) RenewDue() bool {
 	if cfg.TLSSource == "acme-production" {
 		ca = "production"
 	}
-	_, err := c.Start(acme.Method(cfg.TLSMethod), ca, true, audit.Actor{})
+	_, err := c.Start(acme.Method(tlsMethod(cfg)), ca, true, audit.Actor{})
 	return err == nil
 }
 
@@ -488,7 +498,7 @@ func (c *CertOps) Register(ops map[string]*Op) {
 	Register(ops, &Op{Name: "admin.cert_status", AdminChannel: true, NoAudit: true,
 		Handle: func(context.Context, Call) (any, error) {
 			cfg := c.Config.Get()
-			return CertView{Domain: cfg.Domain, Cert: c.Installed(), Source: cfg.TLSSource, Method: cfg.TLSMethod,
+			return CertView{Domain: cfg.Domain, Cert: c.Installed(), Source: cfg.TLSSource, Method: tlsMethod(cfg),
 				AutoRenew: autoRenew(cfg), RenewDays: RenewDays, Issuance: c.Current()}, nil
 		}})
 	Register(ops, &Op{Name: "admin.cert_issue", AdminChannel: true,
@@ -521,7 +531,7 @@ func (c *CertOps) Register(ops map[string]*Op) {
 	Register(ops, &Op{Name: "cert.get", Action: policy.ActSettingsRead, NoAudit: true,
 		Handle: func(context.Context, Call) (any, error) {
 			cfg := c.Config.Get()
-			return CertView{Domain: cfg.Domain, Cert: c.Installed(), Source: cfg.TLSSource, Method: cfg.TLSMethod,
+			return CertView{Domain: cfg.Domain, Cert: c.Installed(), Source: cfg.TLSSource, Method: tlsMethod(cfg),
 				AutoRenew: autoRenew(cfg), RenewDays: RenewDays, Issuance: c.Current()}, nil
 		}})
 	Register(ops, &Op{Name: "cert.acme_issue", Action: policy.ActSettingsWrite,

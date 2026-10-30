@@ -82,8 +82,8 @@ Status: ✓ checked without open finding, ✓* checked, finding fixed, **VM** re
 | F-13 | Firewall log entries lost to kernel rate limiting were not shown (SPEC §7.6b "soweit erkennbar") | Low | `firewall.logs` | fixed | `TestFirewallLogsAndBlockSource` ✓ |
 | F-14 | `go-jose/v4` 4.1.4 with known advisories (ACME client dependency) | Low | `go.mod` | fixed (4.1.6) | `govulncheck` ✓, osv-scanner **VM** |
 | F-15 | Dev-only npm packages `undici`, `zod` with advisories | Info | `web/package-lock.json` | fixed (7.30.1, 4.6.7) | `npm audit` ✓ |
-| F-16 | Automatic certificate renewal off after upgrading a pre-M1.8 installation | Medium | `internal/helper/certops.go` | fixed | `TestCertRenewDue` ✓; VM upgrade **VM** |
-| F-17 | Helper cannot start again once the audit log is append-only | High | `daemonica-helper.service` | fixed (rc3) | `TestHelperRestartsWithAppendOnlyLog` **VM** |
+| F-16 | Automatic certificate renewal off after upgrading a pre-M1.8 installation | Medium | `internal/helper/certops.go` | fixed | `TestCertRenewDue` ✓; VM after upgrade to rc3: renewal on ✓ |
+| F-17 | Helper cannot start again once the audit log is append-only | High | `daemonica-helper.service` | fixed (rc3) | `TestHelperRestartsWithAppendOnlyLog` on the VM ✓ |
 
 ### F-01 — Rate limit and backoff per IPv6 address (Medium, fixed)
 - **Description:** Buckets and the failure backoff were keyed by the full client address. A host usually owns a whole IPv6 /64 and can use any address in it, so it could bypass the per-IP login limit and the backoff by rotating addresses; only the global limit remained. IPv4-mapped IPv6 addresses also got their own bucket.

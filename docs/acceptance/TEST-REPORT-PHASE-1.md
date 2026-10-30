@@ -36,6 +36,7 @@ Ubuntu 26.04.1, systemd 259, installation from M1.0–M1.7 (0.1.0~dev, set up, 1
 | `systemd-analyze security` | helper 5.1, web 1.1 |
 | RSS after start | helper 28 MiB, web 22 MiB |
 | Integration | `TestInstalledAuditLog` pass |
+| rc1 → rc2 → rc3 | rc2 looped in 240/LOGS_DIRECTORY (F-17); rc3 starts at once (0 restarts), renewal on (`tls-status`: http-01, automatic), chain intact (209 records), append-only kept; `TestHelperRestartsWithAppendOnlyLog`, `TestInstalledAuditLog`, `TestLoginHistoryOnHost` (journal fallback with session ends) pass |
 | Found | automatic renewal off for the pre-M1.8 certificate (audit F-16, fixed); no login history on Ubuntu 26.04 because neither wtmpdb nor lastlog2 is installed (now read from sshd's journal, `TestSSHLoginsFromJournal`); `go-jose` advisories (F-14, fixed) |
 
 ## End-to-end test

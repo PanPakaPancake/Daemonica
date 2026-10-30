@@ -13,7 +13,7 @@
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
-sudo apt install ./daemonica_0.1.0~rc2_amd64-UNSIGNED-TESTONLY.deb
+sudo apt install ./daemonica_0.1.0~rc3_amd64-UNSIGNED-TESTONLY.deb
 ```
 
 Nach der Installation laufen zwei Dienste:

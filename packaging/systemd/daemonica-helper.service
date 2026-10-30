@@ -3,6 +3,9 @@ Description=Daemonica privileged helper (Unix sockets only)
 Documentation=file:///usr/share/doc/daemonica/README.md
 After=local-fs.target dbus.service
 Before=daemonica-web.service
+# A persistent start failure stops after 5 tries instead of looping every 2 s.
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -17,8 +20,9 @@ RuntimeDirectoryMode=0750
 RuntimeDirectoryPreserve=no
 StateDirectory=daemonica-helper
 StateDirectoryMode=0700
-LogsDirectory=daemonica
-LogsDirectoryMode=0750
+# No LogsDirectory=: systemd would chown/chmod /var/log/daemonica at every
+# start and fail with EPERM on the append-only audit log (chattr +a, DEC-035),
+# so the helper could never start again. postinst creates the directory.
 UMask=0077
 
 # Hardening (SPEC §3.9, target <= 6.0). Every directive NOT set here is listed

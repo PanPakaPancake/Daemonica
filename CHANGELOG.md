@@ -4,7 +4,7 @@ All notable changes are documented here (Keep a Changelog style).
 
 ## [Unreleased]
 
-## [0.1.0~rc2] — 2026-10-30 — Phase 1 release candidate
+## [0.1.0~rc3] — 2026-10-30 — Phase 1 release candidate
 
 Release candidate for the Phase 1 acceptance (SPEC §6.6). Unsigned test build
 (`-UNSIGNED-TESTONLY`). Acceptance checklist: `docs/acceptance/ACCEPTANCE-PHASE-1.md`;
@@ -57,6 +57,10 @@ test report: `docs/acceptance/TEST-REPORT-PHASE-1.md`; security audit:
 - `golang.org/x/net` 0.62.0, `go-jose/v4` 4.1.6 (audit F-14).
 
 ### Fixed
+- The helper starts again after the audit log became append-only: its unit no longer uses
+  `LogsDirectory=`, whose chown/chmod at every start failed (audit F-17); a persistent start
+  failure stops after five tries.
+- Login history ends sessions on PAM's "session closed" line.
 - Automatic certificate renewal stays on after upgrading an installation from before M1.8 (audit F-16).
 - Last logins on hosts without wtmpdb/lastlog2 (Ubuntu 26.04 without `pam_wtmpdb`) come from sshd's journal lines.
 - Firewall log view shows entries suppressed by kernel rate limiting (audit F-13).

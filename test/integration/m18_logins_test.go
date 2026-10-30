@@ -19,7 +19,7 @@ func TestLoginHistoryOnHost(t *testing.T) {
 	// sshd's journal lines, as in the helper.
 	l := users.LoginDB{Wtmp: users.WtmpDBPath, Lastlog2: users.Lastlog2Path, Journal: func(ctx context.Context) ([]users.LogLine, error) {
 		var out []users.LogLine
-		for _, grep := range []string{"Accepted ", "Disconnected from user "} {
+		for _, grep := range []string{"Accepted ", "Disconnected from user ", "session closed for user "} {
 			res, err := journal.Run(ctx, journal.Query{Unit: "ssh.service", Grep: grep, Lines: 500})
 			if err != nil {
 				return nil, err

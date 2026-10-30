@@ -1,6 +1,6 @@
 # Test report — Phase 1
 
-Release candidate `0.1.0~rc2`, branch `wip/m18`. Date: 2026-10-30. Build-environment numbers from 2026-10-29 (rc1); the rc2 fixes do not touch the measured paths.
+Release candidate `0.1.0~rc3`, branch `wip/m18`. Date: 2026-10-30. Build-environment numbers from 2026-10-29 (rc1); the rc2/rc3 fixes do not touch the measured paths.
 Columns "build environment" were measured in the development container (Ubuntu 24.04,
 systemd 255 without running systemd, local helper and web process); "VM" is filled in during the
 full test on the freshly installed VM (M1.8 step 6).
@@ -26,7 +26,7 @@ full test on the freshly installed VM (M1.8 step 6).
 ## Upgrade on the existing test VM (2026-10-30)
 
 Ubuntu 26.04.1, systemd 259, installation from M1.0–M1.7 (0.1.0~dev, set up, 1 admin with 2 passkeys,
-201 audit records), upgraded with `apt-get install` to rc1 built on the VM from `b11f497`. The findings are fixed in rc2.
+201 audit records), upgraded with `apt-get install` to rc1 built on the VM from `b11f497`. The findings are fixed in rc2; upgrading rc1 → rc2 then showed that the helper cannot start again once the audit log is append-only (audit F-17, fixed in rc3).
 
 | Check | Result |
 |---|---|

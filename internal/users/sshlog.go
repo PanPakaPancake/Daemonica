@@ -17,12 +17,15 @@ type LogLine struct {
 
 var (
 	acceptedRE     = regexp.MustCompile(`^Accepted (\S+) for (\S+) from (\S+) port \d+`)
-	disconnectedRE = regexp.MustCompile(`^Disconnected from user (\S+) `)
+	// OpenSSH logs "Disconnected from user …" (sshd) or, with PAM, the
+	// session's end from the same process (sshd-session on OpenSSH ≥ 9.8).
+	disconnectedRE = regexp.MustCompile(`^(?:Disconnected from user|pam_unix\(sshd:session\): session closed for user) (\S+)`)
 )
 
 // SSHLogins rebuilds SSH sessions from sshd's journal lines, newest first:
 // "Accepted <method> for <user> from <addr> port <n>" starts a session, the
-// same process's "Disconnected from user <user> …" ends it. A session whose
+// same process's "Disconnected from user <user> …" or PAM's "session closed
+// for user <user>" ends it. A session whose
 // process is gone without a disconnect line counts as ended at its start
 // (end time unknown). alive reports whether a PID still runs.
 //

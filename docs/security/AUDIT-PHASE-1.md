@@ -11,7 +11,7 @@ Rows marked **VM** are re-tested in the full test on the freshly installed VM (M
 | Severity | Found | Fixed | Decision needed | Backlog |
 |---|---|---|---|---|
 | Critical | 0 | – | – | – |
-| High | 0 | – | – | – |
+| High | 1 | 1 | – | – |
 | Medium | 4 | 4 | 0 | – |
 | Low | 6 | 4 | – | 2 |
 | Info | 6 | 4 | – | 2 |
@@ -83,6 +83,7 @@ Status: ✓ checked without open finding, ✓* checked, finding fixed, **VM** re
 | F-14 | `go-jose/v4` 4.1.4 with known advisories (ACME client dependency) | Low | `go.mod` | fixed (4.1.6) | `govulncheck` ✓, osv-scanner **VM** |
 | F-15 | Dev-only npm packages `undici`, `zod` with advisories | Info | `web/package-lock.json` | fixed (7.30.1, 4.6.7) | `npm audit` ✓ |
 | F-16 | Automatic certificate renewal off after upgrading a pre-M1.8 installation | Medium | `internal/helper/certops.go` | fixed | `TestCertRenewDue` ✓; VM upgrade **VM** |
+| F-17 | Helper cannot start again once the audit log is append-only | High | `daemonica-helper.service` | fixed (rc3) | `TestHelperRestartsWithAppendOnlyLog` **VM** |
 
 ### F-01 — Rate limit and backoff per IPv6 address (Medium, fixed)
 - **Description:** Buckets and the failure backoff were keyed by the full client address. A host usually owns a whole IPv6 /64 and can use any address in it, so it could bypass the per-IP login limit and the backoff by rotating addresses; only the global limit remained. IPv4-mapped IPv6 addresses also got their own bucket.
@@ -119,6 +120,11 @@ Status: ✓ checked without open finding, ✓* checked, finding fixed, **VM** re
 ### F-13 — Firewall log entries lost to rate limiting not shown (Low, fixed)
 - **Description:** SPEC §7.6b asks to show entries lost to rate limiting as far as detectable; the firewall log view did not.
 - **Fix:** `firewall.logs` also counts kernel `N callbacks suppressed` lines in the same period and the page shows a warning. ufw's own `LOG` rate limit drops silently and stays undetectable (said in the result field's comment and in STATUS).
+
+### F-17 — Helper cannot start again once the audit log is append-only (High, fixed)
+- **Description:** found when upgrading the VM from rc1 to rc2. The helper unit had `LogsDirectory=daemonica`; systemd adjusts owner and mode of that directory and its content at every start, which fails with EPERM on the append-only `audit.log` (F-02's fix). The helper exited with 240/LOGS_DIRECTORY and restarted every 2 s, the dashboard lost all functions. rc1 only started because the flag was set after its own start; any later restart or reboot would have failed the same way.
+- **Fix:** no `LogsDirectory=` for the helper (postinst creates `/var/log/daemonica`); `StartLimitBurst=5` within 60 s ends such a loop.
+- **Re-test:** `TestHelperRestartsWithAppendOnlyLog` restarts the installed helper with the append-only log (**VM**).
 
 ### F-16 — Automatic renewal off after an upgrade (Medium, fixed)
 - **Description:** found in the upgrade test on the VM (0.1.0~dev → 0.1.0~rc1): `tls-status` showed "automatische Erneuerung: nein" for the Let's Encrypt certificate. Installations from before M1.8 did not record the ACME method, and renewal required it, so their certificate would have expired silently (and an expired certificate blocks passkeys, F-12).

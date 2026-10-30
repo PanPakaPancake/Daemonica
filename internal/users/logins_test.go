@@ -58,7 +58,8 @@ func TestLoginDB(t *testing.T) {
 func TestSSHLoginsFromJournal(t *testing.T) {
 	t0 := time.Date(2026, 10, 30, 1, 0, 0, 0, time.UTC)
 	lines := []LogLine{
-		{Time: t0.Add(5 * time.Minute), PID: 12, Message: "Disconnected from user pancake 203.0.113.7 port 50000"},
+		{Time: t0.Add(5 * time.Minute), PID: 12, Message: "pam_unix(sshd:session): session closed for user pancake"},
+		{Time: t0.Add(6 * time.Minute), PID: 12, Message: "Disconnected from user pancake 203.0.113.7 port 50000"},
 		{Time: t0, PID: 12, Message: "Accepted publickey for pancake from 203.0.113.7 port 50000 ssh2: ED25519 SHA256:abc"},
 		{Time: t0.Add(time.Minute), PID: 13, Message: "Accepted password for op from 2001:db8::5 port 41000 ssh2"},
 		{Time: t0.Add(2 * time.Minute), PID: 14, Message: "Accepted publickey for leser from 198.51.100.4 port 1 ssh2"},

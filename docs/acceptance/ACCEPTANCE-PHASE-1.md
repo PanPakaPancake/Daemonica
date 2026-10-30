@@ -5,7 +5,7 @@ installierten VM über Einrichtung, alle Module und Rollen bis zu Update, Rollba
 Deinstallation. Sie ist für dich als Auftraggeber geschrieben und braucht keine
 Entwicklerkenntnisse.
 
-- **Paket:** `daemonica_0.1.0~rc2_amd64-UNSIGNED-TESTONLY.deb` mit `SHA256SUMS`
+- **Paket:** `daemonica_0.1.0~rc3_amd64-UNSIGNED-TESTONLY.deb` mit `SHA256SUMS`
   (Release Candidate, nicht signiert, nur für Test-Systeme)
 - **Begleitend:** `docs/INSTALL.md` (Installation, Notfall-Befehle, Update/Rollback),
   `docs/acceptance/TEST-REPORT-PHASE-1.md` (automatische Tests mit Zahlen),
@@ -38,7 +38,7 @@ Platzhalter in den Befehlen: `<VM-IP>` (öffentliche IP der VM), `<DEINE-IP>` (d
 | # | Schritt | Erwartung | ☐ |
 |---|---|---|---|
 | 1.1 | `.deb` und `SHA256SUMS` auf die VM kopieren, dann `sha256sum -c SHA256SUMS --ignore-missing`. | `OK` für das Paket. | ☐ |
-| 1.2 | `apt install ./daemonica_0.1.0~rc2_amd64-UNSIGNED-TESTONLY.deb` | Installation ohne Fehler. | ☐ |
+| 1.2 | `apt install ./daemonica_0.1.0~rc3_amd64-UNSIGNED-TESTONLY.deb` | Installation ohne Fehler. | ☐ |
 | 1.3 | `systemctl status daemonica-helper daemonica-web` | Beide `active (running)`. | ☐ |
 | 1.4 | `ss -ltnp \| grep 8443` | Lauscht nur auf `127.0.0.1:8443` (Setup-Modus). | ☐ |
 | 1.5 | Von deinem Rechner `https://<VM-IP>:8443` aufrufen. | Keine Verbindung. | ☐ |
@@ -134,7 +134,7 @@ Hinweis: Let’s Encrypt erlaubt fünf gleiche Zertifikate pro Woche; diese Chec
 
 | # | Schritt | Erwartung | ☐ |
 |---|---|---|---|
-| 7.1 | Dasselbe Paket noch einmal installieren: `apt install --reinstall ./daemonica_0.1.0~rc2_amd64-UNSIGNED-TESTONLY.deb` | Dienste starten neu, Konten, Passkeys und Audit-Log bleiben; nach erneuter Anmeldung ist alles wie vorher. | ☐ |
+| 7.1 | Dasselbe Paket noch einmal installieren: `apt install --reinstall ./daemonica_0.1.0~rc3_amd64-UNSIGNED-TESTONLY.deb` | Dienste starten neu, Konten, Passkeys und Audit-Log bleiben; nach erneuter Anmeldung ist alles wie vorher. | ☐ |
 | 7.2 | `ls /var/lib/daemonica-helper/backups/` | Ordner vorhanden. Eine Sicherung der Kontendatenbank entsteht nur bei Updates, die die Datenbank ändern; bei derselben Version bleibt er leer. Den Weg von einer älteren Version auf diesen Stand und zurück prüfe ich im Gesamttest; die Schritte stehen in `docs/INSTALL.md` §5. | ☐ |
 
 ## 8. Deinstallation

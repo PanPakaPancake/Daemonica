@@ -321,7 +321,7 @@ func terminalMemoryMax() uint64 {
 func sshJournal(ctx context.Context) ([]users.LogLine, error) {
 	var out []users.LogLine
 	for _, unit := range []string{"ssh.service", "sshd.service"} {
-		for _, grep := range []string{"Accepted ", "Disconnected from user "} {
+		for _, grep := range []string{"Accepted ", "Disconnected from user ", "session closed for user "} {
 			res, err := journal.Run(ctx, journal.Query{Unit: unit, Grep: grep, Lines: 500})
 			if err != nil {
 				continue
